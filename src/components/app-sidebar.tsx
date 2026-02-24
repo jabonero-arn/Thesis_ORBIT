@@ -3,7 +3,7 @@
 import {
   CircuitBoard,
   FlaskConical,
-  Projector,
+  Cog,
 } from "lucide-react"
 
 import { channels } from "@/lib/data"
@@ -19,11 +19,11 @@ type AppSidebarProps = {
 }
 
 const channelIcons: { [key: string]: React.ReactNode } = {
-  "laboratory-1": <CircuitBoard />,
-  "laboratory-2": <CircuitBoard />,
-  "laboratory-3": <FlaskConical />,
-  "laboratory-4": <Projector />,
-  "laboratory-5": <Projector />,
+  "computer-lab-1": <CircuitBoard />,
+  "computer-lab-2": <CircuitBoard />,
+  "chemistry-lab-1": <FlaskConical />,
+  "robotics-lab-1": <Cog />,
+  "robotics-lab-2": <Cog />,
 }
 
 export function AppSidebar({ selectedChannelId, onChannelSelect }: AppSidebarProps) {
