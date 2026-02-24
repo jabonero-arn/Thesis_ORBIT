@@ -3,10 +3,11 @@ import { ItemCard } from "@/components/item-card"
 
 type InventoryGridProps = {
   items: InventoryItem[]
-  onBorrow: (item: InventoryItem) => void
+  onItemSelect: (item: InventoryItem) => void
+  selectedItems: InventoryItem[]
 }
 
-export function InventoryGrid({ items, onBorrow }: InventoryGridProps) {
+export function InventoryGrid({ items, onItemSelect, selectedItems }: InventoryGridProps) {
   if (items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed bg-card p-8 text-center text-muted-foreground">
@@ -18,7 +19,12 @@ export function InventoryGrid({ items, onBorrow }: InventoryGridProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {items.map((item) => (
-        <ItemCard key={item.id} item={item} onBorrow={onBorrow} />
+        <ItemCard 
+            key={item.id} 
+            item={item} 
+            onSelect={onItemSelect}
+            isSelected={selectedItems.some(si => si.id === item.id)}
+        />
       ))}
     </div>
   )

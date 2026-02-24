@@ -4,20 +4,20 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { CheckCircle } from "lucide-react"
 
 type ItemCardProps = {
   item: InventoryItem
-  onBorrow: (item: InventoryItem) => void
+  onSelect: (item: InventoryItem) => void
+  isSelected: boolean
 }
 
-export function ItemCard({ item, onBorrow }: ItemCardProps) {
+export function ItemCard({ item, onSelect, isSelected }: ItemCardProps) {
   const statusVariant = {
     Available: "secondary",
     Locked: "default",
@@ -25,7 +25,14 @@ export function ItemCard({ item, onBorrow }: ItemCardProps) {
   } as const
 
   return (
-    <Card className="flex flex-col overflow-hidden transition-all hover:shadow-lg">
+    <Card 
+      className={cn(
+        "flex flex-col overflow-hidden transition-all hover:shadow-lg cursor-pointer",
+        isSelected && "ring-2 ring-primary",
+        item.status === "Borrowed" && "opacity-50 cursor-not-allowed"
+      )}
+      onClick={() => item.status !== "Borrowed" && onSelect(item)}
+    >
       <CardHeader className="p-0">
         <div className="relative aspect-video">
           <Image
@@ -35,6 +42,11 @@ export function ItemCard({ item, onBorrow }: ItemCardProps) {
             className="object-cover"
             data-ai-hint={item.imageHint}
           />
+           {isSelected && (
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+              <CheckCircle className="h-12 w-12 text-white" />
+            </div>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex-1 p-4">
@@ -44,15 +56,6 @@ export function ItemCard({ item, onBorrow }: ItemCardProps) {
         </div>
         <CardDescription className="mt-2">{item.description}</CardDescription>
       </CardContent>
-      <CardFooter className="p-4 pt-0">
-        <Button
-          className="w-full"
-          onClick={() => onBorrow(item)}
-          disabled={item.status === "Borrowed"}
-        >
-          Borrow Item
-        </Button>
-      </CardFooter>
     </Card>
   )
 }
