@@ -59,9 +59,9 @@ export default function Home() {
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <div className="flex items-center gap-2 px-2">
+          <div className="flex items-center gap-3 px-2">
             <Logo />
-            <h1 className="font-headline text-lg font-semibold">LabFlow</h1>
+            <h1 className="font-headline text-xl font-bold">LabFlow</h1>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -77,7 +77,7 @@ export default function Home() {
           <div className="flex flex-col gap-2 p-2">
             <Dialog open={isAiToolOpen} onOpenChange={setIsAiToolOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start gap-2">
+                <Button variant="ghost" className="w-full justify-start gap-2">
                   <Bot />
                   <span className="group-data-[collapsible=icon]:hidden">
                     AI Suggestions
@@ -94,7 +94,7 @@ export default function Home() {
 
             <Dialog open={isQrCodeOpen} onOpenChange={setIsQrCodeOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="w-full justify-start gap-2">
+                <Button variant="ghost" className="w-full justify-start gap-2">
                   <QrCode />
                   <span className="group-data-[collapsible=icon]:hidden">
                     My QR Code
@@ -121,23 +121,22 @@ export default function Home() {
               </DialogContent>
             </Dialog>
 
-            <div className="flex items-center gap-2 rounded-md p-2 hover:bg-sidebar-accent">
-               <Avatar className="h-8 w-8">
+            <div className="flex items-center gap-3 rounded-md p-2">
+               <Avatar className="h-9 w-9">
                 <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                 <AvatarFallback>
                   <User />
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col text-sm group-data-[collapsible=icon]:hidden">
-                <span className="font-medium">{currentUser.name}</span>
-                <span className="text-muted-foreground">{currentUser.role}</span>
+                <span className="font-semibold tracking-wide">{currentUser.name}</span>
               </div>
             </div>
           </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
           <InventoryGrid 
             items={items} 
             onItemSelect={handleItemSelect}
@@ -145,15 +144,15 @@ export default function Home() {
           />
         </main>
         {selectedItems.length > 0 && (
-          <div className="fixed bottom-4 right-4 z-50">
-            <div className="flex items-center gap-4 rounded-lg bg-card p-3 shadow-lg border">
-                <div className="flex items-center gap-2">
-                    <ShoppingCart className="text-primary"/>
-                    <span className="font-bold">{selectedItems.length}</span>
-                    <span>item(s) selected</span>
+          <div className="fixed bottom-6 right-6 z-50">
+            <div className="flex items-center gap-4 rounded-lg bg-card/80 backdrop-blur-sm p-4 shadow-2xl border border-primary/20 ring-1 ring-black/5">
+                <div className="flex items-center gap-3">
+                    <ShoppingCart className="text-primary h-5 w-5"/>
+                    <span className="font-bold text-lg">{selectedItems.length}</span>
+                    <span className="text-muted-foreground">item(s) selected</span>
                 </div>
-              <Button onClick={() => setIsCheckoutOpen(true)}>Proceed to Checkout</Button>
-              <Button variant="outline" size="sm" onClick={handleClearSelection}>Clear</Button>
+              <Button onClick={() => setIsCheckoutOpen(true)}>Review & Checkout</Button>
+              <Button variant="ghost" size="sm" onClick={handleClearSelection}>Clear</Button>
             </div>
           </div>
         )}

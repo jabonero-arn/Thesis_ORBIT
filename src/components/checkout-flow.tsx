@@ -8,13 +8,13 @@ import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2 } from "lucide-react"
 
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -50,7 +50,7 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
       setReservationDate(undefined)
       setReservationTime("10:00")
     }
-  }, [open])
+  }, [open, items])
   
   const handleOtpInputChange = (itemId: string, value: string) => {
     setOtps(prev => ({...prev, [itemId]: value}))
@@ -108,82 +108,82 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
       case "details":
         return (
           <>
-            <DialogHeader>
-              <DialogTitle className="font-headline">Checkout</DialogTitle>
-              <DialogDescription>
+            <SheetHeader>
+              <SheetTitle className="font-headline text-2xl">Cart / Order Menu</SheetTitle>
+              <SheetDescription>
                 Review your selected items. You can choose to borrow them now or reserve them for a future date.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[300px] overflow-y-auto p-1">
+              </SheetDescription>
+            </SheetHeader>
+            <div className="max-h-[calc(100vh-250px)] overflow-y-auto p-1 my-4">
               <ul className="grid gap-4">
                 {items.map(item => (
                   <li key={item.id} className="flex items-center gap-4">
                      <Image
                       src={item.imageUrl}
                       alt={item.name}
-                      width={64}
-                      height={48}
-                      className="rounded-md object-cover"
+                      width={80}
+                      height={60}
+                      className="rounded-md object-cover aspect-video"
                     />
                     <div className="flex-1">
                       <h3 className="font-semibold">{item.name}</h3>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
                     </div>
-                     <Badge variant={item.status === 'Locked' ? 'default' : 'secondary'}>{item.status}</Badge>
+                     <Badge variant={item.status === 'Locked' ? 'destructive' : 'secondary'}>{item.status}</Badge>
                   </li>
                 ))}
               </ul>
             </div>
-            <Separator />
-            <DialogFooter className="grid grid-cols-2 gap-2">
+            <SheetFooter className="grid grid-cols-2 gap-2 pt-4 border-t">
               <Button type="button" variant="outline" onClick={() => setStep('reserve')}>Reserve for Later</Button>
               <Button type="submit" onClick={handleBorrow}>Borrow Now</Button>
-            </DialogFooter>
+            </SheetFooter>
           </>
         )
         
       case "otp":
         return (
           <>
-            <DialogHeader>
-              <DialogTitle className="font-headline">OTP Required</DialogTitle>
-              <DialogDescription>
-                Some items are locked. Please enter the One-Time Password for each item.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[300px] overflow-y-auto p-1">
+            <SheetHeader>
+              <SheetTitle className="font-headline text-2xl">OTP Required</SheetTitle>
+              <SheetDescription>
+                Some items are locked. Please enter the Teacher-provided OTP for each item to proceed.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid gap-4 py-4 max-h-[calc(100vh-250px)] overflow-y-auto p-1">
               {lockedItems.map(item => (
-                 <div key={item.id} className="grid gap-2">
-                    <Label htmlFor={`otp-${item.id}`}>OTP for <span className="font-semibold">{item.name}</span></Label>
+                 <div key={item.id} className="grid gap-2 p-4 rounded-lg bg-background/50">
+                    <Label htmlFor={`otp-${item.id}`}>OTP for <span className="font-semibold text-primary">{item.name}</span></Label>
                     <Input
                       id={`otp-${item.id}`}
                       type="text"
                       value={otps[item.id] || ""}
                       onChange={(e) => handleOtpInputChange(item.id, e.target.value)}
                       placeholder="Enter 6-digit OTP"
+                      className="text-lg tracking-widest text-center"
                     />
                  </div>
               ))}
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setStep('details')}>Back</Button>
+            <SheetFooter className="pt-4 border-t">
+              <Button type="button" variant="ghost" onClick={() => setStep('details')}>Back</Button>
               <Button type="submit" onClick={handleVerifyOtps} disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Verify & Proceed
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </>
         )
         
       case "reserve":
         return (
           <>
-            <DialogHeader>
-              <DialogTitle className="font-headline">Reserve Items</DialogTitle>
-              <DialogDescription>
-                Select a date and time to reserve the selected items. The items will be held for you.
-              </DialogDescription>
-            </DialogHeader>
+            <SheetHeader>
+              <SheetTitle className="font-headline text-2xl">Reserve Items</SheetTitle>
+              <SheetDescription>
+                Select a date and time to reserve the selected items. The items will be held for you for 1 hour past the reservation time.
+              </SheetDescription>
+            </SheetHeader>
             <div className="grid gap-4 py-4">
                <div className="grid gap-2">
                 <Label htmlFor="reservation-date">Reservation Date</Label>
@@ -222,13 +222,13 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
                 />
                </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setStep('details')}>Back</Button>
+            <SheetFooter className="pt-4 border-t">
+              <Button type="button" variant="ghost" onClick={() => setStep('details')}>Back</Button>
               <Button type="submit" onClick={handleReserve} disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Confirm Reservation
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </>
         )
 
@@ -241,12 +241,12 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
         const qrData = `LabFlow-Borrow-${JSON.stringify(transactionData)}`;
         return (
           <>
-            <DialogHeader>
-              <DialogTitle className="font-headline">Checkout QR Code</DialogTitle>
-              <DialogDescription>
+            <SheetHeader>
+              <SheetTitle className="font-headline text-2xl">Checkout QR Code</SheetTitle>
+              <SheetDescription>
                 Present this QR code to the lab staff to complete the checkout process for all items.
-              </DialogDescription>
-            </DialogHeader>
+              </SheetDescription>
+            </SheetHeader>
             <div className="flex justify-center py-4">
               <Image
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrData)}`}
@@ -257,21 +257,21 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
                 data-ai-hint="qr code"
               />
             </div>
-            <DialogFooter>
-              <Button type="button" onClick={() => { onSuccess(); onOpenChange(false)}}>Done</Button>
-            </DialogFooter>
+            <SheetFooter className="pt-4 border-t">
+              <Button type="button" className="w-full" onClick={() => { onSuccess(); onOpenChange(false)}}>Done</Button>
+            </SheetFooter>
           </>
         )
       case "confirmation":
           return (
              <>
-                <DialogHeader>
-                    <DialogTitle className="font-headline">Reservation Confirmed!</DialogTitle>
-                    <DialogDescription>
-                        Your items have been reserved. You can claim them on <span className="font-semibold">{reservationDate ? format(reservationDate, 'PPP') : ''} at {reservationTime}</span>.
-                    </DialogDescription>
-                </DialogHeader>
-                 <div className="max-h-[300px] overflow-y-auto p-1 mt-4">
+                <SheetHeader>
+                    <SheetTitle className="font-headline text-2xl">Reservation Confirmed!</SheetTitle>
+                    <SheetDescription>
+                        Your items have been reserved. You can claim them on <span className="font-semibold text-primary">{reservationDate ? format(reservationDate, 'PPP') : ''} at {reservationTime}</span>.
+                    </SheetDescription>
+                </SheetHeader>
+                 <div className="max-h-[calc(100vh-250px)] overflow-y-auto p-1 mt-4">
                   <ul className="grid gap-4">
                     {items.map(item => (
                       <li key={item.id} className="flex items-center gap-4">
@@ -290,9 +290,9 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
                     ))}
                   </ul>
                 </div>
-                <DialogFooter>
+                <SheetFooter className="pt-4 border-t">
                     <Button type="button" className="w-full" onClick={() => { onSuccess(); onOpenChange(false) }}>Great, thanks!</Button>
-                </DialogFooter>
+                </SheetFooter>
              </>
           )
     }
@@ -304,10 +304,10 @@ export function CheckoutFlow({ items, open, onOpenChange, onSuccess }: CheckoutF
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col">
         {renderContent()}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
