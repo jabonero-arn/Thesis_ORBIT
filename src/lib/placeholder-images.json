@@ -1,3 +1,82 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "arduino-kit",
+      "description": "An Arduino starter kit with various components.",
+      "imageUrl": "https://images.unsplash.com/photo-1649959265391-8a1de884248a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxhcmR1aW5vJTIwa2l0fGVufDB8fHx8MTc3MTk0MTgzNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "arduino kit"
+    },
+    {
+      "id": "rpi4",
+      "description": "A Raspberry Pi 4 kit with a case and fan.",
+      "imageUrl": "https://images.unsplash.com/photo-1587919057555-d728ff5beac3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxyYXNwYmVycnklMjBwaXxlbnwwfHx8fDE3NzE5Mzg4ODF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "raspberry pi"
+    },
+    {
+      "id": "sensors",
+      "description": "A collection of electronic sensors.",
+      "imageUrl": "https://images.unsplash.com/photo-1555664424-778a1e5e1b48?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxlbGVjdHJvbmljJTIwc2Vuc29yc3xlbnwwfHx8fDE3NzE5Mzg4ODF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "electronic sensors"
+    },
+    {
+      "id": "esp32",
+      "description": "An ESP32 development board.",
+      "imageUrl": "https://images.unsplash.com/photo-1580584126903-c17d41830450?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxjaXJjdWl0JTIwYm9hcmR8ZW58MHx8fHwxNzcxOTI0NzI5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "circuit board"
+    },
+    {
+      "id": "beakers",
+      "description": "A set of glass laboratory beakers.",
+      "imageUrl": "https://images.unsplash.com/photo-1616996691029-96500d6523b7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxsYWIlMjBiZWFrZXJzfGVufDB8fHx8MTc3MTk0MTgzNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "lab beakers"
+    },
+    {
+      "id": "scale",
+      "description": "A digital laboratory scale.",
+      "imageUrl": "https://images.unsplash.com/photo-1683127983818-208f46227c24?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxkaWdpdGFsJTIwc2NhbGV8ZW58MHx8fHwxNzcxOTQxODM2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "digital scale"
+    },
+    {
+      "id": "burner",
+      "description": "A Bunsen burner with a blue flame.",
+      "imageUrl": "https://picsum.photos/seed/burner/600/400",
+      "imageHint": "bunsen burner"
+    },
+    {
+      "id": "projector",
+      "description": "A modern digital projector.",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1572609239482-d3a83f976aa0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwcm9qZWN0b3J8ZW58MHx8fHwxNzcxOTQxODM2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "projector"
+    },
+    {
+      "id": "screen",
+      "description": "A portable projector screen.",
+      "imageUrl": "https://images.unsplash.com/photo-1721733258290-cac1a9204564?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxwcm9qZWN0b3IlMjBzY3JlZW58ZW58MHx8fHwxNzcxOTMzNjQxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "projector screen"
+    },
+    {
+      "id": "cnc",
+      "description": "A desktop CNC milling machine.",
+      "imageUrl": "https://images.unsplash.com/photo-1666634157070-6fd830fb5672?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtaWxsaW5nJTIwbWFjaGluZXxlbnwwfHx8fDE3NzE5NDE4MzZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "milling machine"
+    },
+    {
+      "id": "3d-printer",
+      "description": "A filament-based 3D printer in action.",
+      "imageUrl": "https://images.unsplash.com/photo-1642969164999-979483e21601?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHwzZCUyMHByaW50ZXJ8ZW58MHx8fHwxNzcxOTM4NjQ3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "3d printer"
+    },
+    {
+      "id": "fpga",
+      "description": "An FPGA development kit.",
+      "imageUrl": "https://images.unsplash.com/photo-1651340675491-6fb0bfb5c4ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Y2lyY3VpdCUyMGJvYXJkfGVufDB8fHx8MTc3MTkyNDcyOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "circuit board"
+    },
+    {
+      "id": "qr-code",
+      "description": "A placeholder QR code.",
+      "imageUrl": "https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=LabFlow-Transaction-12345",
+      "imageHint": "qr code"
+    }
+  ]
 }
