@@ -2,7 +2,7 @@ import type { Channel, InventoryItem, User } from "@/lib/types";
 
 export const currentUser: User = {
   id: 'user-1',
-  name: 'Alex Doe',
+  name: 'Alex Chen',
   role: 'Student',
   avatarUrl: 'https://picsum.photos/seed/user-alex/40/40',
 };
@@ -37,13 +37,40 @@ export const channels: Channel[] = [
 
 export const items: InventoryItem[] = [
   {
-    id: "item-1",
-    name: "Arduino Uno Kit",
-    description: "Complete starter kit for learning Arduino.",
+    id: "item-13",
+    name: "High-Performance Desktop PC",
+    description: "For intensive computing tasks.",
     channelId: "computer-lab-1",
     status: "Available",
+    imageUrl: "https://picsum.photos/seed/desktop-pc/600/400",
+    imageHint: "desktop computer",
+  },
+  {
+    id: "item-14",
+    name: "VR Headset Kit",
+    description: "Immersive virtual reality experience.",
+    channelId: "computer-lab-1",
+    status: "Available",
+    imageUrl: "https://picsum.photos/seed/vr-headset/600/400",
+    imageHint: "vr headset",
+  },
+  {
+    id: "item-1",
+    name: "Arduino Starter Kit",
+    description: "Complete starter kit for learning Arduino.",
+    channelId: "computer-lab-1",
+    status: "Locked",
     imageUrl: "https://picsum.photos/seed/arduino-kit/600/400",
     imageHint: "arduino kit",
+  },
+  {
+    id: "item-15",
+    name: "Network Switch",
+    description: "24-port Gigabit network switch.",
+    channelId: "computer-lab-1",
+    status: "Locked",
+    imageUrl: "https://picsum.photos/seed/network-switch/600/400",
+    imageHint: "network switch",
   },
   {
     id: "item-2",
@@ -58,7 +85,7 @@ export const items: InventoryItem[] = [
     id: "item-3",
     name: "Sensor Pack",
     description: "A variety of sensors for electronics projects.",
-    channelId: "computer-lab-1",
+    channelId: "computer-lab-2",
     status: "Available",
     imageUrl: "https://picsum.photos/seed/sensors/600/400",
     imageHint: "electronic sensors",

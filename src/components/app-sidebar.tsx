@@ -6,27 +6,15 @@ import {
   Cog,
   HardDrive,
   TestTube2,
-  Bot,
+  Hash,
 } from "lucide-react"
 
 import { channels } from "@/lib/data"
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "@/components/ui/sidebar"
 
 type AppSidebarProps = {
+  departmentPrefix: string;
   selectedChannelId: string
   onChannelSelect: (id: string) => void
-}
-
-const channelIcons: { [key: string]: React.ReactNode } = {
-  "computer-lab-1": <CircuitBoard />,
-  "computer-lab-2": <HardDrive />,
-  "chemistry-lab-1": <FlaskConical />,
-  "robotics-lab-1": <Bot />,
-  "robotics-lab-2": <Cog />,
 }
 
 const departments = [
@@ -35,31 +23,36 @@ const departments = [
   { name: "Robotics Labs", prefix: "robotics-lab"},
 ]
 
-export function AppSidebar({ selectedChannelId, onChannelSelect }: AppSidebarProps) {
+export function AppSidebar({ departmentPrefix, selectedChannelId, onChannelSelect }: AppSidebarProps) {
+  const department = departments.find(d => d.prefix === departmentPrefix);
+  const departmentChannels = channels.filter(c => c.id.startsWith(departmentPrefix));
+
   return (
-    <div className="flex h-full flex-col gap-4 py-2">
-      {departments.map(dept => (
-        <div key={dept.name}>
-          <h2 className="mb-2 px-4 text-sm font-semibold tracking-wider text-sidebar-foreground/60 uppercase">
-            {dept.name}
+    <div className="flex-1 py-4">
+      {department && (
+        <div>
+          <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+            {department.name}
           </h2>
-          <SidebarMenu>
-            {channels.filter(c => c.id.startsWith(dept.prefix)).map((channel) => (
-              <SidebarMenuItem key={channel.id}>
-                <SidebarMenuButton
+          <ul className="flex flex-col gap-1">
+            {departmentChannels.map((channel) => (
+              <li key={channel.id}>
+                <button
                   onClick={() => onChannelSelect(channel.id)}
-                  isActive={selectedChannelId === channel.id}
-                  tooltip={channel.description}
-                  className="mx-2"
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                    selectedChannelId === channel.id
+                      ? 'bg-accent text-white'
+                      : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                  }`}
                 >
-                  {channelIcons[channel.id] || <TestTube2 />}
-                  <span className="truncate">{channel.name}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+                  <Hash className="h-5 w-5" />
+                  <span className="truncate">{channel.name.replace(/#/g, '')}</span>
+                </button>
+              </li>
             ))}
-          </SidebarMenu>
+          </ul>
         </div>
-      ))}
+      )}
     </div>
   )
 }

@@ -3,35 +3,30 @@ import type { InventoryItem } from "@/lib/types"
 import {
   Card,
   CardContent,
-  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { CheckCircle, Lock } from "lucide-react"
+import { Button } from "./ui/button"
 
 type ItemCardProps = {
   item: InventoryItem
-  onSelect: (item: InventoryItem) => void
+  onSelect: () => void
   isSelected: boolean
 }
 
 export function ItemCard({ item, onSelect, isSelected }: ItemCardProps) {
-  const statusVariant = {
-    Available: "secondary",
-    Locked: "destructive",
-    Borrowed: "outline",
-  } as const
-
+  
   return (
     <Card 
       className={cn(
-        "flex flex-col overflow-hidden transition-all duration-200 hover:shadow-xl hover:-translate-y-1 cursor-pointer bg-card/50 backdrop-blur-sm",
-        isSelected && "ring-2 ring-primary shadow-2xl",
-        item.status === "Borrowed" && "opacity-40 cursor-not-allowed hover:transform-none"
+        "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm border border-transparent rounded-lg",
+        isSelected ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50",
+        item.status === "Borrowed" && "opacity-40 cursor-not-allowed"
       )}
-      onClick={() => item.status !== "Borrowed" && onSelect(item)}
     >
       <CardHeader className="p-0">
         <div className="relative aspect-video">
@@ -47,17 +42,33 @@ export function ItemCard({ item, onSelect, isSelected }: ItemCardProps) {
               <CheckCircle className="h-12 w-12 text-primary-foreground" />
             </div>
           )}
-           <div className="absolute top-2 right-2">
-            <Badge variant={statusVariant[item.status]} className={cn(item.status === "Borrowed" && "text-muted-foreground")}>
-              {item.status === 'Locked' ? <Lock className="h-3 w-3" /> : item.status}
-            </Badge>
-           </div>
+          {item.status === 'Borrowed' && (
+             <div className="absolute top-2 right-2">
+                <Badge variant="secondary">Borrowed</Badge>
+             </div>
+          )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 p-4">
-        <CardTitle className="font-headline text-lg">{item.name}</CardTitle>
-        <CardDescription className="mt-1 text-sm">{item.description}</CardDescription>
+      <CardContent className="flex-1 p-4 pb-0">
+        <CardTitle className="font-headline text-lg leading-tight">{item.name}</CardTitle>
       </CardContent>
+      <CardFooter className="p-4">
+        {item.status === 'Locked' ? (
+          <div className="flex items-center gap-2 text-destructive">
+            <Lock className="h-4 w-4" />
+            <span className="text-sm font-medium">Requires Teacher OTP</span>
+          </div>
+        ) : item.status === 'Available' ? (
+           <Button 
+            onClick={onSelect} 
+            variant={isSelected ? "secondary" : "default"}
+            className="w-full"
+            disabled={item.status === 'Borrowed'}
+            >
+            {isSelected ? "Deselect" : "Select"}
+          </Button>
+        ) : null}
+      </CardFooter>
     </Card>
   )
 }
