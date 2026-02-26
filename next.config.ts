@@ -39,7 +39,13 @@ const nextConfig: NextConfig = {
         hostname: 'cdn.shopify.com',
         port: '',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'ph.pinterest.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
 };

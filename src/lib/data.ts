@@ -42,7 +42,7 @@ export const items: InventoryItem[] = [
     description: "For intensive computing tasks.",
     channelId: "computer-lab-1",
     status: "Available",
-    imageUrl: "https://cdn.shopify.com/s/files/1/0632/2244/8205/files/AMD-Elite-10-scaled_1a0b6d95-5a74-49a2-9c59-2a026b0ebd4c.webp?v=1758667214",
+    imageUrl: "https://picsum.photos/seed/desktop-pc/600/400",
     imageHint: "desktop computer",
   },
   {
