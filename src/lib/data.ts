@@ -42,7 +42,7 @@ export const items: InventoryItem[] = [
     description: "For intensive computing tasks.",
     channelId: "computer-lab-1",
     status: "Available",
-    imageUrl: "https://picsum.photos/seed/desktop-pc/600/400",
+    imageUrl: "https://i.pinimg.com/736x/f6/f5/0f/f6f50f7c6071824e85801ab858121b17.jpg",
     imageHint: "desktop computer",
   },
   {
@@ -51,7 +51,7 @@ export const items: InventoryItem[] = [
     description: "Immersive virtual reality experience.",
     channelId: "computer-lab-1",
     status: "Available",
-    imageUrl: "https://picsum.photos/seed/vr-headset/600/400",
+    imageUrl: "https://i.pinimg.com/736x/91/27/50/912750b850b7a994e567850d4cf03b27.jpg",
     imageHint: "vr headset",
   },
   {
@@ -60,7 +60,7 @@ export const items: InventoryItem[] = [
     description: "Complete starter kit for learning Arduino.",
     channelId: "computer-lab-1",
     status: "Locked",
-    imageUrl: "https://picsum.photos/seed/arduino-kit/600/400",
+    imageUrl: "https://i.pinimg.com/736x/37/92/c1/3792c10fc5742c0f79e479e4283535b1.jpg",
     imageHint: "arduino kit",
   },
   {
@@ -69,7 +69,7 @@ export const items: InventoryItem[] = [
     description: "24-port Gigabit network switch.",
     channelId: "computer-lab-1",
     status: "Locked",
-    imageUrl: "https://picsum.photos/seed/network-switch/600/400",
+    imageUrl: "https://i.pinimg.com/736x/07/da/fe/07dafe714c44fe790151d85f2f8c1640.jpg",
     imageHint: "network switch",
   },
   {
@@ -78,7 +78,7 @@ export const items: InventoryItem[] = [
     description: "8GB RAM model with case, power supply, and fan.",
     channelId: "computer-lab-2",
     status: "Locked",
-    imageUrl: "https://picsum.photos/seed/rpi4/600/400",
+    imageUrl: "https://i.pinimg.com/736x/d0/c9/50/d0c950a1a18f6d6b4ac1b8fb4905ade0.jpg",
     imageHint: "raspberry pi",
   },
   {
@@ -87,7 +87,7 @@ export const items: InventoryItem[] = [
     description: "A variety of sensors for electronics projects.",
     channelId: "computer-lab-2",
     status: "Available",
-    imageUrl: "https://picsum.photos/seed/sensors/600/400",
+    imageUrl: "https://i.pinimg.com/736x/a2/4f/dd/a24fdd87f603a7b41460e8937b7959a4.jpg",
     imageHint: "electronic sensors",
   },
   {
@@ -96,7 +96,7 @@ export const items: InventoryItem[] = [
     description: "WiFi and Bluetooth enabled microcontroller.",
     channelId: "computer-lab-2",
     status: "Available",
-    imageUrl: "https://picsum.photos/seed/esp32/600/400",
+    imageUrl: "https://i.pinimg.com/736x/c5/a5/4f/c5a54f44ad57ac58a9e5b3d8823c2f2e.jpg",
     imageHint: "circuit board",
   },
     {
@@ -105,7 +105,7 @@ export const items: InventoryItem[] = [
     description: "Field-Programmable Gate Array for custom logic circuits.",
     channelId: "computer-lab-2",
     status: "Locked",
-    imageUrl: "https://picsum.photos/seed/fpga/600/400",
+    imageUrl: "https://i.pinimg.com/736x/a6/ee/09/a6ee09ccd158b733cc8ee46fdebe0289.jpg",
     imageHint: "circuit board",
   },
   {
@@ -114,7 +114,7 @@ export const items: InventoryItem[] = [
     description: "Set of 5 glass beakers, various sizes.",
     channelId: "chemistry-lab-1",
     status: "Available",
-    imageUrl: "https://picsum.photos/seed/beakers/600/400",
+    imageUrl: "https://i.pinimg.com/736x/2f/69/34/2f69342ae9d36ff40e26b8ce7ced4f04.jpg",
     imageHint: "lab beakers",
   },
   {
@@ -123,7 +123,7 @@ export const items: InventoryItem[] = [
     description: "High-precision digital scale (0.01g).",
     channelId: "chemistry-lab-1",
     status: "Borrowed",
-    imageUrl: "https://picsum.photos/seed/scale/600/400",
+    imageUrl: "https://i.pinimg.com/736x/be/c7/24/bec72421f24deda6ed0b771e530022e0.jpg",
     imageHint: "digital scale",
   },
   {
@@ -132,7 +132,7 @@ export const items: InventoryItem[] = [
     description: "Standard laboratory Bunsen burner.",
     channelId: "chemistry-lab-1",
     status: "Locked",
-    imageUrl: "https://picsum.photos/seed/burner/600/400",
+    imageUrl: "https://i.pinimg.com/736x/04/c8/11/04c811881ecaaeb142c4f5c1e909b9b2.jpg",
     imageHint: "bunsen burner",
   },
   {

@@ -43,7 +43,7 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
   const handleBorrow = () => {
     setIsLoading(true)
     setTimeout(() => {
-      toast({ title: "Order Submitted!", description: "Your items are ready for pickup." })
+      toast({ title: "QR Code Ready!", description: "Show this to the lab staff to pick up your items." })
       onSuccess()
       setIsLoading(false)
     }, 1000)
@@ -146,7 +146,13 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
             )}
             
             <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Generate QR Code'}
+                {isLoading ? (
+                    <Loader2 className="animate-spin" />
+                ) : isReserve ? (
+                    'Submit Reservation'
+                ) : (
+                    'Generate QR Code'
+                )}
             </Button>
         </div>
       </>
