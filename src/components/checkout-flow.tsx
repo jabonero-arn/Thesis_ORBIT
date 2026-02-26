@@ -1,12 +1,14 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, X, ShoppingCart } from "lucide-react"
 
 import type { InventoryItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { currentUser } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,6 +17,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 type CheckoutFlowProps = {
@@ -30,6 +40,7 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
   const [endTime, setEndTime] = React.useState<string>("16:00")
   
   const [isLoading, setIsLoading] = React.useState(false)
+  const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const { toast } = useToast()
 
   const handleSubmit = () => {
@@ -43,9 +54,8 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
   const handleBorrow = () => {
     setIsLoading(true)
     setTimeout(() => {
-      toast({ title: "QR Code Ready!", description: "Show this to the lab staff to pick up your items." })
-      onSuccess()
       setIsLoading(false)
+      setIsQrCodeOpen(true)
     }, 1000)
   }
   
@@ -65,6 +75,11 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
        onSuccess()
        setIsLoading(false)
     }, 1000)
+  }
+
+  const handleQrDialogClose = () => {
+    setIsQrCodeOpen(false)
+    onSuccess()
   }
 
   if (items.length === 0) {
@@ -155,6 +170,38 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
                 )}
             </Button>
         </div>
+
+        <Dialog open={isQrCodeOpen} onOpenChange={setIsQrCodeOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="font-headline">Your QR Code</DialogTitle>
+              <DialogDescription>
+                Present this QR code to the lab staff to complete the checkout process.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center py-4">
+              <Image
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                  JSON.stringify({
+                    userId: currentUser.id,
+                    itemIds: items.map((item) => item.id),
+                    timestamp: new Date().toISOString(),
+                  })
+                )}`}
+                alt="Transaction QR Code"
+                width={256}
+                height={256}
+                className="rounded-lg bg-white p-2"
+                data-ai-hint="qr code"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" onClick={handleQrDialogClose}>
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </>
   )
 }
