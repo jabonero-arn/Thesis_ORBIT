@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, X } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, X, ShoppingCart } from "lucide-react"
 
 import type { InventoryItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -14,8 +14,8 @@ import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Switch } from "@/components/ui/switch"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 type CheckoutFlowProps = {
   items: InventoryItem[]
@@ -23,19 +23,14 @@ type CheckoutFlowProps = {
   onSuccess: () => void
 }
 
-export function CheckoutFlow({ items, onClear, onSuccess }: CheckoutFlowProps) {
+function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
   const [isReserve, setIsReserve] = React.useState(false)
   const [reservationDate, setReservationDate] = React.useState<Date>()
   const [startTime, setStartTime] = React.useState<string>("14:00")
   const [endTime, setEndTime] = React.useState<string>("16:00")
   
-  const [isOtpOpen, setIsOtpOpen] = React.useState(false)
-  const [otps, setOtps] = React.useState<{[itemId: string]: string}>({})
-  
   const [isLoading, setIsLoading] = React.useState(false)
   const { toast } = useToast()
-
-  const lockedItems = items.filter((item) => item.status === "Locked")
 
   const handleSubmit = () => {
     if (isReserve) {
@@ -46,18 +41,12 @@ export function CheckoutFlow({ items, onClear, onSuccess }: CheckoutFlowProps) {
   }
 
   const handleBorrow = () => {
-    if (lockedItems.length > 0) {
-      setOtps({})
-      setIsOtpOpen(true)
-    } else {
-      // In a real app, this would trigger the final borrow transaction
-      setIsLoading(true)
-      setTimeout(() => {
-        toast({ title: "Order Submitted!", description: "Your items have been borrowed." })
-        onSuccess()
-        setIsLoading(false)
-      }, 1000)
-    }
+    setIsLoading(true)
+    setTimeout(() => {
+      toast({ title: "Order Submitted!", description: "Your items are ready for pickup." })
+      onSuccess()
+      setIsLoading(false)
+    }, 1000)
   }
   
   const handleReserve = () => {
@@ -78,52 +67,29 @@ export function CheckoutFlow({ items, onClear, onSuccess }: CheckoutFlowProps) {
     }, 1000)
   }
 
-  const handleVerifyOtps = () => {
-    setIsLoading(true)
-    setTimeout(() => {
-      const allOtpsValid = lockedItems.every(item => otps[item.id] === "123456");
-      
-      if (allOtpsValid) {
-        toast({ title: "OTP(s) Verified", description: "Your borrow request is being processed." })
-        setIsOtpOpen(false)
-        onSuccess()
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Invalid OTP",
-          description: "One or more OTPs are incorrect. Please check and try again.",
-        })
-      }
-      setIsLoading(false)
-    }, 1000)
-  }
-  
-  const handleOtpInputChange = (itemId: string, value: string) => {
-    setOtps(prev => ({...prev, [itemId]: value}))
-  }
-
   if (items.length === 0) {
     return (
-        <div className="w-80 bg-[#141821] p-4 flex flex-col border-l border-border/50">
-             <h2 className="font-headline text-lg font-bold pb-2 border-b border-border/50">Cart/Order Menu</h2>
-             <div className="flex-1 flex items-center justify-center">
-                <p className="text-muted-foreground text-center">Select items to add them to your cart.</p>
-             </div>
+      <div className="flex flex-col h-full">
+        <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
+            <h2 className="font-headline text-lg font-bold">Cart/Order Menu</h2>
         </div>
+        <div className="flex-1 flex items-center justify-center">
+            <p className="text-muted-foreground text-center px-4">Select items to add them to your cart.</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <>
-      <div className="w-80 bg-[#141821] p-4 flex flex-col border-l border-border/50">
-        <div className="flex justify-between items-center pb-2 border-b border-border/50">
+      <>
+        <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
           <h2 className="font-headline text-lg font-bold">Cart/Order Menu</h2>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClear}>
             <X className="h-4 w-4"/>
           </Button>
         </div>
         
-        <div className="flex-1 my-4 space-y-2 overflow-y-auto">
+        <div className="flex-1 my-4 space-y-2 overflow-y-auto px-1">
           {items.map(item => (
             <div key={item.id} className="text-foreground/90 bg-black/20 p-2 rounded-md text-sm">
               {item.name}
@@ -136,7 +102,7 @@ export function CheckoutFlow({ items, onClear, onSuccess }: CheckoutFlowProps) {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <Label htmlFor="reservation-mode" className="font-medium">
-                {isReserve ? 'Reserve' : 'Immediate Borrow'}
+                {isReserve ? 'Reserve for Later' : 'Immediate Borrow'}
                 </Label>
                 <Switch
                 id="reservation-mode"
@@ -180,43 +146,53 @@ export function CheckoutFlow({ items, onClear, onSuccess }: CheckoutFlowProps) {
             )}
             
             <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
-                {isLoading ? <Loader2 className="animate-spin" /> : 'Submit Order'}
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Generate QR Code'}
             </Button>
         </div>
-      </div>
+      </>
+  )
+}
 
-      <Dialog open={isOtpOpen} onOpenChange={setIsOtpOpen}>
-        <DialogContent>
-           <DialogHeader>
-              <DialogTitle className="font-headline text-2xl">OTP Required</DialogTitle>
-              <DialogDescription>
-                Some items are locked. Please enter the Teacher-provided OTP for each item to proceed.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4 max-h-[calc(100vh-250px)] overflow-y-auto p-1">
-              {lockedItems.map(item => (
-                 <div key={item.id} className="grid gap-2 p-4 rounded-lg bg-background/50">
-                    <Label htmlFor={`otp-${item.id}`}>OTP for <span className="font-semibold text-primary">{item.name}</span></Label>
-                    <Input
-                      id={`otp-${item.id}`}
-                      type="text"
-                      value={otps[item.id] || ""}
-                      onChange={(e) => handleOtpInputChange(item.id, e.target.value)}
-                      placeholder="Enter 6-digit OTP"
-                      className="text-lg tracking-widest text-center"
-                    />
-                 </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOtpOpen(false)}>Cancel</Button>
-              <Button type="submit" onClick={handleVerifyOtps} disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Verify & Submit
-              </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+export function CheckoutFlow(props: CheckoutFlowProps) {
+  const isMobile = useIsMobile();
+  const [mobileSheetOpen, setMobileSheetOpen] = React.useState(false);
+
+  const handleSuccess = () => {
+    props.onSuccess();
+    setMobileSheetOpen(false);
+  }
+
+  // Mobile version: FAB + Bottom Sheet
+  if (isMobile) {
+    return (
+      <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
+        {props.items.length > 0 && (
+          <SheetTrigger asChild>
+            <Button className="md:hidden fixed bottom-6 right-6 rounded-full h-16 w-16 shadow-lg shadow-primary/30 z-40 flex items-center justify-center">
+              <ShoppingCart className="h-6 w-6" />
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">{props.items.length}</span>
+              <span className="sr-only">View Cart</span>
+            </Button>
+          </SheetTrigger>
+        )}
+        <SheetContent side="bottom" className="h-[90dvh] rounded-t-2xl flex flex-col p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <div className="p-4 border-b">
+            <SheetHeader className="text-left">
+              <SheetTitle className="font-headline text-2xl">Your Order</SheetTitle>
+            </SheetHeader>
+          </div>
+          <div className="flex-1 flex flex-col overflow-y-auto p-4">
+             <CheckoutForm {...props} onSuccess={handleSuccess} />
+          </div>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // Desktop version: Static Sidebar
+  return (
+    <div className="hidden md:flex w-80 bg-[#141821] p-4 flex-col border-l border-border/50">
+      <CheckoutForm {...props} />
+    </div>
   )
 }
