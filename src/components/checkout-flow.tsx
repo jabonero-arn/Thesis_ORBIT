@@ -86,7 +86,7 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
     return (
       <div className="flex flex-col h-full">
         <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
-            <h2 className="font-headline text-lg font-bold">Cart/Order Menu</h2>
+            <h2 className="font-headline text-lg font-bold">Your Cart</h2>
         </div>
         <div className="flex-1 flex items-center justify-center">
             <p className="text-muted-foreground text-center px-4">Select items to add them to your cart.</p>
@@ -98,7 +98,7 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
   return (
       <>
         <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
-          <h2 className="font-headline text-lg font-bold">Cart/Order Menu</h2>
+          <h2 className="font-headline text-lg font-bold">Your Cart</h2>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClear}>
             <X className="h-4 w-4"/>
           </Button>
@@ -231,7 +231,7 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
         <SheetContent side="bottom" className="h-[90dvh] rounded-t-2xl flex flex-col p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
           <div className="p-4 border-b">
             <SheetHeader className="text-left">
-              <SheetTitle className="font-headline text-2xl">Your Order</SheetTitle>
+              <SheetTitle className="font-headline text-2xl">Your Cart</SheetTitle>
             </SheetHeader>
           </div>
           <div className="flex-1 flex flex-col overflow-y-auto p-4">

@@ -189,7 +189,7 @@ export default function Home() {
           </div>
         </main>
         
-        {/* Cart/Order Menu - now responsive */}
+        {/* Cart - now responsive */}
         <CheckoutFlow
           key={selectedChannelId}
           items={selectedItems}

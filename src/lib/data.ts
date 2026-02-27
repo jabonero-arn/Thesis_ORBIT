@@ -2,9 +2,9 @@ import type { Channel, InventoryItem, User } from "@/lib/types";
 
 export const currentUser: User = {
   id: 'user-1',
-  name: 'Alex Chen',
+  name: 'Arnie Jabonero',
   role: 'Student',
-  avatarUrl: 'https://picsum.photos/seed/user-alex/40/40',
+  avatarUrl: 'https://i.pinimg.com/736x/38/43/d4/3843d494d3ecb871de072528e60d06a8.jpg',
 };
 
 export const channels: Channel[] = [
