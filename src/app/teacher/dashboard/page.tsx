@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -240,12 +241,7 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
                 </div>
             </div>
-            <Link href="/">
-              <Button variant="outline">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Homepage
-              </Button>
-            </Link>
+            <div className="w-24" />
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid
@@ -302,12 +298,7 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Approve Requests</h1>
                 </div>
             </div>
-            <Link href="/">
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Homepage
-              </Button>
-            </Link>
+            <div className="w-24" />
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <ApprovalRequests />
@@ -430,6 +421,13 @@ export default function TeacherDashboardPage() {
             }}
             />
         )}
+        
+        <Link href="/" className={cn("fixed right-6 z-30", activeView === 'borrow' && selectedItems.length > 0 ? "bottom-24 md:bottom-6" : "bottom-6")}>
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Homepage
+          </Button>
+        </Link>
       </div>
     </TooltipProvider>
   )
