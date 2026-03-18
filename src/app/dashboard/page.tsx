@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
-import { channels, currentUser, items as allItems, borrowHistory } from "@/lib/data"
-import type { InventoryItem, Channel, BorrowHistory } from "@/lib/types"
+import Link from "next/link"
+import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
+import type { InventoryItem, BorrowHistory } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -32,6 +32,7 @@ export default function Home() {
   
   const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const [borrowHistory, setBorrowHistory] = React.useState(initialBorrowHistory)
   
   const handleDepartmentSelect = (deptId: string) => {
     setSelectedDepartmentId(deptId);
@@ -65,7 +66,7 @@ export default function Home() {
             date: new Date().toISOString().split('T')[0],
             status: 'Pending',
         };
-        borrowHistory.unshift(newRequest);
+        setBorrowHistory(prev => [newRequest, ...prev]);
         toast({
             title: "Approval Request Sent",
             description: `Your request for "${item.name}" has been sent for approval.`,
@@ -193,7 +194,7 @@ export default function Home() {
                   <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
               </div>
             </div>
-            <div className="w-24" />
+             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid 

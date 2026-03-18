@@ -26,10 +26,12 @@ export type InventoryItem = {
   quantity: number;
 };
 
+export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned';
+
 export type BorrowHistory = {
     id: string;
     studentName: string;
     itemName: string;
     date: string;
-    status: 'Approved' | 'Pending' | 'Denied';
+    status: BorrowHistoryStatus;
 };

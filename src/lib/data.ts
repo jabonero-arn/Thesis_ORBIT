@@ -131,7 +131,7 @@ export const items: InventoryItem[] = [
     name: "Digital Scale",
     description: "High-precision digital scale (0.01g).",
     channelId: "chemistry-lab-1",
-    status: "Borrowed",
+    status: "Active",
     imageUrl: "https://i.pinimg.com/736x/be/c7/24/bec72421f24deda6ed0b771e530022e0.jpg",
     imageHint: "digital scale",
     quantity: 1,
@@ -189,11 +189,12 @@ export const items: InventoryItem[] = [
 ];
 
 export const borrowHistory: BorrowHistory[] = [
-    { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Approved' },
+    { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Returned' },
     { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Denied' },
-    { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-26', status: 'Approved' },
-    { id: 'bh4', studentName: 'Casey Jones', itemName: '3D Printer', date: '2024-07-29', status: 'Pending' },
+    { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-29', status: 'Approved' },
+    { id: 'bh4', studentName: 'Casey Jones', itemName: '3D Printer', date: '2024-07-29', status: 'Active' },
     { id: 'bh5', studentName: 'Alex Doe', itemName: 'CNC Milling Machine', date: '2024-07-30', status: 'Pending' },
-    { id: 'bh6', studentName: 'Maria Garcia', itemName: 'Network Switch', date: '2024-07-30', status: 'Pending' },
-    { id: 'bh7', studentName: 'Sam Wilson', itemName: 'Raspberry Pi 4 Kit', date: '2024-07-25', status: 'Approved' },
+    { id: 'bh6', studentName: 'Maria Garcia', itemName: 'Network Switch', date: '2024-07-30', status: 'Approved' },
+    { id: 'bh7', studentName: 'Sam Wilson', itemName: 'Raspberry Pi 4 Kit', date: '2024-07-25', status: 'Returned' },
+    { id: 'bh8', studentName: 'John Appleseed', itemName: 'Digital Scale', date: '2024-07-31', status: 'Active'},
 ];

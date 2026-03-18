@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-
+import Link from "next/link"
 import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
-import type { InventoryItem, Channel, BorrowHistory } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -50,36 +50,36 @@ export default function TeacherDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
-  const [_, forceUpdate] = React.useReducer((x) => x + 1, 0);
+  const [borrowHistory, setBorrowHistory] = React.useState(initialBorrowHistory)
 
-  const pendingRequests = initialBorrowHistory.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const processedRequests = initialBorrowHistory.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
-    const record = initialBorrowHistory.find(r => r.id === id);
+    const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      record.status = newStatus;
+      setBorrowHistory(prev => prev.map(r => r.id === id ? {...r, status: newStatus} : r))
       toast({
         title: `Request ${newStatus}`,
         description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.`,
       });
-      forceUpdate();
     }
   }
 
-  const getBadgeVariant = (status: 'Approved' | 'Denied') => {
-    switch (status) {
-      case 'Approved':
-        return 'secondary'
-      case 'Denied':
-        return 'destructive'
-      default:
-        return 'outline'
-    }
+  const getBadgeVariant = (status: BorrowHistoryStatus) => {
+    const variants: { [key in BorrowHistoryStatus]: "secondary" | "destructive" | "outline" | "default"} = {
+      'Pending': 'outline',
+      'Approved': 'default',
+      'Active': 'destructive',
+      'Denied': 'destructive',
+      'Returned': 'secondary'
+    };
+    return variants[status];
   }
 
   // Handlers for borrowing
   const handleDepartmentSelect = (deptId: string) => {
+    setActiveView('borrow')
     setSelectedDepartmentId(deptId);
     const firstChannelInDept = channels.find(c => c.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
     if (firstChannelInDept) {
@@ -173,7 +173,7 @@ export default function TeacherDashboardPage() {
                   <TableCell>{record.itemName}</TableCell>
                   <TableCell>{record.date}</TableCell>
                   <TableCell className="text-right">
-                    <Badge variant={getBadgeVariant(record.status as 'Approved' | 'Denied')}>
+                    <Badge variant={getBadgeVariant(record.status)}>
                       {record.status}
                     </Badge>
                   </TableCell>
@@ -240,7 +240,7 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
                 </div>
             </div>
-            <div className="w-24" />
+             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid
@@ -297,7 +297,7 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Approve Requests</h1>
                 </div>
             </div>
-            <div className="w-24" />
+             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <ApprovalRequests />
@@ -321,8 +321,7 @@ export default function TeacherDashboardPage() {
                   <Button
                     variant={selectedDepartmentId === dept.id && activeView === 'borrow' ? 'secondary' : 'ghost'}
                     size="icon"
-                    disabled={activeView !== 'borrow'}
-                    className={`h-12 w-12 rounded-full transition-all duration-200 ${selectedDepartmentId === dept.id && activeView === 'borrow' ? 'bg-primary rounded-2xl' : 'hover:bg-accent'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`h-12 w-12 rounded-full transition-all duration-200 ${selectedDepartmentId === dept.id && activeView === 'borrow' ? 'bg-primary rounded-2xl' : 'hover:bg-accent'}`}
                     onClick={() => handleDepartmentSelect(dept.id)}>
                     {dept.icon}
                   </Button>
