@@ -56,7 +56,7 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: 
       )}
     >
       <CardHeader className="p-0">
-        <div className="relative aspect-video">
+        <div className="relative aspect-square md:aspect-video">
           <Image
             src={item.imageUrl}
             alt={item.name}
