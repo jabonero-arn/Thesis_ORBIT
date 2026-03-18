@@ -1,11 +1,24 @@
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: 'LabFlow',
   description: 'A Discord-inspired Laboratory Borrowing Web Application.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'LabFlow',
+  },
+  icons: {
+    apple: '/icons/icon-192x192.png',
+  },
 };
+
+export const viewport: Viewport = {
+  themeColor: '#1e2430',
+}
 
 export default function RootLayout({
   children,
