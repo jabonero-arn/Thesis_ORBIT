@@ -47,7 +47,7 @@ export default function RoleSelectionPage() {
   return (
     <div className="relative flex h-screen w-full items-center justify-center bg-[#1e2430] p-4 lg:p-8">
       
-      <div className="grid lg:grid-cols-2 gap-16 max-w-6xl w-full items-center">
+      <div className="flex flex-col lg:flex-row gap-16 max-w-6xl w-full items-center justify-center">
         {/* Left Side Info */}
         <div className="hidden lg:flex flex-col gap-8 text-foreground">
             <div className="flex items-center gap-4">
@@ -88,7 +88,7 @@ export default function RoleSelectionPage() {
         </div>
 
         {/* Right Side Card (Role Selection) */}
-        <Card className="w-full max-w-sm border-border/50 bg-card/80 backdrop-blur-sm mx-auto lg:mx-0 lg:justify-self-end">
+        <Card className="w-full max-w-sm border-border/50 bg-card/80 backdrop-blur-sm mx-auto">
           <CardHeader className="items-center text-center">
             <Logo />
             <CardTitle className="pt-2 font-headline text-2xl">
