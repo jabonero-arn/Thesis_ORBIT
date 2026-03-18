@@ -9,6 +9,7 @@ import {
   LogOut,
   LayoutGrid,
   Inbox,
+  Home,
 } from "lucide-react"
 
 import {
@@ -43,6 +44,12 @@ export function UserNav({ children, role }: { children: React.ReactNode, role?: 
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/" className="w-full flex items-center">
+              <Home className="mr-2 h-4 w-4" />
+              <span>Homepage</span>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link href="/dashboard" className="w-full flex items-center">
               <LayoutGrid className="mr-2 h-4 w-4" />
