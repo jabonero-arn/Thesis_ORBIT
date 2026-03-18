@@ -44,6 +44,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://cdn.shopify.com/s/files/1/0632/2244/8205/files/AMD-Elite-10-scaled_1a0b6d95-5a74-49a2-9c59-2a026b0ebd4c.webp?v=1758667214",
     imageHint: "desktop computer",
+    quantity: 5,
   },
   {
     id: "item-14",
@@ -53,6 +54,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://i.pinimg.com/736x/91/27/50/912750b850b7a994e567850d4cf03b27.jpg",
     imageHint: "vr headset",
+    quantity: 3,
   },
   {
     id: "item-1",
@@ -62,6 +64,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://i.pinimg.com/736x/37/92/c1/3792c10fc5742c0f79e479e4283535b1.jpg",
     imageHint: "arduino kit",
+    quantity: 15,
   },
   {
     id: "item-15",
@@ -71,6 +74,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://i.pinimg.com/736x/07/da/fe/07dafe714c44fe790151d85f2f8c1640.jpg",
     imageHint: "network switch",
+    quantity: 4,
   },
   {
     id: "item-2",
@@ -80,6 +84,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://i.pinimg.com/736x/d0/c9/50/d0c950a1a18f6d6b4ac1b8fb4905ade0.jpg",
     imageHint: "raspberry pi",
+    quantity: 10,
   },
   {
     id: "item-3",
@@ -89,6 +94,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://i.pinimg.com/736x/a2/4f/dd/a24fdd87f603a7b41460e8937b7959a4.jpg",
     imageHint: "electronic sensors",
+    quantity: 25,
   },
   {
     id: "item-4",
@@ -98,6 +104,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://i.pinimg.com/736x/c5/a5/4f/c5a54f44ad57ac58a9e5b3d8823c2f2e.jpg",
     imageHint: "circuit board",
+    quantity: 30,
   },
     {
     id: "item-12",
@@ -107,6 +114,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://i.pinimg.com/736x/a6/ee/09/a6ee09ccd158b733cc8ee46fdebe0289.jpg",
     imageHint: "circuit board",
+    quantity: 8,
   },
   {
     id: "item-5",
@@ -116,6 +124,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://i.pinimg.com/736x/2f/69/34/2f69342ae9d36ff40e26b8ce7ced4f04.jpg",
     imageHint: "lab beakers",
+    quantity: 20,
   },
   {
     id: "item-6",
@@ -125,6 +134,7 @@ export const items: InventoryItem[] = [
     status: "Borrowed",
     imageUrl: "https://i.pinimg.com/736x/be/c7/24/bec72421f24deda6ed0b771e530022e0.jpg",
     imageHint: "digital scale",
+    quantity: 1,
   },
   {
     id: "item-7",
@@ -134,6 +144,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://i.pinimg.com/736x/04/c8/11/04c811881ecaaeb142c4f5c1e909b9b2.jpg",
     imageHint: "bunsen burner",
+    quantity: 12,
   },
   {
     id: "item-8",
@@ -143,6 +154,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://picsum.photos/seed/servos/600/400",
     imageHint: "servo motors",
+    quantity: 18,
   },
   {
     id: "item-9",
@@ -152,6 +164,7 @@ export const items: InventoryItem[] = [
     status: "Available",
     imageUrl: "https://picsum.photos/seed/chassis/600/400",
     imageHint: "robot chassis",
+    quantity: 15,
   },
   {
     id: "item-10",
@@ -161,6 +174,7 @@ export const items: InventoryItem[] = [
     status: "Locked",
     imageUrl: "https://picsum.photos/seed/cnc/600/400",
     imageHint: "milling machine",
+    quantity: 2,
   },
   {
     id: "item-11",
@@ -170,6 +184,7 @@ export const items: InventoryItem[] = [
     status: "Borrowed",
     imageUrl: "https://picsum.photos/seed/3d-printer/600/400",
     imageHint: "3d printer",
+    quantity: 3,
   },
 ];
 

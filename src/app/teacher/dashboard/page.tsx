@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, ArrowLeft } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
@@ -422,12 +421,6 @@ export default function TeacherDashboardPage() {
             />
         )}
         
-        <Link href="/" className={cn("fixed right-6 z-30", activeView === 'borrow' && selectedItems.length > 0 ? "bottom-24 md:bottom-6" : "bottom-6")}>
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Homepage
-          </Button>
-        </Link>
       </div>
     </TooltipProvider>
   )

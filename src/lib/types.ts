@@ -23,6 +23,7 @@ export type InventoryItem = {
   status: ItemStatus;
   imageUrl: string;
   imageHint: string;
+  quantity: number;
 };
 
 export type BorrowHistory = {
