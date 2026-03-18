@@ -4,7 +4,7 @@ import * as React from "react"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
+import { channels, currentUser } from "@/lib/data"
 import type { InventoryItem, BorrowHistory } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { UserNav } from "@/components/user-nav"
 import { cn } from "@/lib/utils"
+import { useAppContext } from "@/context/app-context"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -25,6 +26,7 @@ const departments = [
 
 export default function Home() {
   const { toast } = useToast()
+  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
     channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
@@ -32,7 +34,6 @@ export default function Home() {
   
   const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-  const [borrowHistory, setBorrowHistory] = React.useState(initialBorrowHistory)
 
   const pendingRequestedItemNames = React.useMemo(() =>
     borrowHistory
@@ -52,7 +53,7 @@ export default function Home() {
 
   const items = React.useMemo(
     () => allItems.filter((item) => item.channelId === selectedChannelId),
-    [selectedChannelId]
+    [allItems, selectedChannelId]
   )
   
   const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId])

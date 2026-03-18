@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, items as allItemsData, borrowHistory as allBorrowHistoryData } from "@/lib/data"
+import { currentUser, channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -28,7 +28,6 @@ import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { channels } from "@/lib/data"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
@@ -40,6 +39,7 @@ import { InventoryGrid } from "@/components/inventory-grid"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
+import { useAppContext } from "@/context/app-context"
 
 
 const allUsers = [
@@ -63,6 +63,7 @@ type AdminView = 'borrow' | 'dashboard' | 'inventory' | 'transactions' | 'histor
 export default function AdminDashboardPage() {
     const { toast } = useToast()
     const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
+    const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
     // Borrowing view states
     const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -70,10 +71,6 @@ export default function AdminDashboardPage() {
         channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
     );
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-
-    // Data management states
-    const [items, setItems] = React.useState<InventoryItem[]>(allItemsData);
-    const [borrowHistory, setBorrowHistory] = React.useState<BorrowHistory[]>(allBorrowHistoryData);
 
     // Form state
     const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -368,7 +365,14 @@ export default function AdminDashboardPage() {
                         ))}
                     </div>
                     <div className="mt-auto p-2">
-                        {/* Profile moved to header on desktop */}
+                         <UserNav role="Admin">
+                            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                                <Avatar className="h-10 w-10">
+                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                            </Button>
+                        </UserNav>
                     </div>
                 </div>
 

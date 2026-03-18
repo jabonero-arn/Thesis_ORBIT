@@ -4,7 +4,7 @@ import * as React from "react"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
+import { channels, currentUser } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -26,6 +26,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { useAppContext } from "@/context/app-context"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -37,6 +38,7 @@ type TeacherView = 'borrow' | 'requests';
 
 export default function TeacherDashboardPage() {
   const { toast } = useToast()
+  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
   
   // View state
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
@@ -50,8 +52,6 @@ export default function TeacherDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
-  const [borrowHistory, setBorrowHistory] = React.useState(initialBorrowHistory)
-
   const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -90,7 +90,7 @@ export default function TeacherDashboardPage() {
 
   const items = React.useMemo(
     () => allItems.filter((item) => item.channelId === selectedChannelId),
-    [selectedChannelId]
+    [allItems, selectedChannelId]
   )
   
   const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId])

@@ -3,12 +3,12 @@
 import * as React from "react"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
-    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Minus, Plus
+    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Minus, Plus 
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, items as allItemsData, borrowHistory as allBorrowHistoryData } from "@/lib/data"
+import { currentUser, channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -21,7 +21,6 @@ import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { channels } from "@/lib/data"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
@@ -34,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { useAppContext } from "@/context/app-context"
 
 
 const departments = [
@@ -47,6 +47,7 @@ type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history';
 export default function StaffDashboardPage() {
     const { toast } = useToast()
     const [activeView, setActiveView] = React.useState<StaffView>('inventory');
+    const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
     // Borrowing view states
     const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -54,10 +55,6 @@ export default function StaffDashboardPage() {
         channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
     );
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-
-    // Data management states
-    const [items, setItems] = React.useState<InventoryItem[]>(allItemsData);
-    const [borrowHistory, setBorrowHistory] = React.useState<BorrowHistory[]>(allBorrowHistoryData);
 
     // Form state
     const [isFormOpen, setIsFormOpen] = React.useState(false);
