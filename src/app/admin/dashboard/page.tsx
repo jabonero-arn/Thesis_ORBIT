@@ -17,7 +17,7 @@ export default function AdminDashboardPage() {
     <div className="flex flex-col min-h-screen w-full bg-[#1e2430]">
         <header className="flex items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <div className="w-24"></div>
-            <UserNav>
+            <UserNav role="Admin">
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                     <Avatar className="h-10 w-10">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />

@@ -22,8 +22,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { currentUser } from "@/lib/data"
 import { HelpDialog } from "./help-dialog"
+import type { Role } from "@/lib/types"
 
-export function UserNav({ children }: { children: React.ReactNode }) {
+export function UserNav({ children, role }: { children: React.ReactNode, role?: Role }) {
+  const displayRole = role || currentUser.role;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -34,7 +37,7 @@ export function UserNav({ children }: { children: React.ReactNode }) {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">{currentUser.name}</p>
             <p className="text-xs leading-none text-muted-foreground">
-              {currentUser.role}
+              {displayRole}
             </p>
           </div>
         </DropdownMenuLabel>

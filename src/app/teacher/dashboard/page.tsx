@@ -224,7 +224,7 @@ export default function TeacherDashboardPage() {
                     onChannelSelect={handleChannelSelect}
                   />
                   <div className="mt-auto">
-                    <UserNav>
+                    <UserNav role="Teacher">
                       <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -279,7 +279,7 @@ export default function TeacherDashboardPage() {
                         </Button>
                     </div>
                     <div className="mt-auto">
-                        <UserNav>
+                        <UserNav role="Teacher">
                         <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
                             <Avatar className="h-8 w-8">
                             <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -367,7 +367,7 @@ export default function TeacherDashboardPage() {
           </div>
 
           <div className="mt-auto p-2">
-            <UserNav>
+            <UserNav role="Teacher">
               <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -390,7 +390,7 @@ export default function TeacherDashboardPage() {
                 onChannelSelect={handleChannelSelect}
             />
             <div className="mt-auto">
-                <UserNav>
+                <UserNav role="Teacher">
                 <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
                     <Avatar className="h-8 w-8">
                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -419,12 +419,6 @@ export default function TeacherDashboardPage() {
             }}
             />
         )}
-        <Link href="/" className="fixed bottom-6 right-6 z-50">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Role Selection
-          </Button>
-        </Link>
       </div>
     </TooltipProvider>
   )
