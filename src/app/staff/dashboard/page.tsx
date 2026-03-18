@@ -46,7 +46,7 @@ type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history';
 
 export default function StaffDashboardPage() {
     const { toast } = useToast()
-    const [activeView, setActiveView] = React.useState<StaffView>('borrow');
+    const [activeView, setActiveView] = React.useState<StaffView>('inventory');
     
     // Borrowing view states
     const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -274,15 +274,13 @@ export default function StaffDashboardPage() {
             </div>
         )
     }
-    
-    const allNavItems = [{ id: 'borrow', label: 'Browse', icon: <LayoutGrid /> }, ...navItems];
 
     const mobileSidebarContent = (
       <div className="flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Menu</div>
             <div className="p-2 space-y-1">
-                {allNavItems.map(item => (
+                {navItems.map(item => (
                   <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as StaffView)}>{item.icon} {item.label}</Button>
                 ))}
             </div>
@@ -324,7 +322,6 @@ export default function StaffDashboardPage() {
                     </div>
                     <Separator className="my-4 bg-border/50 w-8" />
                     <div className="flex flex-col gap-2">
-                         <Tooltip><TooltipTrigger asChild><Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange('borrow')}><LayoutGrid /></Button></TooltipTrigger><TooltipContent side="right" align="center"><p>Browse Equipment</p></TooltipContent></Tooltip>
                         {navItems.map(item => (
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as StaffView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}

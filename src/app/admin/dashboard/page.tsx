@@ -321,7 +321,6 @@ export default function AdminDashboardPage() {
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Menu</div>
             <div className="p-2 space-y-1">
-                <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange('borrow')}><LayoutGrid /> Browse Equipment</Button>
                 {navItems.map(item => (
                   <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon} {item.label}</Button>
                 ))}
@@ -364,20 +363,12 @@ export default function AdminDashboardPage() {
                     </div>
                     <Separator className="my-4 bg-border/50 w-8" />
                     <div className="flex flex-col gap-2">
-                         <Tooltip><TooltipTrigger asChild><Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange('borrow')}><LayoutGrid /></Button></TooltipTrigger><TooltipContent side="right" align="center"><p>Browse Equipment</p></TooltipContent></Tooltip>
                         {navItems.map(item => (
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}
                     </div>
                     <div className="mt-auto p-2">
-                        <UserNav role="Admin">
-                            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                                <Avatar className="h-10 w-10">
-                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                    <AvatarFallback><User /></AvatarFallback>
-                                </Avatar>
-                            </Button>
-                        </UserNav>
+                        {/* Profile moved to header on desktop */}
                     </div>
                 </div>
 
@@ -395,6 +386,16 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">{mobileSidebarContent}</SheetContent></Sheet>
                             {getHeaderContent()}
+                        </div>
+                        <div className="hidden md:flex items-center gap-4">
+                           <UserNav role="Admin">
+                                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                        <AvatarFallback><User /></AvatarFallback>
+                                    </Avatar>
+                                </Button>
+                            </UserNav>
                         </div>
                     </header>
                     {renderContent()}
