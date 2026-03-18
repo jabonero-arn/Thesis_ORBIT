@@ -369,6 +369,16 @@ export default function AdminDashboardPage() {
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}
                     </div>
+                    <div className="mt-auto p-2">
+                        <UserNav role="Admin">
+                            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                                <Avatar className="h-10 w-10">
+                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                            </Button>
+                        </UserNav>
+                    </div>
                 </div>
 
                 {/* Channel/Context Sidebar */}
@@ -385,16 +395,6 @@ export default function AdminDashboardPage() {
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">{mobileSidebarContent}</SheetContent></Sheet>
                             {getHeaderContent()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <UserNav role="Admin">
-                              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                                  <Avatar className="h-10 w-10">
-                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                      <AvatarFallback><User /></AvatarFallback>
-                                  </Avatar>
-                              </Button>
-                          </UserNav>
                         </div>
                     </header>
                     {renderContent()}
