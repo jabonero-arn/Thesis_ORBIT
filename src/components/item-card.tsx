@@ -1,12 +1,10 @@
 import Image from "next/image"
 import type { InventoryItem } from "@/lib/types"
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { CheckCircle, Lock, Minus, Plus } from "lucide-react"
 import { Button } from "./ui/button"
+import { Badge } from "./ui/badge"
 
 type ItemCardProps = {
   item: InventoryItem
@@ -20,60 +18,27 @@ type ItemCardProps = {
 
 export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, isSelectionEnabled = true, isManagementView = false, onQuantityChange }: ItemCardProps) {
   
-  const getButton = () => {
-    if (isManagementView && onQuantityChange) {
-        return (
-            <div className="flex items-center justify-between">
-                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => onQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 0}>
-                    <Minus className="h-4 w-4" />
-                </Button>
-                <span className="font-bold text-lg w-10 text-center select-none">{item.quantity}</span>
-                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => onQuantityChange(item.id, item.quantity + 1)}>
-                    <Plus className="h-4 w-4" />
-                </Button>
-            </div>
-        )
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isManagementView) {
+      // In management view, the card isn't for selection.
+      return;
     }
-
-    if (!isSelectionEnabled) {
-      return null;
+    if (isSelectionEnabled && item.status !== 'Borrowed') {
+      onSelect();
     }
-
-    if (item.status === 'Borrowed') {
-        return <Button variant="secondary" disabled className="w-full justify-center">Borrowed</Button>
-    }
-    
-    if (item.status === 'Locked' && !isSelected && !isTeacherView) {
-        return (
-            <Button onClick={onSelect} variant="destructive" className="w-full">
-                <Lock className="mr-2 h-4 w-4" />
-                Unlock
-            </Button>
-        )
-    }
-
-    return (
-        <Button 
-            onClick={onSelect} 
-            variant={isSelected ? "secondary" : "default"} 
-            className="w-full"
-        >
-            {isSelected ? "Deselect" : "Select"}
-        </Button>
-    )
-  }
-
-  const button = getButton();
+  };
 
   return (
     <Card 
+      onClick={handleCardClick}
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
+        (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        item.status === "Borrowed" && isSelectionEnabled && "opacity-60 cursor-not-allowed"
+        item.status === "Borrowed" && isSelectionEnabled && !isManagementView && "opacity-60 cursor-not-allowed"
       )}
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="relative aspect-video overflow-hidden">
         <Image
           src={item.imageUrl}
           alt={item.name}
@@ -81,13 +46,16 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           data-ai-hint={item.imageHint}
         />
-        {isSelected && isSelectionEnabled && (
-          <div className="absolute inset-0 bg-primary/80 flex items-center justify-center">
+        {isSelected && isSelectionEnabled && !isManagementView && (
+          <div className="absolute inset-0 bg-primary/70 flex items-center justify-center">
             <CheckCircle className="h-12 w-12 text-primary-foreground" />
           </div>
         )}
+        {item.status === 'Borrowed' && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
+        {item.status === 'Locked' && !isTeacherView && !isManagementView && <Badge variant="secondary" className="absolute top-2 left-2 flex items-center"><Lock className="mr-1 h-3 w-3"/>Locked</Badge>}
+
       </div>
-      <CardContent className="flex flex-1 flex-col p-4">
+      <div className="flex flex-1 flex-col p-3">
         <div className="flex-1">
           <h3 className="font-semibold text-base leading-tight truncate" title={item.name}>
             {item.name}
@@ -96,12 +64,18 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
             {item.description}
           </p>
         </div>
-        {button && (
-            <div className="mt-4">
-                {button}
+        {isManagementView && onQuantityChange && (
+            <div className="flex items-center justify-between mt-4">
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); onQuantityChange(item.id, item.quantity - 1); }} disabled={item.quantity <= 0}>
+                    <Minus className="h-4 w-4" />
+                </Button>
+                <span className="font-bold text-lg w-10 text-center select-none">{item.quantity}</span>
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={(e) => { e.stopPropagation(); onQuantityChange(item.id, item.quantity + 1); }}>
+                    <Plus className="h-4 w-4" />
+                </Button>
             </div>
         )}
-      </CardContent>
+      </div>
     </Card>
   )
 }

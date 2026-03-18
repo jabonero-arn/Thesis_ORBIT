@@ -242,6 +242,11 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     )
   }
 
+  // Hide on desktop if cart is empty
+  if (props.items.length === 0) {
+      return null
+  }
+
   // Desktop version: Static Sidebar
   return (
     <div className="hidden md:flex w-80 bg-[#141821] p-4 flex-col border-l border-border/50">
