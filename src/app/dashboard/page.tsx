@@ -147,52 +147,58 @@ export default function Home() {
         
         {/* Main Content */}
         <main className="flex-1 flex flex-col h-screen">
-          <header className="flex items-center justify-between md:justify-start gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden">
-                        <Menu />
-                        <span className="sr-only">Open Menu</span>
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r border-border/50 flex flex-col">
-                    <div className="flex flex-col h-full">
-                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                            Departments
-                        </div>
-                        <div className="p-2 space-y-1">
-                            {departments.map(dept => (
-                                <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
-                                    {dept.icon}
-                                    {dept.name}
-                                </Button>
-                            ))}
-                        </div>
-                        <AppSidebar
-                          departmentPrefix={selectedDepartment?.prefix ?? ''}
-                          selectedChannelId={selectedChannelId}
-                          onChannelSelect={handleChannelSelect}
-                        />
-                         <div className="mt-auto">
-                            <UserNav role="Student">
-                                <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
-                                    <Avatar className="h-8 w-8">
-                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                    <AvatarFallback><User /></AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                                </div>
-                            </UserNav>
-                         </div>
-                    </div>
-                </SheetContent>
-            </Sheet>
+          <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-                <Hash className="text-muted-foreground" />
-                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon" className="md:hidden">
+                          <Menu />
+                          <span className="sr-only">Open Menu</span>
+                      </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r border-border/50 flex flex-col">
+                      <div className="flex flex-col h-full">
+                          <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                              Departments
+                          </div>
+                          <div className="p-2 space-y-1">
+                              {departments.map(dept => (
+                                  <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
+                                      {dept.icon}
+                                      {dept.name}
+                                  </Button>
+                              ))}
+                          </div>
+                          <AppSidebar
+                            departmentPrefix={selectedDepartment?.prefix ?? ''}
+                            selectedChannelId={selectedChannelId}
+                            onChannelSelect={handleChannelSelect}
+                          />
+                           <div className="mt-auto">
+                              <UserNav role="Student">
+                                  <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
+                                      <Avatar className="h-8 w-8">
+                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                      <AvatarFallback><User /></AvatarFallback>
+                                      </Avatar>
+                                      <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                                  </div>
+                              </UserNav>
+                           </div>
+                      </div>
+                  </SheetContent>
+              </Sheet>
+              <div className="flex items-center gap-2">
+                  <Hash className="text-muted-foreground" />
+                  <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+              </div>
             </div>
-            {/* Spacer for mobile view to center title */}
-            <div className="md:hidden w-8" />
+            <Link href="/">
+              <Button variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Homepage
+              </Button>
+            </Link>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid 
@@ -212,12 +218,6 @@ export default function Home() {
               setSelectedItems([]);
           }}
         />
-        <Link href="/" className="fixed bottom-6 right-6 z-50">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Homepage
-          </Button>
-        </Link>
       </div>
     </TooltipProvider>
   )
