@@ -33,7 +33,6 @@ import { InventoryGrid } from "@/components/inventory-grid"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
-import { CheckoutFlow } from "@/components/checkout-flow"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 
 
@@ -54,7 +53,6 @@ export default function StaffDashboardPage() {
     const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
         channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
     );
-    const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
     // Data management states
@@ -73,23 +71,12 @@ export default function StaffDashboardPage() {
         if (firstChannelInDept) {
             setSelectedChannelId(firstChannelInDept.id);
         }
-        setSelectedItems([]);
         setIsMobileMenuOpen(false);
     }
     
     const handleChannelSelect = (id: string) => {
         setSelectedChannelId(id)
-        setSelectedItems([])
         setIsMobileMenuOpen(false) 
-    }
-    
-    const handleItemSelect = (item: InventoryItem) => {
-        const isSelected = selectedItems.some((i) => i.id === item.id)
-        if (isSelected) {
-            setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
-        } else {
-            setSelectedItems((prev) => [...prev, item])
-        }
     }
     
     const handleViewChange = (view: StaffView) => {
@@ -188,7 +175,7 @@ export default function StaffDashboardPage() {
             case 'borrow':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <InventoryGrid items={filteredItems} onItemSelect={handleItemSelect} selectedItems={selectedItems} isTeacherView={true} />
+                        <InventoryGrid items={filteredItems} onItemSelect={() => {}} selectedItems={[]} isSelectionEnabled={false} />
                     </div>
                 );
              case 'inventory':
@@ -276,7 +263,7 @@ export default function StaffDashboardPage() {
         )
     }
     
-    const allNavItems = [{ id: 'borrow', label: 'Borrow', icon: <LayoutGrid /> }, ...navItems];
+    const allNavItems = [{ id: 'borrow', label: 'Browse', icon: <LayoutGrid /> }, ...navItems];
 
     const mobileSidebarContent = (
       <div className="flex flex-col h-full">
@@ -296,14 +283,6 @@ export default function StaffDashboardPage() {
                   <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
               </>
           )}
-          <div className="mt-auto">
-              <UserNav role="Staff">
-                  <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
-                      <Avatar className="h-8 w-8"><AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} /><AvatarFallback><User /></AvatarFallback></Avatar>
-                      <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                  </div>
-              </UserNav>
-          </div>
       </div>
     );
 
@@ -320,14 +299,12 @@ export default function StaffDashboardPage() {
                     </div>
                     <Separator className="my-4 bg-border/50 w-8" />
                     <div className="flex flex-col gap-2">
-                         <Tooltip><TooltipTrigger asChild><Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange('borrow')}><LayoutGrid /></Button></TooltipTrigger><TooltipContent side="right" align="center"><p>Borrow Equipment</p></TooltipContent></Tooltip>
+                         <Tooltip><TooltipTrigger asChild><Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange('borrow')}><LayoutGrid /></Button></TooltipTrigger><TooltipContent side="right" align="center"><p>Browse Equipment</p></TooltipContent></Tooltip>
                         {navItems.map(item => (
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as StaffView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}
                     </div>
-                    <div className="mt-auto p-2">
-                        <UserNav role="Staff"><Button variant="ghost" className="relative h-10 w-10 rounded-full p-0"><Avatar className="h-10 w-10"><AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} /><AvatarFallback><User /></AvatarFallback></Avatar></Button></UserNav>
-                    </div>
+                    <div className="mt-auto p-2" />
                 </div>
 
                 {/* Channel/Context Sidebar */}
@@ -345,14 +322,17 @@ export default function StaffDashboardPage() {
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">{mobileSidebarContent}</SheetContent></Sheet>
                             {getHeaderContent()}
                         </div>
-                        <UserNav role="Staff"><Button variant="ghost" className="relative h-10 w-10 rounded-full p-0"><Avatar className="h-10 w-10 hidden md:flex"><AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} /><AvatarFallback><User /></AvatarFallback></Avatar></Button></UserNav>
+                        <UserNav role="Staff">
+                            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                                <Avatar className="h-10 w-10">
+                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarFallback><User /></AvatarFallback>
+                                </Avatar>
+                            </Button>
+                        </UserNav>
                     </header>
                     {renderContent()}
                 </main>
-
-                {activeView === 'borrow' && (
-                    <CheckoutFlow key={selectedChannelId} items={selectedItems} onClear={() => setSelectedItems([])} onSuccess={() => setSelectedItems([])} />
-                )}
 
                  <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                     <DialogContent><DialogHeader><DialogTitle>{editingItem ? "Edit Item" : "Add New Inventory Item"}</DialogTitle></DialogHeader>

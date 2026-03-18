@@ -13,11 +13,16 @@ type ItemCardProps = {
   onSelect: () => void
   isSelected: boolean
   isTeacherView?: boolean
+  isSelectionEnabled?: boolean
 }
 
-export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: ItemCardProps) {
+export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, isSelectionEnabled = true }: ItemCardProps) {
   
   const getButton = () => {
+    if (!isSelectionEnabled) {
+      return null;
+    }
+
     if (item.status === 'Borrowed') {
         return <Button variant="secondary" disabled className="w-full justify-center">Borrowed</Button>
     }
@@ -41,6 +46,8 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: 
         </Button>
     )
   }
+
+  const button = getButton();
 
   return (
     <Card 
@@ -73,9 +80,11 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: 
             {item.description}
           </p>
         </div>
-        <div className="mt-4">
-          {getButton()}
-        </div>
+        {button && (
+            <div className="mt-4">
+                {button}
+            </div>
+        )}
       </CardContent>
     </Card>
   )
