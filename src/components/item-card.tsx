@@ -5,7 +5,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { CheckCircle, Lock } from "lucide-react"
+import { CheckCircle, Lock, Minus, Plus } from "lucide-react"
 import { Button } from "./ui/button"
 
 type ItemCardProps = {
@@ -14,11 +14,27 @@ type ItemCardProps = {
   isSelected: boolean
   isTeacherView?: boolean
   isSelectionEnabled?: boolean
+  isManagementView?: boolean
+  onQuantityChange?: (itemId: string, newQuantity: number) => void
 }
 
-export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, isSelectionEnabled = true }: ItemCardProps) {
+export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, isSelectionEnabled = true, isManagementView = false, onQuantityChange }: ItemCardProps) {
   
   const getButton = () => {
+    if (isManagementView && onQuantityChange) {
+        return (
+            <div className="flex items-center justify-between">
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => onQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 0}>
+                    <Minus className="h-4 w-4" />
+                </Button>
+                <span className="font-bold text-lg w-10 text-center select-none">{item.quantity}</span>
+                <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={() => onQuantityChange(item.id, item.quantity + 1)}>
+                    <Plus className="h-4 w-4" />
+                </Button>
+            </div>
+        )
+    }
+
     if (!isSelectionEnabled) {
       return null;
     }
@@ -53,8 +69,8 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
     <Card 
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
-        isSelected ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        item.status === "Borrowed" && "opacity-60 cursor-not-allowed"
+        isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
+        item.status === "Borrowed" && isSelectionEnabled && "opacity-60 cursor-not-allowed"
       )}
     >
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -65,7 +81,7 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           data-ai-hint={item.imageHint}
         />
-        {isSelected && (
+        {isSelected && isSelectionEnabled && (
           <div className="absolute inset-0 bg-primary/80 flex items-center justify-center">
             <CheckCircle className="h-12 w-12 text-primary-foreground" />
           </div>

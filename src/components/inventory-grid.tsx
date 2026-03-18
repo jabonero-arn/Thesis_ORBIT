@@ -7,9 +7,11 @@ type InventoryGridProps = {
   selectedItems: InventoryItem[]
   isTeacherView?: boolean
   isSelectionEnabled?: boolean
+  isManagementView?: boolean
+  onQuantityChange?: (itemId: string, newQuantity: number) => void
 }
 
-export function InventoryGrid({ items, onItemSelect, selectedItems, isTeacherView, isSelectionEnabled = true }: InventoryGridProps) {
+export function InventoryGrid({ items, onItemSelect, selectedItems, isTeacherView, isSelectionEnabled = true, isManagementView, onQuantityChange }: InventoryGridProps) {
   if (items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-border/50 bg-card/50 p-8 text-center text-muted-foreground">
@@ -28,6 +30,8 @@ export function InventoryGrid({ items, onItemSelect, selectedItems, isTeacherVie
             isSelected={selectedItems.some(si => si.id === item.id)}
             isTeacherView={isTeacherView}
             isSelectionEnabled={isSelectionEnabled}
+            isManagementView={isManagementView}
+            onQuantityChange={onQuantityChange}
         />
       ))}
     </div>

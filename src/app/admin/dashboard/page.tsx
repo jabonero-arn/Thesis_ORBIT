@@ -3,7 +3,7 @@
 import * as React from "react"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
-    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, BarChart 
+    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Minus, Plus 
 } from "lucide-react"
 import {
   Card,
@@ -127,6 +127,11 @@ export default function AdminDashboardPage() {
         }
         closeForm();
     }
+
+    const handleQuantityChange = (itemId: string, newQuantity: number) => {
+        if (newQuantity < 0) return;
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, quantity: newQuantity } : item));
+    }
     
     const openEditForm = (item: InventoryItem) => {
         setEditingItem(item);
@@ -165,7 +170,7 @@ export default function AdminDashboardPage() {
     }
     
     // Data for views
-    const filteredItems = React.useMemo(() => allItemsData.filter((item) => item.channelId === selectedChannelId), [selectedChannelId]);
+    const filteredItems = React.useMemo(() => items.filter((item) => item.channelId === selectedChannelId), [items, selectedChannelId]);
     const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId]);
     const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
 
@@ -193,7 +198,14 @@ export default function AdminDashboardPage() {
             case 'borrow':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <InventoryGrid items={filteredItems} onItemSelect={() => {}} selectedItems={[]} isSelectionEnabled={false} />
+                        <InventoryGrid 
+                            items={filteredItems} 
+                            onItemSelect={() => {}} 
+                            selectedItems={[]} 
+                            isSelectionEnabled={false}
+                            isManagementView={true}
+                            onQuantityChange={handleQuantityChange}
+                        />
                     </div>
                 );
             case 'dashboard':
@@ -343,7 +355,21 @@ export default function AdminDashboardPage() {
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}
                     </div>
-                    <div className="mt-auto p-2" />
+                    <div className="mt-auto p-2">
+                      <UserNav role="Admin">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" className="relative h-12 w-12 rounded-full p-0">
+                                    <Avatar className="h-10 w-10">
+                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                        <AvatarFallback><User /></AvatarFallback>
+                                    </Avatar>
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" align="center"><p>Profile & Settings</p></TooltipContent>
+                        </Tooltip>
+                      </UserNav>
+                    </div>
                 </div>
 
                 {/* Channel/Context Sidebar */}
@@ -361,14 +387,6 @@ export default function AdminDashboardPage() {
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">{mobileSidebarContent}</SheetContent></Sheet>
                             {getHeaderContent()}
                         </div>
-                        <UserNav role="Admin">
-                          <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                              <AvatarFallback><User /></AvatarFallback>
-                            </Avatar>
-                          </Button>
-                        </UserNav>
                     </header>
                     {renderContent()}
                 </main>
