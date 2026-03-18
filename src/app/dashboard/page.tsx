@@ -5,8 +5,8 @@ import Link from "next/link"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-import { channels, currentUser, items as allItems } from "@/lib/data"
-import type { InventoryItem, Channel } from "@/lib/types"
+import { channels, currentUser, items as allItems, borrowHistory } from "@/lib/data"
+import type { InventoryItem, Channel, BorrowHistory } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -58,10 +58,17 @@ export default function Home() {
         // Always allow deselecting
         setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
     } else if (item.status === "Locked") {
-        // If locked and not selected, inform user request has been sent
+        const newRequest: BorrowHistory = {
+            id: `bh-${Date.now()}`,
+            studentName: currentUser.name,
+            itemName: item.name,
+            date: new Date().toISOString().split('T')[0],
+            status: 'Pending',
+        };
+        borrowHistory.unshift(newRequest);
         toast({
             title: "Approval Request Sent",
-            description: `Your request to borrow "${item.name}" has been sent for approval.`,
+            description: `Your request for "${item.name}" has been sent for approval.`,
         });
     } else {
         // If available, just add it
@@ -205,6 +212,12 @@ export default function Home() {
               setSelectedItems([]);
           }}
         />
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Homepage
+          </Button>
+        </Link>
       </div>
     </TooltipProvider>
   )

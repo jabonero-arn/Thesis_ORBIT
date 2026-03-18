@@ -39,7 +39,7 @@ export default function TeacherDashboardPage() {
   const { toast } = useToast()
   
   // View state
-  const [activeView, setActiveView] = React.useState<TeacherView>('borrow');
+  const [activeView, setActiveView] = React.useState<TeacherView>('requests');
 
   // State for borrowing
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -50,23 +50,20 @@ export default function TeacherDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
-  const [history, setHistory] = React.useState<BorrowHistory[]>(initialBorrowHistory)
+  const [_, forceUpdate] = React.useReducer((x) => x + 1, 0);
 
-  const pendingRequests = history.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const processedRequests = history.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const pendingRequests = initialBorrowHistory.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const processedRequests = initialBorrowHistory.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
-    setHistory(currentHistory => 
-      currentHistory.map(record => 
-        record.id === id ? { ...record, status: newStatus } : record
-      )
-    )
-    const updatedRecord = history.find(r => r.id === id);
-    if (updatedRecord) {
-        toast({
-            title: `Request ${newStatus}`,
-            description: `Request for "${updatedRecord.itemName}" from ${updatedRecord.studentName} has been ${newStatus.toLowerCase()}.`,
-        })
+    const record = initialBorrowHistory.find(r => r.id === id);
+    if (record) {
+      record.status = newStatus;
+      toast({
+        title: `Request ${newStatus}`,
+        description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.`,
+      });
+      forceUpdate();
     }
   }
 
@@ -419,6 +416,12 @@ export default function TeacherDashboardPage() {
             }}
             />
         )}
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Homepage
+          </Button>
+        </Link>
       </div>
     </TooltipProvider>
   )

@@ -44,6 +44,12 @@ export default function StaffDashboardPage() {
                 </CardContent>
             </Card>
         </main>
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Homepage
+          </Button>
+        </Link>
     </div>
   )
 }
