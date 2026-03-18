@@ -2,7 +2,7 @@ import Image from "next/image"
 import type { InventoryItem } from "@/lib/types"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import { CheckCircle, Lock, Minus, Plus } from "lucide-react"
+import { CheckCircle, Lock, Minus, Plus, Hourglass } from "lucide-react"
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 
@@ -10,20 +10,21 @@ type ItemCardProps = {
   item: InventoryItem
   onSelect: () => void
   isSelected: boolean
+  isPending?: boolean
   isTeacherView?: boolean
   isSelectionEnabled?: boolean
   isManagementView?: boolean
   onQuantityChange?: (itemId: string, newQuantity: number) => void
 }
 
-export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, isSelectionEnabled = true, isManagementView = false, onQuantityChange }: ItemCardProps) {
+export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView = false, isSelectionEnabled = true, isManagementView = false, onQuantityChange }: ItemCardProps) {
   
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isManagementView) {
       // In management view, the card isn't for selection.
       return;
     }
-    if (isSelectionEnabled && item.status !== 'Borrowed') {
+    if (isSelectionEnabled && item.status !== 'Borrowed' && !isPending) {
       onSelect();
     }
   };
@@ -33,9 +34,11 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
       onClick={handleCardClick}
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
-        (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView) && "cursor-pointer",
+        (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView && !isPending) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        item.status === "Borrowed" && isSelectionEnabled && !isManagementView && "opacity-60 cursor-not-allowed"
+        (item.status === "Borrowed" || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed",
+        isPending && "!border-amber-500 shadow-lg shadow-amber-500/20",
+        item.status === "Borrowed" && isSelectionEnabled && !isManagementView && "opacity-60"
       )}
     >
       <div className="relative aspect-video overflow-hidden">
@@ -51,8 +54,25 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false, is
             <CheckCircle className="h-12 w-12 text-primary-foreground" />
           </div>
         )}
+         {isPending && (
+          <div className="absolute inset-0 bg-amber-900/50 flex items-center justify-center">
+             <Hourglass className="h-12 w-12 text-amber-300 animate-spin" />
+          </div>
+        )}
+
         {item.status === 'Borrowed' && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
-        {item.status === 'Locked' && !isTeacherView && !isManagementView && <Badge variant="secondary" className="absolute top-2 left-2 flex items-center"><Lock className="mr-1 h-3 w-3"/>Locked</Badge>}
+        
+        {isPending && !isTeacherView && !isManagementView && (
+            <Badge variant="outline" className="absolute top-2 left-2 bg-amber-500/20 border-amber-500 text-amber-300 flex items-center">
+                <Hourglass className="mr-1 h-3 w-3"/>Pending
+            </Badge>
+        )}
+        
+        {item.status === 'Locked' && !isPending && !isTeacherView && !isManagementView && (
+            <Badge variant="secondary" className="absolute top-2 left-2 flex items-center">
+                <Lock className="mr-1 h-3 w-3"/>Locked
+            </Badge>
+        )}
 
       </div>
       <div className="flex flex-1 flex-col p-3">

@@ -33,6 +33,13 @@ export default function Home() {
   const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const [borrowHistory, setBorrowHistory] = React.useState(initialBorrowHistory)
+
+  const pendingRequestedItemNames = React.useMemo(() =>
+    borrowHistory
+      .filter(h => h.studentName === currentUser.name && h.status === 'Pending')
+      .map(h => h.itemName),
+    [borrowHistory]
+  );
   
   const handleDepartmentSelect = (deptId: string) => {
     setSelectedDepartmentId(deptId);
@@ -53,6 +60,14 @@ export default function Home() {
 
   const handleItemSelect = (item: InventoryItem) => {
     if (item.status === "Borrowed") return;
+    
+    if (pendingRequestedItemNames.includes(item.name)) {
+        toast({
+            title: "Request Already Pending",
+            description: `You already have a pending request for "${item.name}".`,
+        });
+        return;
+    }
 
     const isSelected = selectedItems.some((i) => i.id === item.id)
     if (isSelected) {
@@ -200,7 +215,8 @@ export default function Home() {
             <InventoryGrid 
               items={items} 
               onItemSelect={handleItemSelect}
-              selectedItems={selectedItems} 
+              selectedItems={selectedItems}
+              pendingRequestedItemNames={pendingRequestedItemNames} 
             />
           </div>
         </main>
