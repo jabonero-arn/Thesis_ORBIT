@@ -28,6 +28,20 @@ import type { Role } from "@/lib/types"
 export function UserNav({ children, role }: { children: React.ReactNode, role?: Role }) {
   const displayRole = role || currentUser.role;
 
+  const getDashboardPath = () => {
+    switch (displayRole) {
+        case 'Admin':
+            return '/admin/dashboard';
+        case 'Staff':
+            return '/staff/dashboard';
+        case 'Teacher':
+            return '/teacher/dashboard';
+        case 'Student':
+        default:
+            return '/dashboard';
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -51,7 +65,7 @@ export function UserNav({ children, role }: { children: React.ReactNode, role?: 
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
-            <Link href="/dashboard" className="w-full flex items-center">
+            <Link href={getDashboardPath()} className="w-full flex items-center">
               <LayoutGrid className="mr-2 h-4 w-4" />
               <span>Dashboard</span>
             </Link>
