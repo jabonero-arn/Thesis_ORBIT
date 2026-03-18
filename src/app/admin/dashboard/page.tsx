@@ -9,16 +9,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { ShieldAlert, User } from "lucide-react"
+import { ShieldAlert, User, ArrowLeft } from "lucide-react"
 import { currentUser } from "@/lib/data"
 
 export default function AdminDashboardPage() {
   return (
     <div className="flex flex-col min-h-screen w-full bg-[#1e2430]">
         <header className="flex items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
-            <Link href="/login?role=admin">
-              <Button variant="outline">Back</Button>
-            </Link>
+            <div className="w-24"></div>
             <UserNav>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                     <Avatar className="h-10 w-10">
@@ -46,6 +44,12 @@ export default function AdminDashboardPage() {
                 </CardContent>
             </Card>
         </main>
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Role Selection
+          </Button>
+        </Link>
     </div>
   )
 }

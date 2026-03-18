@@ -16,16 +16,17 @@ type ItemCardProps = {
   item: InventoryItem
   onSelect: () => void
   isSelected: boolean
+  isTeacherView?: boolean
 }
 
-export function ItemCard({ item, onSelect, isSelected }: ItemCardProps) {
+export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: ItemCardProps) {
   
   const getButton = () => {
     if (item.status === 'Borrowed') {
         return <Badge variant="secondary" className="w-full justify-center py-2 text-sm">Borrowed</Badge>
     }
     
-    if (item.status === 'Locked' && !isSelected) {
+    if (item.status === 'Locked' && !isSelected && !isTeacherView) {
         return (
             <Button onClick={onSelect} variant="destructive" className="w-full">
                 <Lock className="mr-2 h-4 w-4" />

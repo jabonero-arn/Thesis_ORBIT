@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu } from "lucide-react"
+import Link from "next/link"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 import { channels, currentUser, items as allItems } from "@/lib/data"
@@ -204,6 +205,12 @@ export default function Home() {
               setSelectedItems([]);
           }}
         />
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+            <Button variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Role Selection
+            </Button>
+        </Link>
       </div>
     </TooltipProvider>
   )

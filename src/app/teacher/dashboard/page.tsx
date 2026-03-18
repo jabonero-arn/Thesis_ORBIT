@@ -1,7 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, History as HistoryIcon, X } from "lucide-react"
+import Link from "next/link"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, ArrowLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 import { channels, currentUser, items as allItems, borrowHistory as initialBorrowHistory } from "@/lib/data"
@@ -15,7 +16,6 @@ import { CheckoutFlow } from "@/components/checkout-flow"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { UserNav } from "@/components/user-nav"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -32,9 +33,14 @@ const departments = [
   { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
 ];
 
+type TeacherView = 'borrow' | 'requests';
+
 export default function TeacherDashboardPage() {
   const { toast } = useToast()
   
+  // View state
+  const [activeView, setActiveView] = React.useState<TeacherView>('borrow');
+
   // State for borrowing
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
@@ -99,12 +105,8 @@ export default function TeacherDashboardPage() {
     const isSelected = selectedItems.some((i) => i.id === item.id)
     if (isSelected) {
         setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
-    } else if (item.status === "Locked") {
-        toast({
-            title: "Approval Request Sent",
-            description: `Your request to borrow "${item.name}" has been sent for approval.`,
-        });
     } else {
+        // Teachers can borrow any item directly, regardless of 'Locked' status
         setSelectedItems((prev) => [...prev, item])
     }
   }
@@ -193,70 +195,9 @@ export default function TeacherDashboardPage() {
     </div>
   );
 
-  return (
-    <TooltipProvider>
-      <div className="flex h-screen bg-[#1e2430]">
-        {/* Department Rail */}
-        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] p-2">
-          <div className="p-2 mb-2">
-            <Logo />
-          </div>
-          <div className="flex flex-col gap-2">
-            {departments.map(dept => (
-              <Tooltip key={dept.id}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={`h-12 w-12 rounded-full transition-all duration-200 ${selectedDepartmentId === dept.id ? 'bg-primary rounded-2xl' : 'hover:bg-accent'}`}
-                    onClick={() => handleDepartmentSelect(dept.id)}>
-                    {dept.icon}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  <p>{dept.name}</p>
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </div>
-          <div className="mt-auto p-2">
-            <UserNav>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                  <AvatarFallback><User /></AvatarFallback>
-                </Avatar>
-              </Button>
-            </UserNav>
-          </div>
-        </div>
-
-        {/* Channel List */}
-        <div className="hidden md:flex w-64 flex-col bg-[#141821] p-2">
-          <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-            {selectedDepartment?.name}
-          </div>
-          <AppSidebar
-            departmentPrefix={selectedDepartment?.prefix ?? ''}
-            selectedChannelId={selectedChannelId}
-            onChannelSelect={handleChannelSelect}
-          />
-          <div className="mt-auto">
-            <UserNav>
-              <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                  <AvatarFallback><User /></AvatarFallback>
-                </Avatar>
-                <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-              </div>
-            </UserNav>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <main className="flex-1 flex flex-col h-screen">
-          <header className="flex items-center justify-between md:justify-start gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+  const BorrowView = () => (
+    <>
+       <header className="flex items-center justify-between md:justify-start gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -297,40 +238,193 @@ export default function TeacherDashboardPage() {
               </SheetContent>
             </Sheet>
             <div className="flex items-center gap-2">
-                <HistoryIcon className="text-muted-foreground" />
-                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Teacher Dashboard</h1>
+                <Hash className="text-muted-foreground" />
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
             </div>
             <div className="md:hidden w-8" />
-          </header>
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <Tabs defaultValue="borrow">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="borrow">Borrow Equipment</TabsTrigger>
-                <TabsTrigger value="requests">Approve Requests</TabsTrigger>
-              </TabsList>
-              <TabsContent value="borrow" className="mt-6">
-                <InventoryGrid
-                  items={items}
-                  onItemSelect={handleItemSelect}
-                  selectedItems={selectedItems}
-                />
-              </TabsContent>
-              <TabsContent value="requests" className="mt-6">
-                <ApprovalRequests />
-              </TabsContent>
-            </Tabs>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            <InventoryGrid
+                items={items}
+                onItemSelect={handleItemSelect}
+                selectedItems={selectedItems}
+                isTeacherView={true}
+            />
+        </div>
+    </>
+  );
+
+  const RequestsView = () => (
+    <>
+        <header className="flex items-center justify-between md:justify-start gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu />
+                  <span className="sr-only">Open Menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r border-border/50 flex flex-col">
+                 <div className="flex flex-col h-full">
+                    {/* Simplified mobile menu for requests view */}
+                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                        Menu
+                    </div>
+                     <div className="p-2 space-y-1">
+                        <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('borrow')}>
+                            <LayoutGrid /> Borrow Equipment
+                        </Button>
+                        <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('requests')}>
+                           <ClipboardCheck /> Approve Requests
+                        </Button>
+                    </div>
+                    <div className="mt-auto">
+                        <UserNav>
+                        <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
+                            <Avatar className="h-8 w-8">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback><User /></AvatarFallback>
+                            </Avatar>
+                            <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                        </div>
+                        </UserNav>
+                    </div>
+                 </div>
+              </SheetContent>
+            </Sheet>
+            <div className="flex items-center gap-2">
+                <ClipboardCheck className="text-muted-foreground" />
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Approve Requests</h1>
+            </div>
+            <div className="md:hidden w-8" />
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            <ApprovalRequests />
+        </div>
+    </>
+  );
+
+
+  return (
+    <TooltipProvider>
+      <div className="flex h-screen bg-[#1e2430]">
+        {/* Department & View Rail */}
+        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] p-2">
+          <div className="p-2 mb-2">
+            <Logo />
           </div>
+          <div className="flex flex-col gap-2">
+            {departments.map(dept => (
+              <Tooltip key={dept.id}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={selectedDepartmentId === dept.id && activeView === 'borrow' ? 'secondary' : 'ghost'}
+                    size="icon"
+                    disabled={activeView !== 'borrow'}
+                    className={`h-12 w-12 rounded-full transition-all duration-200 ${selectedDepartmentId === dept.id && activeView === 'borrow' ? 'bg-primary rounded-2xl' : 'hover:bg-accent'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                    onClick={() => handleDepartmentSelect(dept.id)}>
+                    {dept.icon}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                  <p>{dept.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+
+          <Separator className="my-4 bg-border/50 w-8" />
+
+          <div className="flex flex-col gap-2">
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button 
+                        variant={activeView === 'borrow' ? 'secondary' : 'ghost'} 
+                        size="icon" 
+                        className="h-12 w-12 rounded-full transition-all duration-200"
+                        onClick={() => setActiveView('borrow')}>
+                        <LayoutGrid />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                    <p>Borrow Equipment</p>
+                </TooltipContent>
+            </Tooltip>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button 
+                        variant={activeView === 'requests' ? 'secondary' : 'ghost'} 
+                        size="icon" 
+                        className="h-12 w-12 rounded-full transition-all duration-200"
+                        onClick={() => setActiveView('requests')}>
+                        <ClipboardCheck />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                    <p>Approve Requests</p>
+                </TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="mt-auto p-2">
+            <UserNav>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                  <AvatarFallback><User /></AvatarFallback>
+                </Avatar>
+              </Button>
+            </UserNav>
+          </div>
+        </div>
+
+        {/* Channel List */}
+        {activeView === 'borrow' && (
+            <div className="hidden md:flex w-64 flex-col bg-[#141821] p-2">
+            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                {selectedDepartment?.name}
+            </div>
+            <AppSidebar
+                departmentPrefix={selectedDepartment?.prefix ?? ''}
+                selectedChannelId={selectedChannelId}
+                onChannelSelect={handleChannelSelect}
+            />
+            <div className="mt-auto">
+                <UserNav>
+                <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Avatar className="h-8 w-8">
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                    <AvatarFallback><User /></AvatarFallback>
+                    </Avatar>
+                    <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                </div>
+                </UserNav>
+            </div>
+            </div>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col h-screen">
+          {activeView === 'borrow' ? <BorrowView /> : <RequestsView />}
         </main>
 
         {/* Cart */}
-        <CheckoutFlow
-          key={selectedChannelId}
-          items={selectedItems}
-          onClear={() => setSelectedItems([])}
-          onSuccess={() => {
-            setSelectedItems([]);
-          }}
-        />
+        {activeView === 'borrow' && (
+            <CheckoutFlow
+            key={selectedChannelId}
+            items={selectedItems}
+            onClear={() => setSelectedItems([])}
+            onSuccess={() => {
+                setSelectedItems([]);
+            }}
+            />
+        )}
+        <Link href="/" className="fixed bottom-6 right-6 z-50">
+          <Button variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Role Selection
+          </Button>
+        </Link>
       </div>
     </TooltipProvider>
   )
