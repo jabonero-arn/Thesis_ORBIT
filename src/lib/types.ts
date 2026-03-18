@@ -30,5 +30,5 @@ export type BorrowHistory = {
     studentName: string;
     itemName: string;
     date: string;
-    status: 'Approved' | 'Pending';
+    status: 'Approved' | 'Pending' | 'Denied';
 };

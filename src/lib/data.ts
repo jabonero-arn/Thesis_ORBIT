@@ -175,7 +175,7 @@ export const items: InventoryItem[] = [
 
 export const borrowHistory: BorrowHistory[] = [
     { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Approved' },
-    { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Approved' },
+    { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Denied' },
     { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-26', status: 'Approved' },
     { id: 'bh4', studentName: 'Casey Jones', itemName: '3D Printer', date: '2024-07-29', status: 'Pending' },
 ];

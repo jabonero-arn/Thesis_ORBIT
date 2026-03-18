@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 import { channels, currentUser, items as allItems } from "@/lib/data"
 import type { InventoryItem, Channel } from "@/lib/types"
@@ -13,7 +14,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CheckoutFlow } from "@/components/checkout-flow"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { OtpDialog } from "@/components/otp-dialog"
 import { UserNav } from "@/components/user-nav"
 
 const departments = [
@@ -23,14 +23,13 @@ const departments = [
 ];
 
 export default function Home() {
+  const { toast } = useToast()
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
     channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
   );
   
   const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
-  const [isOtpDialogOpen, setIsOtpDialogOpen] = React.useState(false)
-  const [itemForOtp, setItemForOtp] = React.useState<InventoryItem | null>(null)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   
   const handleDepartmentSelect = (deptId: string) => {
@@ -58,21 +57,15 @@ export default function Home() {
         // Always allow deselecting
         setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
     } else if (item.status === "Locked") {
-        // If locked and not selected, show OTP dialog
-        setItemForOtp(item)
-        setIsOtpDialogOpen(true)
+        // If locked and not selected, inform user request has been sent
+        toast({
+            title: "Approval Request Sent",
+            description: `Your request to borrow "${item.name}" has been sent for approval.`,
+        });
     } else {
         // If available, just add it
         setSelectedItems((prev) => [...prev, item])
     }
-  }
-
-  const handleOtpSuccess = () => {
-    if (itemForOtp) {
-      setSelectedItems((prev) => [...prev, itemForOtp])
-    }
-    setIsOtpDialogOpen(false)
-    setItemForOtp(null)
   }
 
   const handleChannelSelect = (id: string) => {
@@ -210,13 +203,6 @@ export default function Home() {
           onSuccess={() => {
               setSelectedItems([]);
           }}
-        />
-
-        <OtpDialog
-            item={itemForOtp}
-            open={isOtpDialogOpen}
-            onOpenChange={setIsOtpDialogOpen}
-            onSuccess={handleOtpSuccess}
         />
       </div>
     </TooltipProvider>
