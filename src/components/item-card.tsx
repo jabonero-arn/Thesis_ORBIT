@@ -71,10 +71,10 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: 
           )}
         </div>
       </CardHeader>
-      <CardContent className="flex-1 p-4 pb-0">
-        <CardTitle className="font-headline text-lg leading-tight">{item.name}</CardTitle>
+      <CardContent className="flex-1 p-4">
+        <CardTitle className="font-headline text-lg md:text-xl leading-tight">{item.name}</CardTitle>
       </CardContent>
-      <CardFooter className="p-4 mt-auto">
+      <CardFooter className="px-4 pb-4 mt-auto">
         {getButton()}
       </CardFooter>
     </Card>
