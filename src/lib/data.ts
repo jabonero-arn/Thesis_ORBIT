@@ -1,4 +1,4 @@
-import type { Channel, InventoryItem, User } from "@/lib/types";
+import type { Channel, InventoryItem, User, BorrowHistory } from "@/lib/types";
 
 export const currentUser: User = {
   id: 'user-1',
@@ -42,7 +42,7 @@ export const items: InventoryItem[] = [
     description: "For intensive computing tasks.",
     channelId: "computer-lab-1",
     status: "Available",
-    imageUrl: "https://i.pinimg.com/736x/f6/f5/0f/f6f50f7c6071824e85801ab858121b17.jpg",
+    imageUrl: "https://cdn.shopify.com/s/files/1/0632/2244/8205/files/AMD-Elite-10-scaled_1a0b6d95-5a74-49a2-9c59-2a026b0ebd4c.webp?v=1758667214",
     imageHint: "desktop computer",
   },
   {
@@ -171,4 +171,11 @@ export const items: InventoryItem[] = [
     imageUrl: "https://picsum.photos/seed/3d-printer/600/400",
     imageHint: "3d printer",
   },
+];
+
+export const borrowHistory: BorrowHistory[] = [
+    { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Approved' },
+    { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Approved' },
+    { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-26', status: 'Approved' },
+    { id: 'bh4', studentName: 'Casey Jones', itemName: '3D Printer', date: '2024-07-29', status: 'Pending' },
 ];

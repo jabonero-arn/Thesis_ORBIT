@@ -20,15 +20,32 @@ import { Logo } from "@/components/logo"
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const [email, setEmail] = React.useState('');
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    
+    let redirectPath = "/dashboard"; // Default to student dashboard
+    let userRole = "Student";
+
+    if (email.includes("teacher")) {
+        redirectPath = "/teacher/dashboard";
+        userRole = "Teacher";
+    } else if (email.includes("admin")) {
+        redirectPath = "/admin/dashboard";
+        userRole = "Admin";
+    } else if (email.includes("staff")) {
+        redirectPath = "/staff/dashboard";
+        userRole = "Staff";
+    }
+
     toast({
       title: "Logged In!",
-      description: "Welcome back. Redirecting to dashboard...",
+      description: `Welcome back, ${userRole}. Redirecting...`,
     })
+
     setTimeout(() => {
-        router.push("/dashboard")
+        router.push(redirectPath)
     }, 1000);
   };
 
@@ -44,11 +61,21 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="student@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="role@example.com" 
+                required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+               <p className="text-xs text-muted-foreground pt-1">
+                Use 'teacher@', 'admin@', or 'staff@' to access other dashboards.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required />
+              <Input id="password" type="password" required defaultValue="password" />
             </div>
             <Button type="submit" className="w-full mt-2">Sign In</Button>
           </form>

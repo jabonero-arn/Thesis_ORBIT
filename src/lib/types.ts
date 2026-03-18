@@ -1,4 +1,4 @@
-export type Role = "Student" | "Teacher" | "Admin";
+export type Role = "Student" | "Teacher" | "Admin" | "Staff";
 
 export type User = {
   id: string;
@@ -23,4 +23,12 @@ export type InventoryItem = {
   status: ItemStatus;
   imageUrl: string;
   imageHint: string;
+};
+
+export type BorrowHistory = {
+    id: string;
+    studentName: string;
+    itemName: string;
+    date: string;
+    status: 'Approved' | 'Pending';
 };
