@@ -148,17 +148,6 @@ export default function Home() {
               selectedChannelId={selectedChannelId}
               onChannelSelect={handleChannelSelect}
             />
-             <div className="mt-auto">
-                <UserNav role="Student">
-                    <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
-                        <Avatar className="h-8 w-8">
-                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                        <AvatarFallback><User /></AvatarFallback>
-                        </Avatar>
-                        <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                    </div>
-                </UserNav>
-             </div>
         </div>
         
         {/* Main Content */}
@@ -173,35 +162,22 @@ export default function Home() {
                       </Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r border-border/50 flex flex-col">
-                      <div className="flex flex-col h-full">
-                          <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                              Departments
-                          </div>
-                          <div className="p-2 space-y-1">
-                              {departments.map(dept => (
-                                  <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
-                                      {dept.icon}
-                                      {dept.name}
-                                  </Button>
-                              ))}
-                          </div>
-                          <AppSidebar
-                            departmentPrefix={selectedDepartment?.prefix ?? ''}
-                            selectedChannelId={selectedChannelId}
-                            onChannelSelect={handleChannelSelect}
-                          />
-                           <div className="mt-auto">
-                              <UserNav role="Student">
-                                  <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
-                                      <Avatar className="h-8 w-8">
-                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                      <AvatarFallback><User /></AvatarFallback>
-                                      </Avatar>
-                                      <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                                  </div>
-                              </UserNav>
-                           </div>
+                      <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                          Departments
                       </div>
+                      <div className="p-2 space-y-1">
+                          {departments.map(dept => (
+                              <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
+                                  {dept.icon}
+                                  {dept.name}
+                              </Button>
+                          ))}
+                      </div>
+                      <AppSidebar
+                        departmentPrefix={selectedDepartment?.prefix ?? ''}
+                        selectedChannelId={selectedChannelId}
+                        onChannelSelect={handleChannelSelect}
+                      />
                   </SheetContent>
               </Sheet>
               <div className="flex items-center gap-2">
@@ -209,7 +185,18 @@ export default function Home() {
                   <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
               </div>
             </div>
-             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
+            <div className="md:hidden">
+                <UserNav role="Student">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                        <Avatar className="h-10 w-10">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback>
+                                <User />
+                            </AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </UserNav>
+            </div>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid 

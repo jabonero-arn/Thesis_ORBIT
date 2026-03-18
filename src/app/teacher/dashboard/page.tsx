@@ -221,17 +221,6 @@ export default function TeacherDashboardPage() {
                         selectedChannelId={selectedChannelId}
                         onChannelSelect={handleChannelSelect}
                       />
-                      <div className="mt-auto">
-                        <UserNav role="Teacher">
-                          <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                              <AvatarFallback><User /></AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                          </div>
-                        </UserNav>
-                      </div>
                     </div>
                   </SheetContent>
                 </Sheet>
@@ -240,7 +229,16 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
                 </div>
             </div>
-             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
+            <div className="md:hidden">
+                <UserNav role="Teacher">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                        <Avatar className="h-10 w-10">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback><User /></AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </UserNav>
+            </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <InventoryGrid
@@ -278,17 +276,6 @@ export default function TeacherDashboardPage() {
                                <ClipboardCheck /> Approve Requests
                             </Button>
                         </div>
-                        <div className="mt-auto">
-                            <UserNav role="Teacher">
-                            <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
-                                <Avatar className="h-8 w-8">
-                                <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                <AvatarFallback><User /></AvatarFallback>
-                                </Avatar>
-                                <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                            </div>
-                            </UserNav>
-                        </div>
                      </div>
                   </SheetContent>
                 </Sheet>
@@ -297,7 +284,16 @@ export default function TeacherDashboardPage() {
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Approve Requests</h1>
                 </div>
             </div>
-             <div className="md:hidden w-24" /> {/* Spacer for mobile */}
+            <div className="md:hidden">
+                <UserNav role="Teacher">
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                        <Avatar className="h-10 w-10">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback><User /></AvatarFallback>
+                        </Avatar>
+                    </Button>
+                </UserNav>
+            </div>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             <ApprovalRequests />
@@ -389,17 +385,6 @@ export default function TeacherDashboardPage() {
                 selectedChannelId={selectedChannelId}
                 onChannelSelect={handleChannelSelect}
             />
-            <div className="mt-auto">
-                <UserNav role="Teacher">
-                <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
-                    <Avatar className="h-8 w-8">
-                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                    <AvatarFallback><User /></AvatarFallback>
-                    </Avatar>
-                    <span className="font-semibold text-sm truncate">{currentUser.name}</span>
-                </div>
-                </UserNav>
-            </div>
             </div>
         )}
 
