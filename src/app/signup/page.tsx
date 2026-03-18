@@ -61,8 +61,8 @@ export default function SignUpPage() {
               <Input id="name" placeholder="Arnie Jabonero" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="student@example.com" required />
+              <Label htmlFor="username">Username</Label>
+              <Input id="username" type="text" placeholder="Enter a username" required />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">

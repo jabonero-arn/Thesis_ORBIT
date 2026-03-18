@@ -20,7 +20,7 @@ import { Logo } from "@/components/logo"
 export default function LoginPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const [email, setEmail] = React.useState('');
+  const [username, setUsername] = React.useState('');
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -28,13 +28,13 @@ export default function LoginPage() {
     let redirectPath = "/dashboard"; // Default to student dashboard
     let userRole = "Student";
 
-    if (email.includes("teacher")) {
+    if (username.includes("teacher")) {
         redirectPath = "/teacher/dashboard";
         userRole = "Teacher";
-    } else if (email.includes("admin")) {
+    } else if (username.includes("admin")) {
         redirectPath = "/admin/dashboard";
         userRole = "Admin";
-    } else if (email.includes("staff")) {
+    } else if (username.includes("staff")) {
         redirectPath = "/staff/dashboard";
         userRole = "Staff";
     }
@@ -60,17 +60,17 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input 
-                id="email" 
-                type="email" 
-                placeholder="role@example.com" 
+                id="username" 
+                type="text" 
+                placeholder="Enter your username" 
                 required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
                <p className="text-xs text-muted-foreground pt-1">
-                Use 'teacher@', 'admin@', or 'staff@' to access other dashboards.
+                Use 'teacher', 'admin', or 'staff' in your username to access other dashboards.
               </p>
             </div>
             <div className="grid gap-2">
