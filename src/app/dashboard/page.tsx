@@ -14,6 +14,7 @@ import { CheckoutFlow } from "@/components/checkout-flow"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { OtpDialog } from "@/components/otp-dialog"
+import { UserNav } from "@/components/user-nav"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -107,12 +108,16 @@ export default function Home() {
             ))}
           </div>
           <div className="mt-auto p-2">
-             <Avatar className="h-10 w-10">
-              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-              <AvatarFallback>
-                <User />
-              </AvatarFallback>
-            </Avatar>
+             <UserNav>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                    <Avatar className="h-10 w-10">
+                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                        <AvatarFallback>
+                            <User />
+                        </AvatarFallback>
+                    </Avatar>
+                </Button>
+            </UserNav>
           </div>
         </div>
 
@@ -126,12 +131,16 @@ export default function Home() {
               selectedChannelId={selectedChannelId}
               onChannelSelect={handleChannelSelect}
             />
-             <div className="mt-auto flex items-center gap-2 p-2 bg-black/20 rounded-md">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                  <AvatarFallback><User /></AvatarFallback>
-                </Avatar>
-                <span className="font-semibold text-sm">{currentUser.name}</span>
+             <div className="mt-auto">
+                <UserNav>
+                    <div className="flex items-center gap-2 p-2 bg-black/20 rounded-md cursor-pointer hover:bg-accent/50 transition-colors">
+                        <Avatar className="h-8 w-8">
+                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                        <AvatarFallback><User /></AvatarFallback>
+                        </Avatar>
+                        <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                    </div>
+                </UserNav>
              </div>
         </div>
         
@@ -163,12 +172,16 @@ export default function Home() {
                           selectedChannelId={selectedChannelId}
                           onChannelSelect={handleChannelSelect}
                         />
-                         <div className="mt-auto flex items-center gap-2 p-4 bg-black/20">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                              <AvatarFallback><User /></AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold text-sm">{currentUser.name}</span>
+                         <div className="mt-auto">
+                            <UserNav>
+                                <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
+                                    <Avatar className="h-8 w-8">
+                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                    <AvatarFallback><User /></AvatarFallback>
+                                    </Avatar>
+                                    <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                                </div>
+                            </UserNav>
                          </div>
                     </div>
                 </SheetContent>
