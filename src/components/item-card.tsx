@@ -3,9 +3,6 @@ import type { InventoryItem } from "@/lib/types"
 import {
   Card,
   CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -50,33 +47,31 @@ export function ItemCard({ item, onSelect, isSelected, isTeacherView = false }: 
   return (
     <Card 
       className={cn(
-        "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm border border-transparent rounded-lg",
-        isSelected ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50",
+        "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm",
+        isSelected ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-lg",
         item.status === "Borrowed" && "opacity-50 cursor-not-allowed"
       )}
     >
-      <CardHeader className="p-0">
-        <div className="relative aspect-square md:aspect-video">
-          <Image
-            src={item.imageUrl}
-            alt={item.name}
-            fill
-            className="object-cover"
-            data-ai-hint={item.imageHint}
-          />
-           {isSelected && (
-            <div className="absolute inset-0 bg-primary/70 flex items-center justify-center">
-              <CheckCircle className="h-12 w-12 text-primary-foreground" />
-            </div>
-          )}
+      <div className="relative aspect-square">
+        <Image
+          src={item.imageUrl}
+          alt={item.name}
+          fill
+          className="object-cover"
+          data-ai-hint={item.imageHint}
+        />
+          {isSelected && (
+          <div className="absolute inset-0 bg-primary/70 flex items-center justify-center">
+            <CheckCircle className="h-12 w-12 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+      <CardContent className="flex flex-1 flex-col p-4">
+        <p className="flex-1 text-sm font-medium leading-snug">{item.name}</p>
+        <div className="mt-4">
+          {getButton()}
         </div>
-      </CardHeader>
-      <CardContent className="flex-1 p-4">
-        <CardTitle className="font-headline text-lg md:text-xl leading-tight">{item.name}</CardTitle>
       </CardContent>
-      <CardFooter className="px-4 pb-4 mt-auto">
-        {getButton()}
-      </CardFooter>
     </Card>
   )
 }
