@@ -3,6 +3,8 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,6 +19,8 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-md bg-[#111214] border-none p-0 overflow-hidden">
+        <DialogTitle className="sr-only">{name}'s Profile</DialogTitle>
+        <DialogDescription className="sr-only">Detailed profile information for {name}.</DialogDescription>
         <div className="relative">
             <div className="h-24 bg-zinc-700"></div>
             <div className="absolute top-16 left-4">
