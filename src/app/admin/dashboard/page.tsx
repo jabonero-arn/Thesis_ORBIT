@@ -3,7 +3,7 @@
 import * as React from "react"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
-    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Sparkles,
+    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
     Shield, ClipboardList, BookUser
 } from "lucide-react"
 import {
@@ -40,7 +40,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
-import AiSuggestionForm from "@/components/ai-suggestion-form"
 
 const allUsers = [
     { id: 'user-1', name: 'Arnie Jabonero', role: 'Student' },
@@ -254,15 +253,6 @@ export default function AdminDashboardPage() {
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Borrowed</CardTitle><PackageCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedItemsCount}</div></CardContent></Card>
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Reserved</CardTitle><Hourglass className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{reservedItemsCount}</div></CardContent></Card>
                         </div>
-                        <Card className="bg-card/80">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Equipment Suggestions</CardTitle>
-                                <CardDescription>Need recommendations for a new project or lab setup? Describe your goals, and the AI will suggest the right equipment to order.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <AiSuggestionForm />
-                            </CardContent>
-                        </Card>
                      </div>
                 );
              case 'inventory':
