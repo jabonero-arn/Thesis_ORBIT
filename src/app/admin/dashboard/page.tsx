@@ -337,17 +337,9 @@ export default function AdminDashboardPage() {
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
             <UserNav role="Admin">
               <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                    <AvatarFallback>
-                      <User />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="overflow-hidden">
-                    <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                    <p className="text-xs text-muted-foreground">Admin</p>
-                  </div>
+                <div className="overflow-hidden">
+                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                  <p className="text-xs text-muted-foreground">Admin</p>
                 </div>
                 <Settings className="h-5 w-5 text-muted-foreground" />
               </div>
@@ -395,17 +387,9 @@ export default function AdminDashboardPage() {
                     <div className="mt-auto w-full border-t border-border/50">
                       <UserNav role="Admin">
                         <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                          <div className="flex items-center gap-2 overflow-hidden">
-                            <Avatar className="h-8 w-8 flex-shrink-0">
-                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                              <AvatarFallback>
-                                <User />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="overflow-hidden">
-                              <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                              <p className="text-xs text-muted-foreground">Admin</p>
-                            </div>
+                          <div className="overflow-hidden">
+                            <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                            <p className="text-xs text-muted-foreground">Admin</p>
                           </div>
                           <Settings className="h-5 w-5 text-muted-foreground" />
                         </div>
