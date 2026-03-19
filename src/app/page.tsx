@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { User, Shield, ClipboardList, BookUser } from "lucide-react"
+import { User, Shield, ClipboardList, BookUser, CheckCircle } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 export default function RoleSelectionPage() {
   const roles = [
@@ -36,26 +37,47 @@ export default function RoleSelectionPage() {
     },
   ]
 
+  const features = [
+      "Real-time stock tracking",
+      "Role-based dashboards",
+      "Item reservation system",
+      "QR code for quick checkout",
+  ]
+
   return (
-    <div className="relative flex h-screen w-full items-center justify-center bg-[#1e2430] p-4 lg:p-8">
+    <div className="flex h-screen w-full items-center justify-center bg-[#1e2430] p-4 lg:p-8">
       <div className="flex w-full max-w-4xl flex-col items-center justify-center gap-8 lg:flex-row lg:items-stretch">
-        {/* About Us Card - Hidden on mobile, shown on lg screens */}
+
+        {/* Info Card */}
         <Card className="hidden w-full max-w-sm flex-col border-border/50 bg-card/80 backdrop-blur-sm lg:flex">
-          <CardHeader className="items-center text-center">
-            <Logo />
-            <CardTitle className="pt-2 font-headline text-2xl">
-              About LabFlow
+          <CardHeader>
+            <CardTitle className="font-headline text-xl">
+              Laboratory Materials Borrowing and Management
             </CardTitle>
-            <CardDescription>
-              Streamlining Laboratory Management
-            </CardDescription>
+             <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary">Admin</Badge>
+                <Badge variant="secondary">Staff</Badge>
+                <Badge variant="secondary">Teacher</Badge>
+                <Badge variant="secondary">Student</Badge>
+            </div>
           </CardHeader>
-          <CardContent className="flex flex-1 items-center justify-center text-center">
-            <p className="text-muted-foreground">
-              LabFlow simplifies laboratory equipment management with a
-              Discord-inspired interface, making borrowing easy for students and
-              inventory control efficient for staff.
-            </p>
+          <CardContent className="flex flex-1 flex-col justify-between gap-4">
+            <div className="space-y-3 rounded-lg border border-border/50 bg-black/20 p-4">
+                {features.map((feature, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground">{feature}</span>
+                    </div>
+                ))}
+            </div>
+            <div>
+                 <h3 className="font-semibold mb-2">About LabFlow</h3>
+                 <p className="text-sm text-muted-foreground">
+                    LabFlow simplifies laboratory equipment management with a
+                    Discord-inspired interface, making borrowing easy for students and
+                    inventory control efficient for staff.
+                </p>
+            </div>
           </CardContent>
         </Card>
 
