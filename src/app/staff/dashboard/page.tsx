@@ -294,8 +294,7 @@ export default function StaffDashboardPage() {
             )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
-            <UserNav role="Staff">
-              <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
+            <div className="flex items-center justify-between p-2">
                  <div className="flex items-center gap-3">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -306,9 +305,8 @@ export default function StaffDashboardPage() {
                       <p className="text-xs text-muted-foreground">Staff</p>
                     </div>
                   </div>
-                <Settings className="h-5 w-5 text-muted-foreground" />
+                <UserNav role="Staff" />
               </div>
-            </UserNav>
           </div>
       </div>
     );
@@ -357,8 +355,7 @@ export default function StaffDashboardPage() {
                         )}
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
-                      <UserNav role="Staff">
-                        <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
+                      <div className="flex items-center justify-between p-2">
                           <div className="flex items-center gap-3">
                               <Avatar className="h-8 w-8">
                                   <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -369,9 +366,8 @@ export default function StaffDashboardPage() {
                                 <p className="text-xs text-muted-foreground">Staff</p>
                               </div>
                             </div>
-                          <Settings className="h-5 w-5 text-muted-foreground" />
+                          <UserNav role="Staff" />
                         </div>
-                      </UserNav>
                     </div>
                 </div>
 

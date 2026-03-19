@@ -9,7 +9,6 @@ import {
   LogOut,
   LayoutGrid,
   Inbox,
-  Home,
 } from "lucide-react"
 
 import {
@@ -24,8 +23,9 @@ import {
 import { currentUser } from "@/lib/data"
 import { HelpDialog } from "./help-dialog"
 import type { Role } from "@/lib/types"
+import { Button } from "./ui/button"
 
-export function UserNav({ children, role }: { children: React.ReactNode, role?: Role }) {
+export function UserNav({ role }: { role?: Role }) {
   const displayRole = role || currentUser.role;
 
   const getDashboardPath = () => {
@@ -45,7 +45,10 @@ export function UserNav({ children, role }: { children: React.ReactNode, role?: 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        {children}
+        <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+            <Settings className="h-5 w-5" />
+            <span className="sr-only">Open user menu</span>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
@@ -58,12 +61,6 @@ export function UserNav({ children, role }: { children: React.ReactNode, role?: 
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link href="/" className="w-full flex items-center">
-              <Home className="mr-2 h-4 w-4" />
-              <span>Homepage</span>
-            </Link>
-          </DropdownMenuItem>
           <DropdownMenuItem asChild className="cursor-pointer">
             <Link href={getDashboardPath()} className="w-full flex items-center">
               <LayoutGrid className="mr-2 h-4 w-4" />
