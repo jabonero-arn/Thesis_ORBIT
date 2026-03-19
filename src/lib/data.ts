@@ -5,6 +5,14 @@ export const currentUser: User = {
   name: 'Arnie Jabonero',
   role: 'Student',
   avatarUrl: 'https://i.pinimg.com/736x/38/43/d4/3843d494d3ecb871de072528e60d06a8.jpg',
+  // Student Fields
+  idNumber: '2021-01234',
+  year: '3rd Year',
+  grade: '1.75',
+  course: 'BS in Computer Science',
+  // Teacher/Staff/Admin Fields
+  department: 'College of Computer Studies',
+  employeeId: 'EMP-98765',
 };
 
 export const channels: Channel[] = [

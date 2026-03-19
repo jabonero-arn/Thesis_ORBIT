@@ -61,16 +61,6 @@ export function UserNav({ role }: { role?: Role }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild className="cursor-pointer">
-            <Link href={getDashboardPath()} className="w-full flex items-center">
-              <LayoutGrid className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="cursor-pointer">
-            <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
-          </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer">
             <History className="mr-2 h-4 w-4" />
             <span>Borrow History</span>

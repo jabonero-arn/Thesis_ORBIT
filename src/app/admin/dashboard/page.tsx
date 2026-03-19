@@ -41,6 +41,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { useAppContext } from "@/context/app-context"
 import { cn } from "@/lib/utils"
+import { UserProfileModal } from "@/components/user-profile-modal"
 
 
 const allUsers = [
@@ -336,16 +337,18 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
             <div className="flex items-center justify-between p-2">
-                 <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="overflow-hidden">
-                      <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                      <p className="text-xs text-muted-foreground">Admin</p>
+                 <UserProfileModal role="Admin">
+                    <div className="flex items-center gap-3 cursor-pointer group">
+                        <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                          <p className="text-xs text-muted-foreground">Admin</p>
+                        </div>
                     </div>
-                  </div>
+                  </UserProfileModal>
                 <UserNav role="Admin" />
               </div>
           </div>
@@ -398,16 +401,18 @@ export default function AdminDashboardPage() {
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
                         <div className="flex items-center justify-between p-2">
-                           <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                  <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-                              </Avatar>
-                              <div className="overflow-hidden">
-                                <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                                <p className="text-xs text-muted-foreground">Admin</p>
-                              </div>
-                            </div>
+                            <UserProfileModal role="Admin">
+                                <div className="flex items-center gap-3 cursor-pointer group">
+                                  <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all">
+                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                      <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                                  <div className="overflow-hidden">
+                                    <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                    <p className="text-xs text-muted-foreground">Admin</p>
+                                  </div>
+                                </div>
+                            </UserProfileModal>
                           <UserNav role="Admin" />
                         </div>
                     </div>

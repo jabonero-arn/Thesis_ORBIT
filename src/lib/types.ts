@@ -5,6 +5,14 @@ export type User = {
   name: string;
   role: Role;
   avatarUrl: string;
+  // Student specific
+  idNumber?: string;
+  year?: string;
+  grade?: string;
+  course?: string;
+  // Teacher/Staff/Admin specific
+  department?: string;
+  employeeId?: string;
 };
 
 export type Channel = {
