@@ -17,6 +17,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { UserNav } from "@/components/user-nav"
 import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
+import { UserProfileModal } from "@/components/user-profile-modal"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -164,9 +165,10 @@ export default function Home() {
                 </div>
             </div>
             <div className="border-t border-border/50 bg-[#0e1015]">
-                <div className="flex items-center justify-between p-2">
-                    <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
+              <div className="flex items-center justify-between p-2">
+                  <UserProfileModal role="Student">
+                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer group">
+                        <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all flex-shrink-0">
                             <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                             <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
                         </Avatar>
@@ -175,8 +177,9 @@ export default function Home() {
                           <p className="text-xs text-muted-foreground">Student</p>
                         </div>
                     </div>
-                    <UserNav role="Student" />
-                </div>
+                  </UserProfileModal>
+                  <UserNav role="Student" />
+              </div>
             </div>
         </div>
         
@@ -213,16 +216,18 @@ export default function Home() {
                         </div>
                         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
                           <div className="flex items-center justify-between p-2">
-                              <div className="flex items-center gap-3">
-                                  <Avatar className="h-8 w-8">
-                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                      <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-                                  </Avatar>
-                                  <div className="overflow-hidden">
-                                    <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                                    <p className="text-xs text-muted-foreground">Student</p>
-                                  </div>
-                              </div>
+                              <UserProfileModal role="Student">
+                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer group">
+                                    <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all flex-shrink-0">
+                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="overflow-hidden">
+                                      <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                      <p className="text-xs text-muted-foreground">Student</p>
+                                    </div>
+                                </div>
+                              </UserProfileModal>
                               <UserNav role="Student" />
                           </div>
                         </div>
