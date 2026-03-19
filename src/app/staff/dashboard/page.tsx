@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -36,6 +35,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 const departments = [
@@ -219,6 +219,52 @@ export default function StaffDashboardPage() {
         )
     };
 
+    const InventoryTable = ({ items: tableItems }: { items: InventoryItem[] }) => (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden md:table-cell">Lab</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {tableItems.length > 0 ? tableItems.map(item => (
+                    <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="hidden md:table-cell">{getItemChannelName(item.channelId)}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell className="text-right space-x-2">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
+                    </TableRow>
+                )) : (
+                    <TableRow>
+                        <TableCell colSpan={5} className="text-center h-24">No items found in this lab.</TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    );
+
     const renderContent = () => {
         switch (activeView) {
             case 'borrow':
@@ -240,22 +286,22 @@ export default function StaffDashboardPage() {
                             <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
                         </CardHeader>
                         <CardContent>
-                            <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead className="hidden md:table-cell">Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>
-                                    {items.map(item => (
-                                        <TableRow key={item.id}>
-                                            <TableCell className="font-medium">{item.name}</TableCell>
-                                            <TableCell className="hidden md:table-cell">{getItemChannelName(item.channelId)}</TableCell>
-                                            <TableCell>{item.quantity}</TableCell>
-                                            <TableCell>{getStatusBadge(item.status)}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
-                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-                                            </TableCell>
-                                        </TableRow>
+                            <Tabs defaultValue="all" className="w-full">
+                                <TabsList className="grid w-full grid-cols-4 mb-4">
+                                    <TabsTrigger value="all">All Items</TabsTrigger>
+                                    {departments.map(dept => (
+                                        <TabsTrigger key={dept.id} value={dept.id}>{dept.name}</TabsTrigger>
                                     ))}
-                                </TableBody>
-                            </Table>
+                                </TabsList>
+                                <TabsContent value="all">
+                                    <InventoryTable items={items} />
+                                </TabsContent>
+                                {departments.map(dept => (
+                                    <TabsContent key={dept.id} value={dept.id}>
+                                        <InventoryTable items={items.filter(item => item.channelId.startsWith(dept.prefix))} />
+                                    </TabsContent>
+                                ))}
+                           </Tabs>
                         </CardContent>
                     </Card>
                 );
