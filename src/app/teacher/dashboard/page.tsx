@@ -265,8 +265,8 @@ export default function TeacherDashboardPage() {
         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
           <div className="flex items-center justify-between p-2">
             <UserProfileModal role="Teacher">
-              <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer group">
-                <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all flex-shrink-0">
+              <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                     <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
                 </Avatar>
@@ -445,8 +445,8 @@ export default function TeacherDashboardPage() {
             <div className="border-t border-border/50 bg-[#0e1015]">
                 <div className="flex items-center justify-between p-2">
                   <UserProfileModal role="Teacher">
-                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer group">
-                      <Avatar className="h-8 w-8 group-hover:ring-2 group-hover:ring-primary transition-all flex-shrink-0">
+                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                      <Avatar className="h-8 w-8 flex-shrink-0">
                           <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                           <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
                       </Avatar>
