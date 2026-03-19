@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { channels, currentUser } from "@/lib/data"
@@ -35,6 +35,7 @@ const departments = [
 ];
 
 type TeacherView = 'borrow' | 'requests';
+type RequestSubView = 'pending' | 'history';
 
 export default function TeacherDashboardPage() {
   const { toast } = useToast()
@@ -42,6 +43,7 @@ export default function TeacherDashboardPage() {
   
   // View state
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
+  const [requestSubView, setRequestSubView] = React.useState<RequestSubView>('pending');
 
   // State for borrowing
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -136,90 +138,112 @@ export default function TeacherDashboardPage() {
   };
 
 
-  const ApprovalRequests = () => (
-    <div className="space-y-8 text-foreground">
-      <div>
-        <h3 className="text-lg font-semibold font-headline mb-4">Pending Requests</h3>
-        <div className="border rounded-lg bg-card/50">
-          {pendingRequests.length > 0 ? (
+  const ApprovalRequests = () => {
+    if (requestSubView === 'pending') {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold font-headline mb-4">Pending Requests</h3>
+          <div className="border rounded-lg bg-card/50">
+            {pendingRequests.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Student</TableHead>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingRequests.map((record) => (
+                    <TableRow key={record.id}>
+                      <TableCell className="font-medium">{record.studentName}</TableCell>
+                      <TableCell>{record.itemName}</TableCell>
+                      <TableCell>{record.date}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button variant="secondary" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Approved')}>
+                          <Check className="mr-2 h-4 w-4" /> Approve
+                        </Button>
+                        <Button variant="destructive" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Denied')}>
+                          <X className="mr-2 h-4 w-4" /> Deny
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="flex items-center justify-center p-8 text-center text-muted-foreground">
+                <p>No pending requests.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    if (requestSubView === 'history') {
+      return (
+        <div>
+          <h3 className="text-lg font-semibold font-headline mb-4">Request History</h3>
+          <div className="border rounded-lg max-h-[70vh] overflow-y-auto bg-card/50">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="sticky top-0 bg-card z-10">
                   <TableHead>Student</TableHead>
                   <TableHead>Item</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pendingRequests.map((record) => (
+                {processedRequests.length > 0 ? processedRequests.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.studentName}</TableCell>
                     <TableCell>{record.itemName}</TableCell>
                     <TableCell>{record.date}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="secondary" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Approved')}>
-                        <Check className="mr-2 h-4 w-4" /> Approve
-                      </Button>
-                      <Button variant="destructive" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Denied')}>
-                        <X className="mr-2 h-4 w-4" /> Deny
-                      </Button>
+                    <TableCell className="text-right">
+                      <Badge variant={getBadgeVariant(record.status)}>
+                        {record.status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
-                ))}
+                )) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      No processed requests yet.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
-          ) : (
-            <div className="flex items-center justify-center p-8 text-center text-muted-foreground">
-              <p>No pending requests.</p>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-      <div>
-        <h3 className="text-lg font-semibold font-headline mb-4">Request History</h3>
-        <div className="border rounded-lg max-h-60 overflow-y-auto bg-card/50">
-          <Table>
-            <TableHeader>
-              <TableRow className="sticky top-0 bg-card z-10">
-                <TableHead>Student</TableHead>
-                <TableHead>Item</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {processedRequests.length > 0 ? processedRequests.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.studentName}</TableCell>
-                  <TableCell>{record.itemName}</TableCell>
-                  <TableCell>{record.date}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={getBadgeVariant(record.status)}>
-                      {record.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              )) : (
-                <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
-                    No processed requests yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    </div>
-  );
+      );
+    }
+
+    return null;
+  };
 
   const mobileSidebarContent = (
     <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
-            {activeView === 'borrow' ? (
+            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                Menu
+            </div>
+            <div className="p-2 space-y-1">
+                <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('borrow')}>
+                    <LayoutGrid /> Borrow Equipment
+                </Button>
+                <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('requests')}>
+                   <ClipboardCheck /> Approve Requests
+                </Button>
+            </div>
+
+            {activeView === 'borrow' && (
                 <>
-                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                    <Separator />
+                    <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
                         Departments
                     </div>
                     <div className="p-2 space-y-1">
@@ -236,20 +260,23 @@ export default function TeacherDashboardPage() {
                         onChannelSelect={handleChannelSelect}
                     />
                 </>
-            ) : (
-                <>
-                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                        Menu
-                    </div>
-                    <div className="p-2 space-y-1">
-                        <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('borrow')}>
-                            <LayoutGrid /> Borrow Equipment
-                        </Button>
-                        <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('requests')}>
-                           <ClipboardCheck /> Approve Requests
-                        </Button>
-                    </div>
-                </>
+            )}
+
+            {activeView === 'requests' && (
+              <>
+                <Separator />
+                <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
+                    Approvals
+                </div>
+                <div className="p-2 space-y-1">
+                    <Button variant={requestSubView === 'pending' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setRequestSubView('pending'); setIsMobileMenuOpen(false); }}>
+                        <Hourglass className="h-5 w-5" /> Pending Requests
+                    </Button>
+                    <Button variant={requestSubView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setRequestSubView('history'); setIsMobileMenuOpen(false); }}>
+                        <History className="h-5 w-5" /> Request History
+                    </Button>
+                </div>
+              </>
             )}
         </div>
         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
@@ -320,8 +347,10 @@ export default function TeacherDashboardPage() {
                   </SheetContent>
                 </Sheet>
                 <div className="flex items-center gap-2">
-                    <ClipboardCheck className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Approve Requests</h1>
+                    {requestSubView === 'pending' ? <Hourglass className="text-muted-foreground" /> : <History className="text-muted-foreground" />}
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                      {requestSubView === 'pending' ? 'Pending Requests' : 'Request History'}
+                    </h1>
                 </div>
             </div>
         </header>
@@ -389,7 +418,7 @@ export default function TeacherDashboardPage() {
                     </Tooltip>
                   </div>
                 </div>
-                {/* Channel List */}
+                {/* Channel List or Request Sub-menu */}
                 {activeView === 'borrow' && (
                     <div className="w-64 flex-col bg-[#141821] p-2">
                     <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
@@ -400,6 +429,46 @@ export default function TeacherDashboardPage() {
                         selectedChannelId={selectedChannelId}
                         onChannelSelect={handleChannelSelect}
                     />
+                    </div>
+                )}
+                {activeView === 'requests' && (
+                    <div className="w-64 flex-col bg-[#141821] p-2">
+                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                            Approvals
+                        </div>
+                        <div className="flex-1 py-4">
+                            <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                REQUESTS
+                            </h2>
+                            <ul className="flex flex-col gap-1">
+                                <li>
+                                    <button
+                                      onClick={() => setRequestSubView('pending')}
+                                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                        requestSubView === 'pending'
+                                          ? 'bg-accent text-white'
+                                          : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                      }`}
+                                    >
+                                      <Hourglass className="h-5 w-5" />
+                                      <span className="truncate">Pending Requests</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                      onClick={() => setRequestSubView('history')}
+                                       className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                        requestSubView === 'history'
+                                          ? 'bg-accent text-white'
+                                          : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                      }`}
+                                    >
+                                      <History className="h-5 w-5" />
+                                      <span className="truncate">Request History</span>
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 )}
             </div>
