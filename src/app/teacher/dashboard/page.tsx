@@ -88,7 +88,6 @@ export default function TeacherDashboardPage() {
       setSelectedChannelId(firstChannelInDept.id);
     }
     setSelectedItems([]);
-    setIsMobileMenuOpen(false);
   }
 
   const items = React.useMemo(
@@ -229,55 +228,38 @@ export default function TeacherDashboardPage() {
     <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                Menu
+                Departments
             </div>
             <div className="p-2 space-y-1">
-                <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('borrow')}>
-                    <LayoutGrid /> Borrow Equipment
+                {departments.map(dept => (
+                    <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
+                        {dept.icon}
+                        {dept.name}
+                    </Button>
+                ))}
+            </div>
+            
+            {activeView === 'borrow' && (
+                <AppSidebar
+                    departmentPrefix={selectedDepartment?.prefix ?? ''}
+                    selectedChannelId={selectedChannelId}
+                    onChannelSelect={handleChannelSelect}
+                />
+            )}
+
+            <Separator />
+            
+            <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
+                Approvals
+            </div>
+            <div className="p-2 space-y-1">
+                <Button variant={activeView === 'requests' && requestSubView === 'pending' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setRequestSubView('pending'); setIsMobileMenuOpen(false); }}>
+                    <Hourglass className="h-5 w-5" /> Pending Requests
                 </Button>
-                <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => setActiveView('requests')}>
-                   <ClipboardCheck /> Approve Requests
+                <Button variant={activeView === 'requests' && requestSubView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setRequestSubView('history'); setIsMobileMenuOpen(false); }}>
+                    <History className="h-5 w-5" /> Request History
                 </Button>
             </div>
-
-            {activeView === 'borrow' && (
-                <>
-                    <Separator />
-                    <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
-                        Departments
-                    </div>
-                    <div className="p-2 space-y-1">
-                        {departments.map(dept => (
-                            <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
-                                {dept.icon}
-                                {dept.name}
-                            </Button>
-                        ))}
-                    </div>
-                    <AppSidebar
-                        departmentPrefix={selectedDepartment?.prefix ?? ''}
-                        selectedChannelId={selectedChannelId}
-                        onChannelSelect={handleChannelSelect}
-                    />
-                </>
-            )}
-
-            {activeView === 'requests' && (
-              <>
-                <Separator />
-                <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
-                    Approvals
-                </div>
-                <div className="p-2 space-y-1">
-                    <Button variant={requestSubView === 'pending' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setRequestSubView('pending'); setIsMobileMenuOpen(false); }}>
-                        <Hourglass className="h-5 w-5" /> Pending Requests
-                    </Button>
-                    <Button variant={requestSubView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setRequestSubView('history'); setIsMobileMenuOpen(false); }}>
-                        <History className="h-5 w-5" /> Request History
-                    </Button>
-                </div>
-              </>
-            )}
         </div>
         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
           <UserNav role="Teacher">
@@ -388,20 +370,6 @@ export default function TeacherDashboardPage() {
                   <Separator className="my-2 bg-border/50 w-8" />
 
                   <div className="flex flex-col items-center gap-2 w-full">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button 
-                                variant={activeView === 'borrow' ? 'secondary' : 'ghost'}
-                                size="icon" 
-                                className="h-12 w-12 rounded-lg"
-                                onClick={() => setActiveView('borrow')}>
-                                <LayoutGrid />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" align="center">
-                            <p>Borrow Equipment</p>
-                        </TooltipContent>
-                    </Tooltip>
                      <Tooltip>
                         <TooltipTrigger asChild>
                             <Button 
