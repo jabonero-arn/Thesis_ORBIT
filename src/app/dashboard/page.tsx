@@ -49,6 +49,7 @@ export default function Home() {
       setSelectedChannelId(firstChannelInDept.id);
     }
     setSelectedItems([]);
+    setIsMobileMenuOpen(false);
   }
 
   const items = React.useMemo(
@@ -189,41 +190,52 @@ export default function Home() {
                           <span className="sr-only">Open Menu</span>
                       </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r border-border/50 flex flex-col">
-                      <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                          Departments
+                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                      <div className="flex flex-col h-full">
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                                Departments
+                            </div>
+                            <div className="p-2 space-y-1">
+                                {departments.map(dept => (
+                                    <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
+                                        {dept.icon}
+                                        {dept.name}
+                                    </Button>
+                                ))}
+                            </div>
+                            <AppSidebar
+                                departmentPrefix={selectedDepartment?.prefix ?? ''}
+                                selectedChannelId={selectedChannelId}
+                                onChannelSelect={handleChannelSelect}
+                            />
+                        </div>
+                        <div className="mt-auto p-2">
+                            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                                <div className="flex items-center gap-2">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                        <AvatarFallback><User /></AvatarFallback>
+                                    </Avatar>
+                                    <div className="overflow-hidden">
+                                        <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
+                                        <p className="text-xs text-muted-foreground">Student</p>
+                                    </div>
+                                </div>
+                                <UserNav role="Student">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </UserNav>
+                            </div>
+                        </div>
                       </div>
-                      <div className="p-2 space-y-1">
-                          {departments.map(dept => (
-                              <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
-                                  {dept.icon}
-                                  {dept.name}
-                              </Button>
-                          ))}
-                      </div>
-                      <AppSidebar
-                        departmentPrefix={selectedDepartment?.prefix ?? ''}
-                        selectedChannelId={selectedChannelId}
-                        onChannelSelect={handleChannelSelect}
-                      />
                   </SheetContent>
               </Sheet>
               <div className="flex items-center gap-2">
                   <Hash className="text-muted-foreground" />
                   <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
               </div>
-            </div>
-            <div className="md:hidden">
-                <UserNav role="Student">
-                    <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                        <Avatar className="h-10 w-10">
-                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                            <AvatarFallback>
-                                <User />
-                            </AvatarFallback>
-                        </Avatar>
-                    </Button>
-                </UserNav>
             </div>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
