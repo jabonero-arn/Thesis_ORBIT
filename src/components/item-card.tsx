@@ -77,12 +77,10 @@ export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView 
       </div>
       <div className="flex flex-1 flex-col p-3">
         <div className="flex-1">
-          <div className="flex justify-between items-baseline">
-            <h3 className="font-semibold text-base leading-tight truncate" title={item.name}>
-                {item.name}
-            </h3>
-            {!isManagementView && <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">Qty: {item.quantity}</span>}
-          </div>
+          <h3 className="font-semibold text-base leading-tight truncate" title={item.name}>
+              {item.name}
+          </h3>
+          {!isManagementView && <p className="text-xs text-muted-foreground mt-1">Qty: {item.quantity}</p>}
           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
             {item.description}
           </p>
