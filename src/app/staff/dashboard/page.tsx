@@ -293,24 +293,24 @@ export default function StaffDashboardPage() {
                 </>
             )}
           </div>
-          <div className="mt-auto p-1.5">
-             <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
+          <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
+            <UserNav role="Staff">
+              <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <Avatar className="h-8 w-8 flex-shrink-0">
-                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                        <AvatarFallback><User /></AvatarFallback>
-                    </Avatar>
-                    <div className="overflow-hidden">
-                        <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
-                        <p className="text-xs text-muted-foreground">Staff</p>
-                    </div>
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                    <AvatarFallback>
+                      <User />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="overflow-hidden">
+                    <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                    <p className="text-xs text-muted-foreground">Staff</p>
+                  </div>
                 </div>
-                <UserNav role="Staff">
-                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
-                        <Settings className="h-4 w-4" />
-                    </Button>
-                </UserNav>
-            </div>
+                <Settings className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </UserNav>
           </div>
       </div>
     );
@@ -351,24 +351,24 @@ export default function StaffDashboardPage() {
                             </div>
                         ))}
                     </div>
-                    <div className="mt-auto w-full p-1.5">
-                        <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
-                            <div className="flex items-center gap-2 overflow-hidden">
-                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                    <AvatarFallback><User /></AvatarFallback>
-                                </Avatar>
-                                <div className="overflow-hidden">
-                                    <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
-                                    <p className="text-xs text-muted-foreground">Staff</p>
-                                </div>
+                    <div className="mt-auto w-full border-t border-border/50">
+                      <UserNav role="Staff">
+                        <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                              <AvatarFallback>
+                                <User />
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="overflow-hidden">
+                              <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                              <p className="text-xs text-muted-foreground">Staff</p>
                             </div>
-                            <UserNav role="Staff">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
-                                    <Settings className="h-4 w-4" />
-                                </Button>
-                            </UserNav>
+                          </div>
+                          <Settings className="h-5 w-5 text-muted-foreground" />
                         </div>
+                      </UserNav>
                     </div>
                 </div>
 
