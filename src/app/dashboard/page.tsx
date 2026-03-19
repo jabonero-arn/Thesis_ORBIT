@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { channels, currentUser } from "@/lib/data"
-import type { InventoryItem, BorrowHistory } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -32,7 +32,7 @@ export default function Home() {
     channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
   );
   
-  const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
+  const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   const pendingRequestedItemNames = React.useMemo(() =>
@@ -70,10 +70,9 @@ export default function Home() {
         return;
     }
 
-    const isSelected = selectedItems.some((i) => i.id === item.id)
+    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
-        // Always allow deselecting
-        setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
+        // Quantity is managed in the cart
     } else if (item.status === "Locked") {
         const newRequest: BorrowHistory = {
             id: `bh-${Date.now()}`,
@@ -88,8 +87,8 @@ export default function Home() {
             description: `Your request for "${item.name}" has been sent for approval.`,
         });
     } else {
-        // If available, just add it
-        setSelectedItems((prev) => [...prev, item])
+        // If available, just add it with quantity 1
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
     }
   }
 
@@ -98,6 +97,27 @@ export default function Home() {
     setSelectedItems([])
     setIsMobileMenuOpen(false) // Close mobile menu on selection
   }
+
+  const handleItemQuantityChange = (itemId: string, newQuantity: number) => {
+    const cartItem = selectedItems.find(ci => ci.item.id === itemId);
+    if (!cartItem) return;
+
+    if (newQuantity > cartItem.item.quantity) {
+        toast({ variant: 'destructive', title: `Only ${cartItem.item.quantity} available.`});
+        return;
+    }
+
+    if (newQuantity <= 0) {
+        // Remove from cart
+        setSelectedItems(prev => prev.filter(ci => ci.item.id !== itemId));
+    } else {
+        // Update quantity
+        setSelectedItems(prev => prev.map(ci => 
+            ci.item.id === itemId ? { ...ci, quantity: newQuantity } : ci
+        ));
+    }
+  };
+
 
   return (
     <TooltipProvider>
@@ -125,17 +145,24 @@ export default function Home() {
               </Tooltip>
             ))}
           </div>
-          <div className="mt-auto p-2">
-             <UserNav role="Student">
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                    <Avatar className="h-10 w-10">
+          <div className="mt-auto p-2 w-full">
+            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                        <AvatarFallback>
-                            <User />
-                        </AvatarFallback>
+                        <AvatarFallback><User /></AvatarFallback>
                     </Avatar>
-                </Button>
-            </UserNav>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">Student</p>
+                    </div>
+                </div>
+                <UserNav role="Student">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </UserNav>
+            </div>
           </div>
         </div>
 
@@ -203,7 +230,7 @@ export default function Home() {
             <InventoryGrid 
               items={items} 
               onItemSelect={handleItemSelect}
-              selectedItems={selectedItems}
+              selectedItems={selectedItems.map(ci => ci.item)}
               pendingRequestedItemNames={pendingRequestedItemNames} 
             />
           </div>
@@ -213,6 +240,7 @@ export default function Home() {
         <CheckoutFlow
           key={selectedChannelId}
           items={selectedItems}
+          onItemQuantityChange={handleItemQuantityChange}
           onClear={() => setSelectedItems([])}
           onSuccess={() => {
               setSelectedItems([]);

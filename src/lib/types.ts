@@ -35,3 +35,8 @@ export type BorrowHistory = {
     date: string;
     status: BorrowHistoryStatus;
 };
+
+export type CartItem = {
+    item: InventoryItem;
+    quantity: number;
+};

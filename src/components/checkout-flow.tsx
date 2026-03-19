@@ -3,9 +3,9 @@
 import * as React from "react"
 import Image from "next/image"
 import { format } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, X, ShoppingCart } from "lucide-react"
+import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
 
-import type { InventoryItem } from "@/lib/types"
+import type { CartItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { currentUser } from "@/lib/data"
@@ -28,12 +28,13 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 
 type CheckoutFlowProps = {
-  items: InventoryItem[]
+  items: CartItem[]
   onClear: () => void
   onSuccess: () => void
+  onItemQuantityChange: (itemId: string, newQuantity: number) => void
 }
 
-function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
+function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: CheckoutFlowProps) {
   const [isReserve, setIsReserve] = React.useState(false)
   const [reservationDate, setReservationDate] = React.useState<Date>()
   const [startTime, setStartTime] = React.useState<string>("14:00")
@@ -95,6 +96,8 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
     );
   }
 
+  const totalItemsInCart = items.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
       <>
         <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
@@ -105,9 +108,18 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
         </div>
         
         <div className="flex-1 my-4 space-y-2 overflow-y-auto px-1">
-          {items.map(item => (
-            <div key={item.id} className="text-foreground/90 bg-black/20 p-2 rounded-md text-sm">
-              {item.name}
+          {items.map(({ item, quantity }) => (
+            <div key={item.id} className="text-foreground/90 bg-black/20 p-2 rounded-md text-sm flex justify-between items-center">
+              <span className="truncate pr-2">{item.name}</span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onItemQuantityChange(item.id, quantity - 1)}>
+                      <Minus className="h-3 w-3" />
+                  </Button>
+                  <span className="w-6 text-center font-medium">{quantity}</span>
+                   <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onItemQuantityChange(item.id, quantity + 1)}>
+                      <Plus className="h-3 w-3" />
+                  </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -184,7 +196,7 @@ function CheckoutForm({ items, onClear, onSuccess }: CheckoutFlowProps) {
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
                   JSON.stringify({
                     userId: currentUser.id,
-                    itemIds: items.map((item) => item.id),
+                    items: items.map((cartItem) => ({id: cartItem.item.id, quantity: cartItem.quantity})),
                     timestamp: new Date().toISOString(),
                   })
                 )}`}
@@ -215,6 +227,9 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     setMobileSheetOpen(false);
   }
 
+  const totalItemsInCart = props.items.reduce((sum, item) => sum + item.quantity, 0);
+
+
   // Mobile version: FAB + Bottom Sheet
   if (isMobile) {
     return (
@@ -223,7 +238,7 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
           <SheetTrigger asChild>
             <Button className="md:hidden fixed bottom-6 right-6 rounded-full h-16 w-16 shadow-lg shadow-primary/30 z-40 flex items-center justify-center">
               <ShoppingCart className="h-6 w-6" />
-              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">{props.items.length}</span>
+              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">{totalItemsInCart}</span>
               <span className="sr-only">View Cart</span>
             </Button>
           </SheetTrigger>

@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { channels, currentUser } from "@/lib/data"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -48,7 +48,7 @@ export default function TeacherDashboardPage() {
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
     channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
   );
-  const [selectedItems, setSelectedItems] = React.useState<InventoryItem[]>([])
+  const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
@@ -99,12 +99,12 @@ export default function TeacherDashboardPage() {
   const handleItemSelect = (item: InventoryItem) => {
     if (item.status === "Borrowed") return;
 
-    const isSelected = selectedItems.some((i) => i.id === item.id)
+    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
-        setSelectedItems((prev) => prev.filter((i) => i.id !== item.id))
+        // Quantity is managed in cart
     } else {
         // Teachers can borrow any item directly, regardless of 'Locked' status
-        setSelectedItems((prev) => [...prev, item])
+        setSelectedItems((prev) => [...prev, {item, quantity: 1}])
     }
   }
 
@@ -113,6 +113,27 @@ export default function TeacherDashboardPage() {
     setSelectedItems([])
     setIsMobileMenuOpen(false) // Close mobile menu on selection
   }
+  
+  const handleItemQuantityChange = (itemId: string, newQuantity: number) => {
+    const cartItem = selectedItems.find(ci => ci.item.id === itemId);
+    if (!cartItem) return;
+
+    if (newQuantity > cartItem.item.quantity) {
+        toast({ variant: 'destructive', title: `Only ${cartItem.item.quantity} available.`});
+        return;
+    }
+
+    if (newQuantity <= 0) {
+        // Remove from cart
+        setSelectedItems(prev => prev.filter(ci => ci.item.id !== itemId));
+    } else {
+        // Update quantity
+        setSelectedItems(prev => prev.map(ci => 
+            ci.item.id === itemId ? { ...ci, quantity: newQuantity } : ci
+        ));
+    }
+  };
+
 
   const ApprovalRequests = () => (
     <div className="space-y-8 text-foreground">
@@ -244,7 +265,7 @@ export default function TeacherDashboardPage() {
             <InventoryGrid
                 items={items}
                 onItemSelect={handleItemSelect}
-                selectedItems={selectedItems}
+                selectedItems={selectedItems.map(ci => ci.item)}
                 isTeacherView={true}
             />
         </div>
@@ -362,15 +383,24 @@ export default function TeacherDashboardPage() {
             </Tooltip>
           </div>
 
-          <div className="mt-auto p-2">
-            <UserNav role="Teacher">
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                  <AvatarFallback><User /></AvatarFallback>
-                </Avatar>
-              </Button>
-            </UserNav>
+          <div className="mt-auto p-2 w-full">
+            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                        <AvatarFallback><User /></AvatarFallback>
+                    </Avatar>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">Teacher</p>
+                    </div>
+                </div>
+                <UserNav role="Teacher">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </UserNav>
+            </div>
           </div>
         </div>
 
@@ -396,12 +426,13 @@ export default function TeacherDashboardPage() {
         {/* Cart */}
         {activeView === 'borrow' && (
             <CheckoutFlow
-            key={selectedChannelId}
-            items={selectedItems}
-            onClear={() => setSelectedItems([])}
-            onSuccess={() => {
-                setSelectedItems([]);
-            }}
+                key={selectedChannelId}
+                items={selectedItems}
+                onItemQuantityChange={handleItemQuantityChange}
+                onClear={() => setSelectedItems([])}
+                onSuccess={() => {
+                    setSelectedItems([]);
+                }}
             />
         )}
         

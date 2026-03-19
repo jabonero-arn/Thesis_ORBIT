@@ -3,7 +3,7 @@
 import * as React from "react"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
-    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Minus, Plus 
+    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Minus, Plus, Settings 
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -292,16 +292,24 @@ export default function StaffDashboardPage() {
                 </>
             )}
           </div>
-          <div className="mt-auto">
-            <UserNav role="Staff">
-                <div className="flex items-center gap-2 p-4 bg-black/20 cursor-pointer">
+          <div className="mt-auto p-2">
+             <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                         <AvatarFallback><User /></AvatarFallback>
                     </Avatar>
-                    <span className="font-semibold text-sm truncate">{currentUser.name}</span>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">Staff</p>
+                    </div>
                 </div>
-            </UserNav>
+                <UserNav role="Staff">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                </UserNav>
+            </div>
           </div>
       </div>
     );
@@ -323,15 +331,24 @@ export default function StaffDashboardPage() {
                             <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as StaffView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
                         ))}
                     </div>
-                    <div className="mt-auto p-2">
-                        <UserNav role="Staff">
-                            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-                                <Avatar className="h-10 w-10">
+                    <div className="mt-auto p-2 w-full">
+                        <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                            <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
                                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                                     <AvatarFallback><User /></AvatarFallback>
                                 </Avatar>
-                            </Button>
-                        </UserNav>
+                                <div className="overflow-hidden">
+                                    <p className="text-sm font-semibold leading-none truncate">{currentUser.name}</p>
+                                    <p className="text-xs text-muted-foreground">Staff</p>
+                                </div>
+                            </div>
+                            <UserNav role="Staff">
+                                <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </UserNav>
+                        </div>
                     </div>
                 </div>
 
