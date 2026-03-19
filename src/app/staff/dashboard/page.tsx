@@ -35,7 +35,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 
 const departments = [
@@ -54,6 +53,7 @@ export default function StaffDashboardPage() {
     // View state
     const [activeView, setActiveView] = React.useState<StaffView>('transactions');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('pickup');
+    const [inventorySelectedDeptId, setInventorySelectedDeptId] = React.useState('all');
     
     // Borrowing view states
     const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
@@ -91,6 +91,9 @@ export default function StaffDashboardPage() {
              if (firstChannel) {
                 setSelectedChannelId(firstChannel.id);
              }
+        }
+        if (view === 'inventory' && activeView !== 'inventory') {
+            setInventorySelectedDeptId('all');
         }
         setIsMobileMenuOpen(false);
     }
@@ -258,7 +261,7 @@ export default function StaffDashboardPage() {
                     </TableRow>
                 )) : (
                     <TableRow>
-                        <TableCell colSpan={5} className="text-center h-24">No items found in this lab.</TableCell>
+                        <TableCell colSpan={5} className="text-center h-24">No items found.</TableCell>
                     </TableRow>
                 )}
             </TableBody>
@@ -279,6 +282,14 @@ export default function StaffDashboardPage() {
                     />
                 );
              case 'inventory':
+                const inventoryItemsToDisplay = React.useMemo(() => {
+                    if (inventorySelectedDeptId === 'all') {
+                        return items;
+                    }
+                    const selectedDeptPrefix = departments.find(d => d.id === inventorySelectedDeptId)?.prefix;
+                    if (!selectedDeptPrefix) return [];
+                    return items.filter(item => item.channelId.startsWith(selectedDeptPrefix));
+                }, [items, inventorySelectedDeptId]);
                 return (
                     <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                         <CardHeader className="flex flex-row items-center justify-between">
@@ -286,22 +297,7 @@ export default function StaffDashboardPage() {
                             <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
                         </CardHeader>
                         <CardContent>
-                            <Tabs defaultValue="all" className="w-full">
-                                <TabsList className="grid w-full grid-cols-4 mb-4">
-                                    <TabsTrigger value="all">All Items</TabsTrigger>
-                                    {departments.map(dept => (
-                                        <TabsTrigger key={dept.id} value={dept.id}>{dept.name}</TabsTrigger>
-                                    ))}
-                                </TabsList>
-                                <TabsContent value="all">
-                                    <InventoryTable items={items} />
-                                </TabsContent>
-                                {departments.map(dept => (
-                                    <TabsContent key={dept.id} value={dept.id}>
-                                        <InventoryTable items={items.filter(item => item.channelId.startsWith(dept.prefix))} />
-                                    </TabsContent>
-                                ))}
-                           </Tabs>
+                           <InventoryTable items={inventoryItemsToDisplay} />
                         </CardContent>
                     </Card>
                 );
@@ -381,6 +377,16 @@ export default function StaffDashboardPage() {
                 <Button variant={activeView === 'inventory' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('inventory'); }}>
                     <Package className="h-5 w-5" /> Inventory
                 </Button>
+                {activeView === 'inventory' && (
+                    <div className="pl-6 py-2">
+                        <ul className="flex flex-col gap-1">
+                            <li><button onClick={() => { setInventorySelectedDeptId('all'); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>All Items</button></li>
+                            {departments.map(dept => (
+                                <li key={dept.id}><button onClick={() => { setInventorySelectedDeptId(dept.id); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
                 <Button variant={activeView === 'transactions' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('transactions'); }}>
                     <PackageOpen className="h-5 w-5" /> Transactions
                 </Button>
@@ -476,20 +482,42 @@ export default function StaffDashboardPage() {
                                 </div>
                             </div>
                         )}
-                        {(activeView === 'inventory' || activeView === 'history') && (
+                        {activeView === 'inventory' && (
                              <div className="w-64 flex-col bg-[#141821] p-2">
                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                                    {activeView === 'inventory' ? 'Inventory' : 'History'}
+                                    Inventory
                                 </div>
                                 <div className="flex-1 py-4">
                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                        {activeView === 'inventory' ? 'MANAGEMENT' : 'LOGS'}
+                                        DEPARTMENTS
+                                    </h2>
+                                    <ul className="flex flex-col gap-1">
+                                        <li><button onClick={() => setInventorySelectedDeptId('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" /> All Items</button></li>
+                                        {departments.map(dept => (
+                                            <li key={dept.id}>
+                                                <button onClick={() => setInventorySelectedDeptId(dept.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                    {React.cloneElement(dept.icon, { className: 'h-5 w-5' })}
+                                                    {dept.name}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+                        {activeView === 'history' && (
+                             <div className="w-64 flex-col bg-[#141821] p-2">
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                                    History
+                                </div>
+                                <div className="flex-1 py-4">
+                                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                        LOGS
                                     </h2>
                                     <ul className="flex flex-col gap-1">
                                         <li>
                                           <button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}>
-                                            {activeView === 'inventory' ? <Package className="h-5 w-5" /> : <HistoryIcon className="h-5 w-5" />} 
-                                            {activeView === 'inventory' ? 'All Items' : 'Full History'}
+                                            <HistoryIcon className="h-5 w-5" /> Full History
                                           </button>
                                         </li>
                                     </ul>
