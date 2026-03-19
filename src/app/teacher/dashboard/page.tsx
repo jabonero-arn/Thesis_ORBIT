@@ -252,10 +252,10 @@ export default function TeacherDashboardPage() {
                 </>
             )}
         </div>
-        <div className="mt-auto p-2">
-            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
+        <div className="mt-auto p-1.5">
+            <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                         <AvatarFallback><User /></AvatarFallback>
                     </Avatar>
@@ -338,66 +338,67 @@ export default function TeacherDashboardPage() {
     <TooltipProvider>
       <div className="flex h-screen bg-[#1e2430]">
         {/* Department & View Rail */}
-        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] p-2">
+        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] py-3">
           <div className="p-2 mb-2">
             <Logo />
           </div>
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col items-center gap-2 w-full">
             {departments.map(dept => (
-              <Tooltip key={dept.id}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={selectedDepartmentId === dept.id && activeView === 'borrow' ? 'secondary' : 'ghost'}
-                    size="icon"
-                    className={`h-12 w-12 rounded-full transition-all duration-200 ${selectedDepartmentId === dept.id && activeView === 'borrow' ? 'bg-primary rounded-2xl' : 'hover:bg-accent'}`}
-                    onClick={() => handleDepartmentSelect(dept.id)}>
-                    {dept.icon}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  <p>{dept.name}</p>
-                </TooltipContent>
-              </Tooltip>
+              <div key={dept.id} className="group relative w-full flex justify-center">
+                  <div className={cn( "absolute left-0 top-1/2 -translate-y-1/2 h-2 w-1 -translate-x-1 rounded-r-full bg-white transition-all duration-200", activeView === 'borrow' && selectedDepartmentId === dept.id ? 'h-10' : 'group-hover:h-5' )} />
+                  <Tooltip>
+                      <TooltipTrigger asChild>
+                          <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && selectedDepartmentId === dept.id && 'rounded-2xl bg-primary' )} onClick={() => handleDepartmentSelect(dept.id)}>
+                              {dept.icon}
+                          </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
+                  </Tooltip>
+              </div>
             ))}
           </div>
 
-          <Separator className="my-4 bg-border/50 w-8" />
+          <Separator className="my-2 bg-border/50 w-8" />
 
-          <div className="flex flex-col gap-2">
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button 
-                        variant={activeView === 'borrow' ? 'secondary' : 'ghost'} 
-                        size="icon" 
-                        className="h-12 w-12 rounded-full transition-all duration-200"
-                        onClick={() => setActiveView('borrow')}>
-                        <LayoutGrid />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                    <p>Borrow Equipment</p>
-                </TooltipContent>
-            </Tooltip>
-             <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button 
-                        variant={activeView === 'requests' ? 'secondary' : 'ghost'} 
-                        size="icon" 
-                        className="h-12 w-12 rounded-full transition-all duration-200"
-                        onClick={() => setActiveView('requests')}>
-                        <ClipboardCheck />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                    <p>Approve Requests</p>
-                </TooltipContent>
-            </Tooltip>
+          <div className="flex flex-col items-center gap-2 w-full">
+            <div className="group relative w-full flex justify-center">
+              <Tooltip>
+                  <TooltipTrigger asChild>
+                      <Button 
+                          variant={'ghost'}
+                          size="icon" 
+                          className={cn('h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && 'rounded-2xl bg-primary')}
+                          onClick={() => setActiveView('borrow')}>
+                          <LayoutGrid />
+                      </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="center">
+                      <p>Borrow Equipment</p>
+                  </TooltipContent>
+              </Tooltip>
+            </div>
+             <div className="group relative w-full flex justify-center">
+              <Tooltip>
+                  <TooltipTrigger asChild>
+                      <Button 
+                          variant={'ghost'} 
+                          size="icon" 
+                          className={cn('h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'requests' && 'rounded-2xl bg-primary')}
+                          onClick={() => setActiveView('requests')}>
+                          <ClipboardCheck />
+                      </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" align="center">
+                      <p>Approve Requests</p>
+                  </TooltipContent>
+              </Tooltip>
+             </div>
           </div>
 
-          <div className="mt-auto p-2 w-full">
-            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
+          <div className="mt-auto w-full p-1.5">
+            <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                         <AvatarFallback><User /></AvatarFallback>
                     </Avatar>

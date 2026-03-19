@@ -40,6 +40,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { useAppContext } from "@/context/app-context"
+import { cn } from "@/lib/utils"
 
 
 const allUsers = [
@@ -333,10 +334,10 @@ export default function AdminDashboardPage() {
                 </>
             )}
           </div>
-          <div className="mt-auto p-2">
-            <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
-                <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
+          <div className="mt-auto p-1.5">
+            <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
+                <div className="flex items-center gap-2 overflow-hidden">
+                    <Avatar className="h-8 w-8 flex-shrink-0">
                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                         <AvatarFallback><User /></AvatarFallback>
                     </Avatar>
@@ -359,23 +360,42 @@ export default function AdminDashboardPage() {
         <TooltipProvider>
             <div className="flex h-screen bg-[#1e2430]">
                 {/* Far Left Rail */}
-                <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] p-2">
+                <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] py-3">
                     <div className="p-2 mb-2"><Logo /></div>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col items-center gap-2 w-full">
                         {departments.map(dept => (
-                            <Tooltip key={dept.id}><TooltipTrigger asChild><Button variant={selectedDepartmentId === dept.id && activeView === 'borrow' ? 'secondary' : 'ghost'} size="icon" className={`h-12 w-12 rounded-full ${selectedDepartmentId === dept.id && activeView === 'borrow' ? 'bg-primary rounded-2xl' : ''}`} onClick={() => handleDepartmentSelect(dept.id)}>{dept.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent></Tooltip>
+                            <div key={dept.id} className="group relative w-full flex justify-center">
+                                <div className={cn( "absolute left-0 top-1/2 -translate-y-1/2 h-2 w-1 -translate-x-1 rounded-r-full bg-white transition-all duration-200", activeView === 'borrow' && selectedDepartmentId === dept.id ? 'h-10' : 'group-hover:h-5' )} />
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && selectedDepartmentId === dept.id && 'rounded-2xl bg-primary' )} onClick={() => handleDepartmentSelect(dept.id)}>
+                                            {dept.icon}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
+                                </Tooltip>
+                            </div>
                         ))}
                     </div>
-                    <Separator className="my-4 bg-border/50 w-8" />
-                    <div className="flex flex-col gap-2">
+                    <Separator className="my-2 bg-border/50 w-8" />
+                    <div className="flex flex-col items-center gap-2 w-full">
                         {navItems.map(item => (
-                            <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-full" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
+                            <div key={item.id} className="group relative w-full flex justify-center">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === item.id && 'rounded-2xl bg-primary' )} onClick={() => handleViewChange(item.id as AdminView)}>
+                                            {item.icon}
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
+                                </Tooltip>
+                            </div>
                         ))}
                     </div>
-                    <div className="mt-auto p-2 w-full">
-                        <div className="flex items-center justify-between p-2 rounded-md bg-black/20">
-                            <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
+                    <div className="mt-auto w-full p-1.5">
+                        <div className="flex items-center justify-between p-1 rounded-md hover:bg-black/20">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                                <Avatar className="h-8 w-8 flex-shrink-0">
                                     <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
                                     <AvatarFallback><User /></AvatarFallback>
                                 </Avatar>
