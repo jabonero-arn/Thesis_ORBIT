@@ -172,6 +172,15 @@ export default function StaffDashboardPage() {
     const filteredItems = React.useMemo(() => items.filter((item) => item.channelId === selectedChannelId), [items, selectedChannelId]);
     const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId]);
     const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
+    const inventoryItemsToDisplay = React.useMemo(() => {
+        if (inventorySelectedDeptId === 'all') {
+            return items;
+        }
+        const selectedDeptPrefix = departments.find(d => d.id === inventorySelectedDeptId)?.prefix;
+        if (!selectedDeptPrefix) return [];
+        return items.filter(item => item.channelId.startsWith(selectedDeptPrefix));
+    }, [items, inventorySelectedDeptId]);
+
 
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
@@ -282,14 +291,6 @@ export default function StaffDashboardPage() {
                     />
                 );
              case 'inventory':
-                const inventoryItemsToDisplay = React.useMemo(() => {
-                    if (inventorySelectedDeptId === 'all') {
-                        return items;
-                    }
-                    const selectedDeptPrefix = departments.find(d => d.id === inventorySelectedDeptId)?.prefix;
-                    if (!selectedDeptPrefix) return [];
-                    return items.filter(item => item.channelId.startsWith(selectedDeptPrefix));
-                }, [items, inventorySelectedDeptId]);
                 return (
                     <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                         <CardHeader className="flex flex-row items-center justify-between">
