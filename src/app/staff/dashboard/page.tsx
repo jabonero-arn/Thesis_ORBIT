@@ -1,8 +1,10 @@
+
 "use client"
 
 import * as React from "react"
 import { 
-    Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass
+    Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
+    PlusCircle, Edit, Trash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -18,7 +20,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -28,6 +30,12 @@ import { Separator } from "@/components/ui/separator"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 
 const departments = [
@@ -36,7 +44,7 @@ const departments = [
   { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
 ];
 
-type StaffView = 'borrow' | 'transactions' | 'history';
+type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history';
 type TransactionSubView = 'pickup' | 'borrowed';
 
 export default function StaffDashboardPage() {
@@ -53,6 +61,10 @@ export default function StaffDashboardPage() {
         channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
     );
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+
+    // Form state
+    const [isFormOpen, setIsFormOpen] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
 
     // Handlers
     const handleDepartmentSelect = (deptId: string) => {
@@ -72,7 +84,7 @@ export default function StaffDashboardPage() {
     
     const handleViewChange = (view: StaffView) => {
         setActiveView(view);
-        if (view === 'borrow' && activeView !== 'borrow') {
+         if (view === 'borrow' && activeView !== 'borrow') {
              const firstDept = departments[0];
              setSelectedDepartmentId(firstDept.id);
              const firstChannel = channels.find(c => c.id.startsWith(firstDept.prefix));
@@ -87,6 +99,55 @@ export default function StaffDashboardPage() {
         if (newQuantity < 0) return;
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, quantity: newQuantity } : item));
     }
+
+     const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const itemData = {
+            name: formData.get("name") as string,
+            description: formData.get("description") as string,
+            channelId: formData.get("channelId") as string,
+            quantity: parseInt(formData.get("quantity") as string, 10),
+            imageUrl: formData.get("imageUrl") as string || 'https://picsum.photos/seed/new-item/600/400',
+            imageHint: 'new item'
+        };
+
+        if (editingItem) {
+            const updatedItem = { ...editingItem, ...itemData };
+            setItems(prev => prev.map(item => item.id === editingItem.id ? updatedItem : item));
+            toast({ title: "Item Updated", description: `${updatedItem.name} has been updated.` });
+        } else {
+            const newItem: InventoryItem = {
+                id: `item-${Date.now()}`,
+                status: "Available",
+                ...itemData
+            };
+            setItems(prev => [...prev, newItem]);
+            toast({ title: "Item Added", description: `${newItem.name} has been added to inventory.` });
+        }
+        closeForm();
+    }
+
+    const openEditForm = (item: InventoryItem) => {
+        setEditingItem(item);
+        setIsFormOpen(true);
+    }
+
+    const openAddForm = () => {
+        setEditingItem(null);
+        setIsFormOpen(true);
+    }
+
+    const closeForm = () => {
+        setEditingItem(null);
+        setIsFormOpen(false);
+    }
+
+    const handleDeleteItem = (itemId: string) => {
+        setItems(prev => prev.filter(item => item.id !== itemId));
+        toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
+    }
+
 
     const handleProcessPickup = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
@@ -110,13 +171,18 @@ export default function StaffDashboardPage() {
     const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
 
     // Helper functions
+    const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getStatusBadge = (status: InventoryItem['status']) => {
+        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline" } as const;
+        return <Badge variant={variants[status] || "default"}>{status}</Badge>;
+    }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
         const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary' } as const;
         return <Badge variant={variants[status]}>{status}</Badge>;
     }
     
     const navItems = [
-        { id: 'borrow', label: 'Browse Inventory', icon: <Package /> },
+        { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
     ];
@@ -166,6 +232,33 @@ export default function StaffDashboardPage() {
                         onQuantityChange={handleQuantityChange}
                     />
                 );
+             case 'inventory':
+                return (
+                    <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
+                            <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
+                        </CardHeader>
+                        <CardContent>
+                            <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead className="hidden md:table-cell">Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>
+                                    {items.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.name}</TableCell>
+                                            <TableCell className="hidden md:table-cell">{getItemChannelName(item.channelId)}</TableCell>
+                                            <TableCell>{item.quantity}</TableCell>
+                                            <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
+                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                );
             case 'transactions':
                 return (
                      <div className="space-y-6">
@@ -202,6 +295,14 @@ export default function StaffDashboardPage() {
                 </div>
             );
         }
+        if (activeView === 'inventory') {
+             return (
+                <div className="flex items-center gap-2">
+                    <Package className="text-muted-foreground"/>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Manage Inventory</h1>
+                </div>
+            );
+        }
         if (activeView === 'history') {
              return (
                 <div className="flex items-center gap-2">
@@ -231,14 +332,14 @@ export default function StaffDashboardPage() {
                 Management
             </div>
             <div className="p-2 space-y-1">
+                <Button variant={activeView === 'inventory' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('inventory'); }}>
+                    <Package className="h-5 w-5" /> Inventory
+                </Button>
                 <Button variant={activeView === 'transactions' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('transactions'); }}>
                     <PackageOpen className="h-5 w-5" /> Transactions
                 </Button>
                 <Button variant={activeView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('history'); }}>
                     <HistoryIcon className="h-5 w-5" /> History
-                </Button>
-                 <Button variant={activeView === 'borrow' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('borrow'); }}>
-                    <Package className="h-5 w-5" /> Browse Inventory
                 </Button>
             </div>
             {activeView === 'transactions' && (
@@ -309,7 +410,7 @@ export default function StaffDashboardPage() {
                             </div>
                         </div>
                         {/* Contextual Sidebar */}
-                        {activeView === 'borrow' && (
+                        {(activeView === 'borrow') && (
                             <div className="w-64 flex-col bg-[#141821] p-2">
                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{selectedDepartment?.name}</div>
                                 <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
@@ -329,15 +430,22 @@ export default function StaffDashboardPage() {
                                 </div>
                             </div>
                         )}
-                        {activeView === 'history' && (
+                        {(activeView === 'inventory' || activeView === 'history') && (
                              <div className="w-64 flex-col bg-[#141821] p-2">
-                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">History</div>
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                                    {activeView === 'inventory' ? 'Inventory' : 'History'}
+                                </div>
                                 <div className="flex-1 py-4">
                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                        LOGS
+                                        {activeView === 'inventory' ? 'MANAGEMENT' : 'LOGS'}
                                     </h2>
                                     <ul className="flex flex-col gap-1">
-                                        <li><button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}><HistoryIcon className="h-5 w-5" /> Full History</button></li>
+                                        <li>
+                                          <button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}>
+                                            {activeView === 'inventory' ? <Package className="h-5 w-5" /> : <HistoryIcon className="h-5 w-5" />} 
+                                            {activeView === 'inventory' ? 'All Items' : 'Full History'}
+                                          </button>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
@@ -374,6 +482,21 @@ export default function StaffDashboardPage() {
                         {renderContent()}
                     </div>
                 </main>
+
+                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <DialogContent><DialogHeader><DialogTitle>{editingItem ? "Edit Item" : "Add New Inventory Item"}</DialogTitle></DialogHeader>
+                        <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
+                            <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" defaultValue={editingItem?.name} required/></div>
+                            <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={editingItem?.description} required/></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
+                                <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                            </div>
+                            <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL</Label><Input id="imageUrl" name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="https://..."/></div>
+                            <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">{editingItem ? "Save Changes" : "Add Item"}</Button></DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
             </div>
         </TooltipProvider>
     )
