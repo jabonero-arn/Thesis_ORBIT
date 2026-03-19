@@ -255,9 +255,15 @@ export default function TeacherDashboardPage() {
         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
           <UserNav role="Teacher">
             <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-              <div className="overflow-hidden">
-                <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                <p className="text-xs text-muted-foreground">Teacher</p>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                    <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="overflow-hidden">
+                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                  <p className="text-xs text-muted-foreground">Teacher</p>
+                </div>
               </div>
               <Settings className="h-5 w-5 text-muted-foreground" />
             </div>
@@ -329,90 +335,93 @@ export default function TeacherDashboardPage() {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-[#1e2430]">
-        {/* Department & View Rail */}
-        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] py-3">
-          <div className="p-2 mb-2">
-            <Logo />
-          </div>
-          <div className="flex flex-col items-center gap-2 w-full">
-            {departments.map(dept => (
-              <div key={dept.id} className="group relative w-full flex justify-center">
-                  <div className={cn( "absolute left-0 top-1/2 -translate-y-1/2 h-2 w-1 -translate-x-1 rounded-r-full bg-white transition-all duration-200", activeView === 'borrow' && selectedDepartmentId === dept.id ? 'h-10' : 'group-hover:h-5' )} />
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && selectedDepartmentId === dept.id && 'rounded-2xl bg-primary' )} onClick={() => handleDepartmentSelect(dept.id)}>
-                              {dept.icon}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
-                  </Tooltip>
-              </div>
-            ))}
-          </div>
+        {/* Combined Sidebar */}
+        <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
+            <div className="flex flex-1">
+                {/* Department & View Rail */}
+                <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+                  <div className="p-2 mb-2">
+                    <Logo />
+                  </div>
+                  <div className="flex flex-col items-center gap-2 w-full">
+                    {departments.map(dept => (
+                      <Tooltip key={dept.id}>
+                          <TooltipTrigger asChild>
+                              <Button variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleDepartmentSelect(dept.id)}>
+                                  {dept.icon}
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
 
-          <Separator className="my-2 bg-border/50 w-8" />
+                  <Separator className="my-2 bg-border/50 w-8" />
 
-          <div className="flex flex-col items-center gap-2 w-full">
-            <div className="group relative w-full flex justify-center">
-              <Tooltip>
-                  <TooltipTrigger asChild>
-                      <Button 
-                          variant={'ghost'}
-                          size="icon" 
-                          className={cn('h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && 'rounded-2xl bg-primary')}
-                          onClick={() => setActiveView('borrow')}>
-                          <LayoutGrid />
-                      </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="center">
-                      <p>Borrow Equipment</p>
-                  </TooltipContent>
-              </Tooltip>
-            </div>
-             <div className="group relative w-full flex justify-center">
-              <Tooltip>
-                  <TooltipTrigger asChild>
-                      <Button 
-                          variant={'ghost'} 
-                          size="icon" 
-                          className={cn('h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'requests' && 'rounded-2xl bg-primary')}
-                          onClick={() => setActiveView('requests')}>
-                          <ClipboardCheck />
-                      </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" align="center">
-                      <p>Approve Requests</p>
-                  </TooltipContent>
-              </Tooltip>
-             </div>
-          </div>
-
-          <div className="mt-auto w-full border-t border-border/50">
-            <UserNav role="Teacher">
-              <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                  <p className="text-xs text-muted-foreground">Teacher</p>
+                  <div className="flex flex-col items-center gap-2 w-full">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant={activeView === 'borrow' ? 'secondary' : 'ghost'}
+                                size="icon" 
+                                className="h-12 w-12 rounded-lg"
+                                onClick={() => setActiveView('borrow')}>
+                                <LayoutGrid />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">
+                            <p>Borrow Equipment</p>
+                        </TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant={activeView === 'requests' ? 'secondary' : 'ghost'} 
+                                size="icon" 
+                                className="h-12 w-12 rounded-lg"
+                                onClick={() => setActiveView('requests')}>
+                                <ClipboardCheck />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">
+                            <p>Approve Requests</p>
+                        </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
-                <Settings className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </UserNav>
-          </div>
-        </div>
+                {/* Channel List */}
+                {activeView === 'borrow' && (
+                    <div className="w-64 flex-col bg-[#141821] p-2">
+                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                        {selectedDepartment?.name}
+                    </div>
+                    <AppSidebar
+                        departmentPrefix={selectedDepartment?.prefix ?? ''}
+                        selectedChannelId={selectedChannelId}
+                        onChannelSelect={handleChannelSelect}
+                    />
+                    </div>
+                )}
+            </div>
 
-        {/* Channel List */}
-        {activeView === 'borrow' && (
-            <div className="hidden md:flex w-64 flex-col bg-[#141821] p-2">
-            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                {selectedDepartment?.name}
+            <div className="border-t border-border/50 bg-[#0e1015]">
+                <UserNav role="Teacher">
+                <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                        <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                        <p className="text-xs text-muted-foreground">Teacher</p>
+                        </div>
+                    </div>
+                    <Settings className="h-5 w-5 text-muted-foreground" />
+                </div>
+                </UserNav>
             </div>
-            <AppSidebar
-                departmentPrefix={selectedDepartment?.prefix ?? ''}
-                selectedChannelId={selectedChannelId}
-                onChannelSelect={handleChannelSelect}
-            />
-            </div>
-        )}
+        </div>
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col h-screen">

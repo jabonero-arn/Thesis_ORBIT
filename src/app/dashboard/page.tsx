@@ -123,61 +123,63 @@ export default function Home() {
   return (
     <TooltipProvider>
       <div className="flex h-screen bg-[#1e2430]">
-        {/* Department Rail - Hidden on mobile */}
-        <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] py-3">
-          <div className="p-2 mb-2">
-            <Logo />
-          </div>
-          <div className="flex flex-col items-center gap-2 w-full">
-            {departments.map(dept => (
-              <div key={dept.id} className="group relative w-full flex justify-center">
-                  <div className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 h-2 w-1 -translate-x-1 rounded-r-full bg-white transition-all duration-200",
-                    selectedDepartmentId === dept.id ? 'h-10' : 'group-hover:h-5'
-                  )} />
-                  <Tooltip>
-                      <TooltipTrigger asChild>
-                          <Button 
-                            variant='ghost'
-                            size="icon" 
-                            className={cn(
-                              'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary',
-                              selectedDepartmentId === dept.id && 'rounded-2xl bg-primary'
-                            )}
-                            onClick={() => handleDepartmentSelect(dept.id)}>
-                              {dept.icon}
-                          </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right" align="center">
-                        <p>{dept.name}</p>
-                      </TooltipContent>
-                  </Tooltip>
-              </div>
-            ))}
-          </div>
-          <div className="mt-auto w-full border-t border-border/50">
-            <UserNav role="Student">
-              <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                  <p className="text-xs text-muted-foreground">Student</p>
+        {/* Combined Sidebar */}
+        <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
+            <div className="flex flex-1">
+                 {/* Department Rail */}
+                <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+                  <div className="p-2 mb-2">
+                    <Logo />
+                  </div>
+                  <div className="flex flex-col items-center gap-2 w-full">
+                    {departments.map(dept => (
+                      <Tooltip key={dept.id}>
+                          <TooltipTrigger asChild>
+                              <Button 
+                                variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'}
+                                size="icon" 
+                                className="h-12 w-12 rounded-lg"
+                                onClick={() => handleDepartmentSelect(dept.id)}>
+                                  {dept.icon}
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" align="center">
+                            <p>{dept.name}</p>
+                          </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
                 </div>
-                <Settings className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </UserNav>
-          </div>
-        </div>
 
-        {/* Channel List - Hidden on mobile, part of sheet */}
-        <div className="hidden md:flex w-64 flex-col bg-[#141821] p-2">
-            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-              {selectedDepartment?.name}
+                {/* Channel List */}
+                <div className="w-64 flex-col bg-[#141821] p-2">
+                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                      {selectedDepartment?.name}
+                    </div>
+                    <AppSidebar
+                      departmentPrefix={selectedDepartment?.prefix ?? ''}
+                      selectedChannelId={selectedChannelId}
+                      onChannelSelect={handleChannelSelect}
+                    />
+                </div>
             </div>
-            <AppSidebar
-              departmentPrefix={selectedDepartment?.prefix ?? ''}
-              selectedChannelId={selectedChannelId}
-              onChannelSelect={handleChannelSelect}
-            />
+            <div className="border-t border-border/50 bg-[#0e1015]">
+                <UserNav role="Student">
+                  <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
+                    <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                          <p className="text-xs text-muted-foreground">Student</p>
+                        </div>
+                      </div>
+                    <Settings className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                </UserNav>
+            </div>
         </div>
         
         {/* Main Content */}
@@ -214,9 +216,15 @@ export default function Home() {
                         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
                           <UserNav role="Student">
                             <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                                <div className="overflow-hidden">
-                                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                                  <p className="text-xs text-muted-foreground">Student</p>
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-8 w-8">
+                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="overflow-hidden">
+                                      <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                      <p className="text-xs text-muted-foreground">Student</p>
+                                    </div>
                                 </div>
                                 <Settings className="h-5 w-5 text-muted-foreground" />
                             </div>

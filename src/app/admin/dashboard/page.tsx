@@ -337,10 +337,16 @@ export default function AdminDashboardPage() {
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
             <UserNav role="Admin">
               <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                  <p className="text-xs text-muted-foreground">Admin</p>
-                </div>
+                 <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="overflow-hidden">
+                      <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                      <p className="text-xs text-muted-foreground">Admin</p>
+                    </div>
+                  </div>
                 <Settings className="h-5 w-5 text-muted-foreground" />
               </div>
             </UserNav>
@@ -351,60 +357,66 @@ export default function AdminDashboardPage() {
     return (
         <TooltipProvider>
             <div className="flex h-screen bg-[#1e2430]">
-                {/* Far Left Rail */}
-                <div className="hidden md:flex flex-col items-center gap-2 bg-[#0e1015] py-3">
-                    <div className="p-2 mb-2"><Logo /></div>
-                    <div className="flex flex-col items-center gap-2 w-full">
-                        {departments.map(dept => (
-                            <div key={dept.id} className="group relative w-full flex justify-center">
-                                <div className={cn( "absolute left-0 top-1/2 -translate-y-1/2 h-2 w-1 -translate-x-1 rounded-r-full bg-white transition-all duration-200", activeView === 'borrow' && selectedDepartmentId === dept.id ? 'h-10' : 'group-hover:h-5' )} />
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === 'borrow' && selectedDepartmentId === dept.id && 'rounded-2xl bg-primary' )} onClick={() => handleDepartmentSelect(dept.id)}>
-                                            {dept.icon}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
-                                </Tooltip>
+                {/* Combined Sidebar */}
+                <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
+                    <div className="flex flex-1">
+                        {/* Far Left Rail */}
+                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+                            <div className="p-2 mb-2"><Logo /></div>
+                            <div className="flex flex-col items-center gap-2 w-full">
+                                {departments.map(dept => (
+                                    <Tooltip key={dept.id}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleDepartmentSelect(dept.id)}>
+                                                {dept.icon}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
+                                    </Tooltip>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                    <Separator className="my-2 bg-border/50 w-8" />
-                    <div className="flex flex-col items-center gap-2 w-full">
-                        {navItems.map(item => (
-                            <div key={item.id} className="group relative w-full flex justify-center">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant={'ghost'} size="icon" className={cn( 'h-12 w-12 rounded-full bg-card transition-all duration-200 hover:rounded-2xl hover:bg-primary', activeView === item.id && 'rounded-2xl bg-primary' )} onClick={() => handleViewChange(item.id as AdminView)}>
-                                            {item.icon}
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
-                                </Tooltip>
+                            <Separator className="my-2 bg-border/50 w-8" />
+                            <div className="flex flex-col items-center gap-2 w-full">
+                                {navItems.map(item => (
+                                    <Tooltip key={item.id}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleViewChange(item.id as AdminView)}>
+                                                {item.icon}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
+                                    </Tooltip>
+                                ))}
                             </div>
-                        ))}
+                        </div>
+
+                        {/* Channel/Context Sidebar */}
+                        {activeView === 'borrow' && (
+                            <div className="w-64 flex-col bg-[#141821] p-2">
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{selectedDepartment?.name}</div>
+                                <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
+                            </div>
+                        )}
                     </div>
-                    <div className="mt-auto w-full border-t border-border/50">
+                     <div className="border-t border-border/50 bg-[#0e1015]">
                       <UserNav role="Admin">
                         <div className="flex cursor-pointer items-center justify-between p-2 transition-colors hover:bg-accent/50">
-                          <div className="overflow-hidden">
-                            <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                            <p className="text-xs text-muted-foreground">Admin</p>
-                          </div>
+                           <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                  <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
+                                  <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="overflow-hidden">
+                                <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                <p className="text-xs text-muted-foreground">Admin</p>
+                              </div>
+                            </div>
                           <Settings className="h-5 w-5 text-muted-foreground" />
                         </div>
                       </UserNav>
                     </div>
                 </div>
 
-                {/* Channel/Context Sidebar */}
-                {activeView === 'borrow' && (
-                    <div className="hidden md:flex w-64 flex-col bg-[#141821] p-2 border-r border-border/50">
-                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{selectedDepartment?.name}</div>
-                        <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
-                    </div>
-                )}
-                
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col h-screen">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
