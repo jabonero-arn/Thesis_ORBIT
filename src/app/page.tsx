@@ -49,7 +49,7 @@ export default function RoleSelectionPage() {
       
       <div className="flex flex-col lg:flex-row gap-16 max-w-6xl w-full items-center justify-center">
         {/* Left Side Info */}
-        <div className="hidden lg:flex flex-col gap-8 text-foreground">
+        <div className="hidden lg:flex flex-col gap-8 text-foreground w-full max-w-sm">
             <div className="flex items-center gap-4">
                 <Logo />
                 <h1 className="font-headline text-3xl font-bold leading-tight">
