@@ -5,7 +5,7 @@ import Image from "next/image"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
 
-import type { CartItem } from "@/lib/types"
+import type { BorrowHistory, CartItem, InventoryItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { currentUser } from "@/lib/data"
@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useAppContext } from "@/context/app-context"
 
 type CheckoutFlowProps = {
   items: CartItem[]
@@ -34,7 +35,7 @@ type CheckoutFlowProps = {
   onItemQuantityChange: (itemId: string, newQuantity: number) => void
 }
 
-function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: CheckoutFlowProps) {
+function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChange }: CheckoutFlowProps) {
   const [isReserve, setIsReserve] = React.useState(false)
   const [reservationDate, setReservationDate] = React.useState<Date>()
   const [startTime, setStartTime] = React.useState<string>("14:00")
@@ -43,6 +44,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
   const [isLoading, setIsLoading] = React.useState(false)
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const { toast } = useToast()
+  const { setItems, setBorrowHistory } = useAppContext();
 
   const handleSubmit = () => {
     if (isReserve) {
@@ -53,7 +55,38 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
   }
 
   const handleBorrow = () => {
-    setIsLoading(true)
+    setIsLoading(true);
+
+    const newHistoryRecords: BorrowHistory[] = [];
+    const itemUpdates: { [id: string]: number } = {};
+
+    cartItems.forEach(({ item, quantity }) => {
+        for (let i = 0; i < quantity; i++) {
+            newHistoryRecords.push({
+                id: `bh-${Date.now()}-${item.id}-${i}`,
+                studentName: currentUser.name,
+                itemName: item.name,
+                date: new Date().toISOString().split('T')[0],
+                status: 'Active', // Directly borrowed
+            });
+        }
+        itemUpdates[item.id] = (itemUpdates[item.id] || 0) + quantity;
+    });
+
+    setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
+
+    setItems(prevItems => prevItems.map(item => {
+        if (itemUpdates[item.id]) {
+            const newQuantity = item.quantity - itemUpdates[item.id];
+            return {
+                ...item,
+                quantity: newQuantity,
+                status: newQuantity > 0 ? item.status : 'Borrowed'
+            };
+        }
+        return item;
+    }));
+    
     setTimeout(() => {
       setIsLoading(false)
       setIsQrCodeOpen(true)
@@ -70,7 +103,37 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
         return;
     }
     
-    setIsLoading(true)
+    setIsLoading(true);
+    const newHistoryRecords: BorrowHistory[] = [];
+    const itemUpdates: { [id: string]: number } = {};
+
+    cartItems.forEach(({ item, quantity }) => {
+        for (let i = 0; i < quantity; i++) {
+            newHistoryRecords.push({
+                id: `bh-${Date.now()}-${item.id}-${i}`,
+                studentName: currentUser.name,
+                itemName: item.name,
+                date: format(reservationDate, "yyyy-MM-dd"),
+                status: 'Approved', // Reserved for pickup
+            });
+        }
+        itemUpdates[item.id] = (itemUpdates[item.id] || 0) + quantity;
+    });
+    
+    setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
+
+    setItems(prevItems => prevItems.map(item => {
+        if (itemUpdates[item.id]) {
+            const newQuantity = item.quantity - itemUpdates[item.id];
+            return {
+                ...item,
+                quantity: newQuantity,
+                status: newQuantity > 0 ? item.status : 'Borrowed'
+            };
+        }
+        return item;
+    }));
+
     setTimeout(() => {
        toast({ title: "Reservation Confirmed!", description: `Items reserved for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime}` })
        onSuccess()
@@ -83,7 +146,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
     onSuccess()
   }
 
-  if (items.length === 0) {
+  if (cartItems.length === 0) {
     return (
       <div className="flex flex-col h-full">
         <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
@@ -96,7 +159,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
     );
   }
 
-  const totalItemsInCart = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalItemsInCart = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
       <>
@@ -108,7 +171,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
         </div>
         
         <div className="flex-1 my-4 space-y-2 overflow-y-auto px-1">
-          {items.map(({ item, quantity }) => (
+          {cartItems.map(({ item, quantity }) => (
             <div key={item.id} className="text-foreground/90 bg-black/20 p-2 rounded-md text-sm flex justify-between items-center">
               <span className="truncate pr-2">{item.name}</span>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -183,7 +246,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
             </Button>
         </div>
 
-        <Dialog open={isQrCodeOpen} onOpenChange={setIsQrCodeOpen}>
+        <Dialog open={isQrCodeOpen} onOpenChange={handleQrDialogClose}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="font-headline">Your QR Code</DialogTitle>
@@ -196,7 +259,7 @@ function CheckoutForm({ items, onClear, onSuccess, onItemQuantityChange }: Check
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
                   JSON.stringify({
                     userId: currentUser.id,
-                    items: items.map((cartItem) => ({id: cartItem.item.id, quantity: cartItem.quantity})),
+                    items: cartItems.map((cartItem) => ({id: cartItem.item.id, quantity: cartItem.quantity})),
                     timestamp: new Date().toISOString(),
                   })
                 )}`}

@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, channels } from "@/lib/data"
+import { currentUser, channels, items as initialItems } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -181,15 +181,31 @@ export default function AdminDashboardPage() {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
         if (!historyRecord) return;
         setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Active' } : h));
-        setItems(prev => prev.map(i => i.name === historyRecord.itemName ? { ...i, status: 'Borrowed' } : i));
         toast({ title: "Pickup Confirmed", description: `${historyRecord.itemName} has been checked out.` });
     }
     
     const handleReturnItem = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
         if (!historyRecord) return;
+        
         setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Returned' } : h));
-        setItems(prev => prev.map(i => i.name === historyRecord.itemName ? { ...i, status: 'Available' } : i));
+        
+        setItems(prevItems => prevItems.map(item => {
+            if (item.name === historyRecord.itemName) {
+                const newQuantity = item.quantity + 1;
+                // Check original item data to see if it should revert to 'Locked' or 'Available'
+                const originalItem = initialItems.find(i => i.name === item.name);
+                const newStatus = originalItem?.status === 'Locked' ? 'Locked' : 'Available';
+
+                return {
+                    ...item,
+                    quantity: newQuantity,
+                    status: item.status === 'Borrowed' ? newStatus : item.status
+                };
+            }
+            return item;
+        }));
+
         toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
     }
     
