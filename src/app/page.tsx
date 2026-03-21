@@ -54,7 +54,7 @@ export default function RoleSelectionPage() {
       <div className="flex w-full max-w-5xl flex-col items-center justify-center gap-8 lg:flex-row lg:items-stretch">
 
         {/* Info Card */}
-        <Card className="hidden w-full max-w-md flex-col border-border/50 bg-card/80 backdrop-blur-sm lg:flex">
+        <Card className="hidden w-full max-w-lg flex-col border-border/50 bg-card/80 backdrop-blur-sm lg:flex">
           <CardHeader>
             <CardTitle className="font-headline text-xl">
               Laboratory Materials Borrowing and Management
@@ -88,7 +88,7 @@ export default function RoleSelectionPage() {
         </Card>
 
         {/* Role Selection Card */}
-        <Card className="w-full max-w-md border-border/50 bg-card/80 backdrop-blur-sm">
+        <Card className="w-full max-w-lg border-border/50 bg-card/80 backdrop-blur-sm">
           <CardHeader className="items-center text-center">
             <Logo />
             <CardTitle className="pt-2 font-headline text-2xl">
@@ -105,7 +105,7 @@ export default function RoleSelectionPage() {
                 asChild
                 variant="secondary"
                 size="lg"
-                className="justify-start text-base"
+                className="justify-center text-base"
               >
                 <Link href={role.href}>
                   {role.icon}
