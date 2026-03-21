@@ -4,7 +4,7 @@ import * as React from "react"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, currentUser } from "@/lib/data"
+import { channels, currentUser as studentUser, teachers } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -38,6 +38,18 @@ const departments = [
 type TeacherView = 'borrow' | 'requests';
 type RequestSubView = 'pending' | 'history';
 
+// Mock the currently logged-in teacher. In a real app, this would come from an auth context.
+const loggedInTeacher = teachers[0]; 
+const currentUser = {
+    id: loggedInTeacher.id,
+    name: loggedInTeacher.name,
+    role: 'Teacher',
+    avatarUrl: loggedInTeacher.avatarUrl,
+    department: 'College of Computer Studies',
+    employeeId: `EMP-${loggedInTeacher.id}`,
+};
+
+
 export default function TeacherDashboardPage() {
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
@@ -55,8 +67,8 @@ export default function TeacherDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
-  const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === currentUser.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === currentUser.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     const record = borrowHistory.find(r => r.id === id);
@@ -174,7 +186,7 @@ export default function TeacherDashboardPage() {
               </Table>
             ) : (
               <div className="flex items-center justify-center p-8 text-center text-muted-foreground">
-                <p>No pending requests.</p>
+                <p>No pending requests for you.</p>
               </div>
             )}
           </div>

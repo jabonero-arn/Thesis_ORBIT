@@ -4,7 +4,7 @@ import * as React from "react"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, currentUser } from "@/lib/data"
+import { channels, currentUser, teachers } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -18,6 +18,7 @@ import { UserNav } from "@/components/user-nav"
 import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
+import { RequestApprovalDialog } from "@/components/request-approval-dialog"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -35,6 +36,9 @@ export default function Home() {
   
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
+  const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
 
   const pendingRequestedItemNames = React.useMemo(() =>
     borrowHistory
@@ -76,22 +80,32 @@ export default function Home() {
     if (isSelected) {
         // Quantity is managed in the cart
     } else if (item.status === "Locked") {
-        const newRequest: BorrowHistory = {
-            id: `bh-${Date.now()}`,
-            studentName: currentUser.name,
-            itemName: item.name,
-            date: new Date().toISOString().split('T')[0],
-            status: 'Pending',
-        };
-        setBorrowHistory(prev => [newRequest, ...prev]);
-        toast({
-            title: "Approval Request Sent",
-            description: `Your request for "${item.name}" has been sent for approval.`,
-        });
+        setItemToRequest(item);
+        setIsApprovalDialogOpen(true);
     } else {
         // If available, just add it with quantity 1
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
     }
+  }
+
+  const handleConfirmRequest = (teacherId: string) => {
+    if (!itemToRequest) return;
+    
+    const newRequest: BorrowHistory = {
+        id: `bh-${Date.now()}`,
+        studentName: currentUser.name,
+        itemName: itemToRequest.name,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Pending',
+        teacherId: teacherId,
+    };
+    setBorrowHistory(prev => [newRequest, ...prev]);
+    setIsApprovalDialogOpen(false);
+    setItemToRequest(null);
+    toast({
+        title: "Approval Request Sent",
+        description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
+    });
   }
 
   const handleChannelSelect = (id: string) => {
@@ -261,6 +275,13 @@ export default function Home() {
           }}
         />
 
+        <RequestApprovalDialog
+          item={itemToRequest}
+          teachers={teachers}
+          open={isApprovalDialogOpen}
+          onOpenChange={setIsApprovalDialogOpen}
+          onConfirm={handleConfirmRequest}
+        />
       </div>
     </TooltipProvider>
   )

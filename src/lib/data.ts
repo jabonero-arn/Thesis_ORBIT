@@ -15,6 +15,12 @@ export const currentUser: User = {
   employeeId: 'EMP-98765',
 };
 
+export const teachers = [
+  { id: 'teacher-1', name: 'Ms. Frizzle', avatarUrl: 'https://i.pinimg.com/736x/b8/b5/c7/b8b5c7f8a7e3e9705f4e0499e2a77a94.jpg' },
+  { id: 'teacher-2', name: 'Mr. Garrison', avatarUrl: 'https://i.pinimg.com/736x/c7/18/af/c718af225e5b3f707f43a65251a37c34.jpg' },
+  { id: 'teacher-3', name: 'Mr. Keating', avatarUrl: 'https://i.pinimg.com/736x/87/05/9d/87059d4c72873831885b19163c46a655.jpg' },
+];
+
 export const channels: Channel[] = [
   {
     id: "computer-lab-1",
@@ -197,12 +203,12 @@ export const items: InventoryItem[] = [
 ];
 
 export const borrowHistory: BorrowHistory[] = [
-    { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Returned' },
-    { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Denied' },
-    { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-29', status: 'Approved' },
+    { id: 'bh1', studentName: 'Alex Doe', itemName: 'Arduino Starter Kit', date: '2024-07-28', status: 'Returned', teacherId: 'teacher-1' },
+    { id: 'bh2', studentName: 'Jane Smith', itemName: 'Bunsen Burner', date: '2024-07-27', status: 'Denied', teacherId: 'teacher-2' },
+    { id: 'bh3', studentName: 'Sam Wilson', itemName: 'FPGA Development Kit', date: '2024-07-29', status: 'Approved', teacherId: 'teacher-1' },
     { id: 'bh4', studentName: 'Casey Jones', itemName: '3D Printer', date: '2024-07-29', status: 'Active' },
-    { id: 'bh5', studentName: 'Alex Doe', itemName: 'CNC Milling Machine', date: '2024-07-30', status: 'Pending' },
-    { id: 'bh6', studentName: 'Maria Garcia', itemName: 'Network Switch', date: '2024-07-30', status: 'Approved' },
-    { id: 'bh7', studentName: 'Sam Wilson', itemName: 'Raspberry Pi 4 Kit', date: '2024-07-25', status: 'Returned' },
+    { id: 'bh5', studentName: 'Alex Doe', itemName: 'CNC Milling Machine', date: '2024-07-30', status: 'Pending', teacherId: 'teacher-2' },
+    { id: 'bh6', studentName: 'Maria Garcia', itemName: 'Network Switch', date: '2024-07-30', status: 'Approved', teacherId: 'teacher-1' },
+    { id: 'bh7', studentName: 'Sam Wilson', itemName: 'Raspberry Pi 4 Kit', date: '2024-07-25', status: 'Returned', teacherId: 'teacher-3' },
     { id: 'bh8', studentName: 'John Appleseed', itemName: 'Digital Scale', date: '2024-07-31', status: 'Active'},
 ];
