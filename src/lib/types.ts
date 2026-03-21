@@ -8,7 +8,6 @@ export type User = {
   // Student specific
   idNumber?: string;
   year?: string;
-  grade?: string;
   course?: string;
   // Teacher/Staff/Admin specific
   department?: string;

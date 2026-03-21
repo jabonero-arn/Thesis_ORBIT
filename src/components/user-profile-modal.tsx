@@ -13,7 +13,7 @@ import { currentUser } from "@/lib/data"
 import { Edit } from "lucide-react"
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
-  const { name, role, avatarUrl, idNumber, year, course, grade, department, employeeId } = currentUser;
+  const { name, role, avatarUrl, idNumber, year, course, department, employeeId } = currentUser;
   
   return (
     <Dialog>
@@ -47,7 +47,6 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                             {idNumber && <div className="flex justify-between"><span className="text-gray-400">ID Number</span><span className="font-mono text-white">{idNumber}</span></div>}
                             {course && <div className="flex justify-between"><span className="text-gray-400">Course</span><span className="text-white">{course}</span></div>}
                             {year && <div className="flex justify-between"><span className="text-gray-400">Year Level</span><span className="text-white">{year}</span></div>}
-                            {grade && <div className="flex justify-between"><span className="text-gray-400">GWA</span><span className="text-white">{grade}</span></div>}
                         </>
                     ) : (
                         <>

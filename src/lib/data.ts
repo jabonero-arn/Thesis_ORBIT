@@ -8,7 +8,6 @@ export const currentUser: User = {
   // Student Fields
   idNumber: '2021-01234',
   year: '3rd Year',
-  grade: '1.75',
   course: 'BS in Computer Science',
   // Teacher/Staff/Admin Fields
   department: 'College of Computer Studies',
