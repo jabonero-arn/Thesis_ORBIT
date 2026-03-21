@@ -105,7 +105,7 @@ export default function RoleSelectionPage() {
                 asChild
                 variant="secondary"
                 size="lg"
-                className="justify-center text-base"
+                className="justify-start text-base"
               >
                 <Link href={role.href}>
                   {role.icon}
