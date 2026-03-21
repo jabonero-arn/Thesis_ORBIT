@@ -10,20 +10,20 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { User, Shield, ClipboardList, BookUser, CheckCircle } from "lucide-react"
+import { User, Shield, ClipboardList, BookUser, CheckCircle, Crown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 export default function RoleSelectionPage() {
   const roles = [
-    {
-      name: "Student",
-      href: "/login?role=student",
-      icon: <User className="mr-2 h-5 w-5" />,
+     {
+      name: "Primary Custodian",
+      href: "/login?role=primary-custodian",
+      icon: <Crown className="mr-2 h-5 w-5" />,
     },
     {
-      name: "Teacher",
-      href: "/login?role=teacher",
-      icon: <BookUser className="mr-2 h-5 w-5" />,
+      name: "Admin",
+      href: "/login?role=admin",
+      icon: <Shield className="mr-2 h-5 w-5" />,
     },
     {
       name: "Staff",
@@ -31,9 +31,14 @@ export default function RoleSelectionPage() {
       icon: <ClipboardList className="mr-2 h-5 w-5" />,
     },
     {
-      name: "Admin",
-      href: "/login?role=admin",
-      icon: <Shield className="mr-2 h-5 w-5" />,
+      name: "Teacher",
+      href: "/login?role=teacher",
+      icon: <BookUser className="mr-2 h-5 w-5" />,
+    },
+    {
+      name: "Student",
+      href: "/login?role=student",
+      icon: <User className="mr-2 h-5 w-5" />,
     },
   ]
 
@@ -55,6 +60,7 @@ export default function RoleSelectionPage() {
               Laboratory Materials Borrowing and Management
             </CardTitle>
              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary">Primary Custodian</Badge>
                 <Badge variant="secondary">Admin</Badge>
                 <Badge variant="secondary">Staff</Badge>
                 <Badge variant="secondary">Teacher</Badge>

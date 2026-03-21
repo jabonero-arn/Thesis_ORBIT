@@ -30,6 +30,8 @@ export function UserNav({ role }: { role?: Role }) {
 
   const getDashboardPath = () => {
     switch (displayRole) {
+        case 'Primary Custodian':
+            return '/primary-custodian/dashboard';
         case 'Admin':
             return '/admin/dashboard';
         case 'Staff':

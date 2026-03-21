@@ -72,7 +72,7 @@ type DashboardSubView = 'overall' | 'comp' | 'chem' | 'robo';
 type InventorySubView = 'all' | 'comp' | 'chem' | 'robo';
 type TransactionSubView = 'pickup' | 'borrowed';
 
-export default function AdminDashboardPage() {
+export default function PrimaryCustodianDashboardPage() {
     const { toast } = useToast()
     const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
@@ -388,7 +388,7 @@ export default function AdminDashboardPage() {
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
-                  <UserProfileModal role="Admin">
+                  <UserProfileModal role="Primary Custodian">
                       <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                           <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -396,11 +396,11 @@ export default function AdminDashboardPage() {
                           </Avatar>
                           <div className="overflow-hidden">
                               <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                              <p className="text-xs text-muted-foreground">Admin</p>
+                              <p className="text-xs text-muted-foreground">Primary Custodian</p>
                           </div>
                       </div>
                   </UserProfileModal>
-                  <UserNav role="Admin" />
+                  <UserNav role="Primary Custodian" />
               </div>
           </div>
       </div>
@@ -494,7 +494,7 @@ export default function AdminDashboardPage() {
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
                          <div className="flex items-center justify-between p-2">
-                             <UserProfileModal role="Admin">
+                             <UserProfileModal role="Primary Custodian">
                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                      <Avatar className="h-8 w-8 flex-shrink-0">
                                          <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
@@ -502,11 +502,11 @@ export default function AdminDashboardPage() {
                                      </Avatar>
                                      <div className="overflow-hidden">
                                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                                         <p className="text-xs text-muted-foreground">Admin</p>
+                                         <p className="text-xs text-muted-foreground">Primary Custodian</p>
                                      </div>
                                  </div>
                              </UserProfileModal>
-                             <UserNav role="Admin" />
+                             <UserNav role="Primary Custodian" />
                          </div>
                     </div>
                 </div>

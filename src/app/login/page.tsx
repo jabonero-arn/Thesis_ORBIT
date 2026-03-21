@@ -30,7 +30,9 @@ export default function LoginPage() {
     }
   }, [role, router])
 
-  const capitalizedRole = role ? role.charAt(0).toUpperCase() + role.slice(1) : ""
+  const capitalizedRole = role
+    ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+    : ""
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -43,6 +45,8 @@ export default function LoginPage() {
       redirectPath = "/admin/dashboard"
     } else if (role === "staff") {
       redirectPath = "/staff/dashboard"
+    } else if (role === "primary-custodian") {
+      redirectPath = "/primary-custodian/dashboard"
     }
 
     toast({
