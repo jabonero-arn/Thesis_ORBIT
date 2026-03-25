@@ -42,6 +42,7 @@ export type BorrowHistory = {
     date: string;
     status: BorrowHistoryStatus;
     teacherId?: string;
+    checkoutSessionId?: string;
 };
 
 export type CartItem = {

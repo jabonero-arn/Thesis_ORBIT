@@ -43,6 +43,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   
   const [isLoading, setIsLoading] = React.useState(false)
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
+  const [qrCodeData, setQrCodeData] = React.useState<string>("");
   const { toast } = useToast()
   const { setItems, setBorrowHistory } = useAppContext();
 
@@ -57,6 +58,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const handleBorrow = () => {
     setIsLoading(true);
 
+    const checkoutSessionId = `cs-${Date.now()}`;
     const newHistoryRecords: BorrowHistory[] = [];
     const itemUpdates: { [id: string]: number } = {};
 
@@ -67,7 +69,8 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 studentName: currentUser.name,
                 itemName: item.name,
                 date: new Date().toISOString().split('T')[0],
-                status: 'Active', // Directly borrowed
+                status: 'Approved', // Ready for staff pickup
+                checkoutSessionId: checkoutSessionId,
             });
         }
         itemUpdates[item.id] = (itemUpdates[item.id] || 0) + quantity;
@@ -87,9 +90,15 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         return item;
     }));
     
+    setQrCodeData(JSON.stringify({ checkoutSessionId }));
+
     setTimeout(() => {
       setIsLoading(false)
       setIsQrCodeOpen(true)
+      toast({
+          title: "Ready for Pickup",
+          description: "Present the generated QR code to the lab staff."
+      })
     }, 1000)
   }
   
@@ -256,13 +265,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             </DialogHeader>
             <div className="flex justify-center py-4">
               <Image
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
-                  JSON.stringify({
-                    userId: currentUser.id,
-                    items: cartItems.map((cartItem) => ({id: cartItem.item.id, quantity: cartItem.quantity})),
-                    timestamp: new Date().toISOString(),
-                  })
-                )}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrCodeData)}`}
                 alt="Transaction QR Code"
                 width={256}
                 height={256}

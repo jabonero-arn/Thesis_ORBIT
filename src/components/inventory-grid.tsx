@@ -10,9 +10,20 @@ type InventoryGridProps = {
   isManagementView?: boolean
   onQuantityChange?: (itemId: string, newQuantity: number) => void
   pendingRequestedItemNames?: string[]
+  approvedForBorrowItemNames?: string[]
 }
 
-export function InventoryGrid({ items, onItemSelect, selectedItems, isTeacherView, isSelectionEnabled = true, isManagementView, onQuantityChange, pendingRequestedItemNames = [] }: InventoryGridProps) {
+export function InventoryGrid({ 
+    items, 
+    onItemSelect, 
+    selectedItems, 
+    isTeacherView, 
+    isSelectionEnabled = true, 
+    isManagementView, 
+    onQuantityChange, 
+    pendingRequestedItemNames = [],
+    approvedForBorrowItemNames = []
+}: InventoryGridProps) {
   if (items.length === 0) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border-2 border-dashed border-border/50 bg-card/50 p-8 text-center text-muted-foreground">
@@ -30,6 +41,7 @@ export function InventoryGrid({ items, onItemSelect, selectedItems, isTeacherVie
             onSelect={() => onItemSelect(item)}
             isSelected={selectedItems.some(si => si.id === item.id)}
             isPending={pendingRequestedItemNames.includes(item.name)}
+            isApproved={approvedForBorrowItemNames.includes(item.name)}
             isTeacherView={isTeacherView}
             isSelectionEnabled={isSelectionEnabled}
             isManagementView={isManagementView}

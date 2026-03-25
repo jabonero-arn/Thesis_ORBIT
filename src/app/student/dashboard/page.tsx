@@ -41,9 +41,16 @@ export default function Home() {
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
 
   const pendingRequestedItemNames = React.useMemo(() =>
-    borrowHistory
+    new Set(borrowHistory
       .filter(h => h.studentName === currentUser.name && h.status === 'Pending')
-      .map(h => h.itemName),
+      .map(h => h.itemName)),
+    [borrowHistory]
+  );
+
+  const approvedForBorrowItemNames = React.useMemo(() =>
+    new Set(borrowHistory
+        .filter(h => h.studentName === currentUser.name && h.status === 'Approved')
+        .map(h => h.itemName)),
     [borrowHistory]
   );
   
@@ -68,7 +75,7 @@ export default function Home() {
   const handleItemSelect = (item: InventoryItem) => {
     if (item.status === "Borrowed") return;
     
-    if (pendingRequestedItemNames.includes(item.name)) {
+    if (pendingRequestedItemNames.has(item.name)) {
         toast({
             title: "Request Already Pending",
             description: `You already have a pending request for "${item.name}".`,
@@ -79,12 +86,22 @@ export default function Home() {
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
         // Quantity is managed in the cart
+        return;
+    }
+
+    const isApproved = approvedForBorrowItemNames.has(item.name);
+
+    if (item.status === "Available" || isApproved) {
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
+         if(isApproved){
+             toast({
+                title: "Approved Item Added",
+                description: `"${item.name}" has been added to your cart.`,
+            });
+        }
     } else if (item.status === "Locked") {
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
-    } else {
-        // If available, just add it with quantity 1
-        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
     }
   }
 
@@ -259,7 +276,8 @@ export default function Home() {
               items={items} 
               onItemSelect={handleItemSelect}
               selectedItems={selectedItems.map(ci => ci.item)}
-              pendingRequestedItemNames={pendingRequestedItemNames} 
+              pendingRequestedItemNames={Array.from(pendingRequestedItemNames)}
+              approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
             />
           </div>
         </main>

@@ -11,13 +11,24 @@ type ItemCardProps = {
   onSelect: () => void
   isSelected: boolean
   isPending?: boolean
+  isApproved?: boolean
   isTeacherView?: boolean
   isSelectionEnabled?: boolean
   isManagementView?: boolean
   onQuantityChange?: (itemId: string, newQuantity: number) => void
 }
 
-export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView = false, isSelectionEnabled = true, isManagementView = false, onQuantityChange }: ItemCardProps) {
+export function ItemCard({ 
+    item, 
+    onSelect, 
+    isSelected, 
+    isPending,
+    isApproved, 
+    isTeacherView = false, 
+    isSelectionEnabled = true, 
+    isManagementView = false, 
+    onQuantityChange 
+}: ItemCardProps) {
   
   const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isManagementView) {
@@ -29,6 +40,9 @@ export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView 
     }
   };
 
+  const showPending = isPending && !isApproved && !isTeacherView && !isManagementView;
+  const showApproved = isApproved && !isTeacherView && !isManagementView;
+
   return (
     <Card 
       onClick={handleCardClick}
@@ -37,7 +51,8 @@ export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView 
         (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView && !isPending) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
         (item.status === "Borrowed" || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed",
-        isPending && "!border-amber-500 shadow-lg shadow-amber-500/20",
+        showPending && "!border-amber-500 shadow-lg shadow-amber-500/20",
+        showApproved && "!border-green-500 shadow-lg shadow-green-500/20",
         item.status === "Borrowed" && isSelectionEnabled && !isManagementView && "opacity-60"
       )}
     >
@@ -54,21 +69,33 @@ export function ItemCard({ item, onSelect, isSelected, isPending, isTeacherView 
             <CheckCircle className="h-12 w-12 text-primary-foreground" />
           </div>
         )}
-         {isPending && (
+         {showPending && (
           <div className="absolute inset-0 bg-amber-900/50 flex items-center justify-center">
              <Hourglass className="h-12 w-12 text-amber-300 animate-spin" />
           </div>
         )}
+        {showApproved && (
+           <div className="absolute inset-0 bg-green-900/50 flex items-center justify-center">
+             <CheckCircle className="h-12 w-12 text-green-300" />
+          </div>
+        )}
+
 
         {item.status === 'Borrowed' && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
         
-        {isPending && !isTeacherView && !isManagementView && (
+        {showPending && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-amber-500/20 border-amber-500 text-amber-300 flex items-center">
                 <Hourglass className="mr-1 h-3 w-3"/>Pending
             </Badge>
         )}
         
-        {item.status === 'Locked' && !isPending && !isTeacherView && !isManagementView && (
+        {showApproved && (
+            <Badge variant="outline" className="absolute top-2 left-2 bg-green-600/20 border-green-600 text-green-300 flex items-center">
+                <CheckCircle className="mr-1 h-3 w-3"/>Approved
+            </Badge>
+        )}
+
+        {item.status === 'Locked' && !isPending && !isApproved && !isTeacherView && !isManagementView && (
             <Badge variant="secondary" className="absolute top-2 left-2 flex items-center">
                 <Lock className="mr-1 h-3 w-3"/>Locked
             </Badge>

@@ -3,7 +3,7 @@
 import * as React from "react"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
-    PlusCircle, Edit, Trash
+    PlusCircle, Edit, Trash, QrCode
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -35,6 +35,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { QrScannerView } from "@/components/qr-scanner-view"
 
 
 const departments = [
@@ -43,7 +44,7 @@ const departments = [
   { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
 ];
 
-type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history';
+type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history' | 'scanner';
 type TransactionSubView = 'pickup' | 'borrowed';
 
 export default function StaffDashboardPage() {
@@ -212,6 +213,7 @@ export default function StaffDashboardPage() {
     }
     
     const navItems = [
+        { id: 'scanner', label: 'QR Scanner', icon: <QrCode /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
@@ -221,7 +223,7 @@ export default function StaffDashboardPage() {
         const approvedRequests = borrowHistory.filter(h => h.status === 'Approved');
         return (
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                <CardHeader><CardTitle>Awaiting Pickup</CardTitle><CardDescription>Teacher-approved requests ready for student pickup.</CardDescription></CardHeader>
+                <CardHeader><CardTitle>Awaiting Pickup</CardTitle><CardDescription>Teacher-approved requests or immediate borrows ready for student pickup.</CardDescription></CardHeader>
                 <CardContent>
                     <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Approved</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                         <TableBody>
@@ -333,6 +335,8 @@ export default function StaffDashboardPage() {
                         <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
                     </Card>
                 );
+            case 'scanner':
+                return <QrScannerView />;
             default: return null;
         }
     };
@@ -356,19 +360,12 @@ export default function StaffDashboardPage() {
                 </div>
             );
         }
-        if (activeView === 'inventory') {
+        const currentNavItem = navItems.find(item => item.id === activeView);
+        if (currentNavItem) {
              return (
                 <div className="flex items-center gap-2">
-                    <Package className="text-muted-foreground"/>
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Manage Inventory</h1>
-                </div>
-            );
-        }
-        if (activeView === 'history') {
-             return (
-                <div className="flex items-center gap-2">
-                    <HistoryIcon className="text-muted-foreground"/>
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Full History</h1>
+                    <div className="text-muted-foreground">{currentNavItem.icon}</div>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{currentNavItem.label}</h1>
                 </div>
             );
         }
@@ -393,30 +390,26 @@ export default function StaffDashboardPage() {
                 Management
             </div>
             <div className="p-2 space-y-1">
-                <Button variant={activeView === 'inventory' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('inventory'); }}>
-                    <Package className="h-5 w-5" /> Inventory
-                </Button>
-                {activeView === 'inventory' && (
-                    <div className="pl-6 py-2">
-                        <ul className="flex flex-col gap-1">
-                            <li><button onClick={() => { setInventorySelectedDeptId('all'); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>All Items</button></li>
-                            {departments.map(dept => (
-                                <li key={dept.id}><button onClick={() => { setInventorySelectedDeptId(dept.id); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-                <Button variant={activeView === 'transactions' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('transactions'); }}>
-                    <PackageOpen className="h-5 w-5" /> Transactions
-                </Button>
-                <Button variant={activeView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange('history'); }}>
-                    <HistoryIcon className="h-5 w-5" /> History
-                </Button>
+                {navItems.map(item => (
+                     <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { handleViewChange(item.id as StaffView); }}>
+                        {item.icon} {item.label}
+                    </Button>
+                ))}
             </div>
+            {activeView === 'inventory' && (
+                <div className="pl-6 py-2">
+                    <ul className="flex flex-col gap-1">
+                        <li><button onClick={() => { setInventorySelectedDeptId('all'); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>All Items</button></li>
+                        {departments.map(dept => (
+                            <li key={dept.id}><button onClick={() => { setInventorySelectedDeptId(dept.id); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>
+                        ))}
+                    </ul>
+                </div>
+            )}
             {activeView === 'transactions' && (
                  <div className="pl-6">
                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                        TRANSACTIONS
+                        QUEUES
                     </h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => setTransactionSubView('pickup')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'pickup' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Awaiting Pickup</button></li>
@@ -524,19 +517,20 @@ export default function StaffDashboardPage() {
                                 </div>
                             </div>
                         )}
-                        {activeView === 'history' && (
+                        {(activeView === 'history' || activeView === 'scanner') && (
                              <div className="w-64 flex-col bg-[#141821] p-2">
                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                                    History
+                                    {activeView === 'history' ? 'History' : 'Scanner'}
                                 </div>
                                 <div className="flex-1 py-4">
                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                        LOGS
+                                        ACTIONS
                                     </h2>
                                     <ul className="flex flex-col gap-1">
                                         <li>
                                           <button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}>
-                                            <HistoryIcon className="h-5 w-5" /> Full History
+                                            {activeView === 'history' ? <HistoryIcon className="h-5 w-5" /> : <QrCode className="h-5 w-5" />}
+                                            {activeView === 'history' ? 'Full History' : 'Scan Code'}
                                           </button>
                                         </li>
                                     </ul>
