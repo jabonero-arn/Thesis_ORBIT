@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { channels, currentUser, teachers } from "@/lib/data"
@@ -20,6 +20,7 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import { RequestApprovalDialog } from "@/components/request-approval-dialog"
 import { StudentActivity } from "@/components/student-activity"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -30,6 +31,9 @@ const departments = [
 export default function Home() {
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+
+  const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
+
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
     channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
@@ -59,14 +63,20 @@ export default function Home() {
         .map(h => h.itemName)),
     [studentBorrowHistory]
   );
-
+  
   const handleDepartmentSelect = (deptId: string) => {
+    setActiveView('borrow');
     setSelectedDepartmentId(deptId);
     const firstChannelInDept = channels.find(c => c.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
     if (firstChannelInDept) {
       setSelectedChannelId(firstChannelInDept.id);
     }
     setSelectedItems([]);
+    setIsMobileMenuOpen(false);
+  }
+
+  const handleActivitySelect = () => {
+    setActiveView('activity');
     setIsMobileMenuOpen(false);
   }
 
@@ -183,7 +193,7 @@ export default function Home() {
                       <Tooltip key={dept.id}>
                           <TooltipTrigger asChild>
                               <Button 
-                                variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'}
+                                variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'}
                                 size="icon" 
                                 className="h-12 w-12 rounded-lg"
                                 onClick={() => handleDepartmentSelect(dept.id)}>
@@ -195,20 +205,59 @@ export default function Home() {
                           </TooltipContent>
                       </Tooltip>
                     ))}
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                            variant={activeView === 'activity' ? 'secondary' : 'ghost'}
+                            size="icon" 
+                            className="h-12 w-12 rounded-lg"
+                            onClick={handleActivitySelect}>
+                                <Inbox />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">
+                        <p>My Activity</p>
+                        </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
 
                 {/* Channel List */}
-                <div className="w-64 flex-col bg-[#141821] p-2">
-                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                      {selectedDepartment?.name}
+                {activeView === 'borrow' ? (
+                    <div className="w-64 flex-col bg-[#141821] p-2">
+                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                          {selectedDepartment?.name}
+                        </div>
+                        <AppSidebar
+                          departmentPrefix={selectedDepartment?.prefix ?? ''}
+                          selectedChannelId={selectedChannelId}
+                          onChannelSelect={handleChannelSelect}
+                        />
                     </div>
-                    <AppSidebar
-                      departmentPrefix={selectedDepartment?.prefix ?? ''}
-                      selectedChannelId={selectedChannelId}
-                      onChannelSelect={handleChannelSelect}
-                    />
-                </div>
+                ) : (
+                    <div className="w-64 flex-col bg-[#141821] p-2">
+                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                            My Activity
+                        </div>
+                         <div className="flex-1 py-4">
+                            <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                SECTIONS
+                            </h2>
+                             <ul className="flex flex-col gap-1">
+                                <li>
+                                    <a href="#borrowed-items" onClick={() => setIsMobileMenuOpen(false)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors text-muted-foreground hover:bg-accent/50 hover:text-white">
+                                        <PackageCheck className="h-5 w-5" /> Borrowed Items
+                                    </a>
+                                </li>
+                                <li>
+                                     <a href="#reservations" onClick={() => setIsMobileMenuOpen(false)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors text-muted-foreground hover:bg-accent/50 hover:text-white">
+                                        <Hourglass className="h-5 w-5" /> Requests & Reservations
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                )}
             </div>
             <div className="border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
@@ -248,17 +297,26 @@ export default function Home() {
                             </div>
                             <div className="p-2 space-y-1">
                                 {departments.map(dept => (
-                                    <Button key={dept.id} variant={selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
+                                    <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
                                         {dept.icon}
                                         {dept.name}
                                     </Button>
                                 ))}
                             </div>
-                            <AppSidebar
-                                departmentPrefix={selectedDepartment?.prefix ?? ''}
-                                selectedChannelId={selectedChannelId}
-                                onChannelSelect={handleChannelSelect}
-                            />
+                            {activeView === 'borrow' && (
+                                <AppSidebar
+                                    departmentPrefix={selectedDepartment?.prefix ?? ''}
+                                    selectedChannelId={selectedChannelId}
+                                    onChannelSelect={handleChannelSelect}
+                                />
+                            )}
+                            <Separator className="my-2" />
+                            <div className="p-2 space-y-1">
+                                <Button variant={activeView === 'activity' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={handleActivitySelect}>
+                                    <Inbox />
+                                    My Activity
+                                </Button>
+                            </div>
                         </div>
                         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
                           <div className="flex items-center justify-between p-2">
@@ -280,34 +338,46 @@ export default function Home() {
                       </div>
                   </SheetContent>
               </Sheet>
-              <div className="flex items-center gap-2">
-                  <Hash className="text-muted-foreground" />
-                  <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
-              </div>
+              {activeView === 'borrow' ? (
+                <div className="flex items-center gap-2">
+                    <Hash className="text-muted-foreground" />
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                    <Inbox className="text-muted-foreground" />
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">My Activity</h1>
+                </div>
+              )}
             </div>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <InventoryGrid 
-              items={items} 
-              onItemSelect={handleItemSelect}
-              selectedItems={selectedItems.map(ci => ci.item)}
-              pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
-              approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
-            />
-            <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} />
+            {activeView === 'borrow' ? (
+                <InventoryGrid 
+                items={items} 
+                onItemSelect={handleItemSelect}
+                selectedItems={selectedItems.map(ci => ci.item)}
+                pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
+                approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
+                />
+            ) : (
+                <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} />
+            )}
           </div>
         </main>
         
         {/* Cart - now responsive */}
-        <CheckoutFlow
-          key={selectedChannelId}
-          items={selectedItems}
-          onItemQuantityChange={handleItemQuantityChange}
-          onClear={() => setSelectedItems([])}
-          onSuccess={() => {
-              setSelectedItems([]);
-          }}
-        />
+        {activeView === 'borrow' && (
+            <CheckoutFlow
+            key={selectedChannelId}
+            items={selectedItems}
+            onItemQuantityChange={handleItemQuantityChange}
+            onClear={() => setSelectedItems([])}
+            onSuccess={() => {
+                setSelectedItems([]);
+            }}
+            />
+        )}
 
         <RequestApprovalDialog
           item={itemToRequest}

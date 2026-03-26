@@ -32,7 +32,7 @@ export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProp
 
     return (
         <div className="space-y-8 mt-8">
-            <Card className="bg-card/80">
+            <Card id="borrowed-items" className="bg-card/80 scroll-mt-20">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 font-headline">
                         <PackageCheck className="h-6 w-6" /> My Borrowed Items
@@ -65,7 +65,7 @@ export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProp
                 </CardContent>
             </Card>
 
-            <Card className="bg-card/80">
+            <Card id="reservations" className="bg-card/80 scroll-mt-20">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2 font-headline">
                         <Hourglass className="h-6 w-6" /> My Requests & Reservations
