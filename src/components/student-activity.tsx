@@ -27,8 +27,11 @@ const getStatusBadge = (status: BorrowHistory['status']) => {
 }
 
 export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProps) {
-    const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
-    const pendingReservations = borrowHistory.filter(h => h.status === 'Approved' || h.status === 'Pending');
+    const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
+    const reservationStatuses: BorrowHistory['status'][] = ['Approved', 'Pending'];
+
+    const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
+    const pendingReservations = borrowHistory.filter(h => reservationStatuses.includes(h.status));
 
     return (
         <div className="space-y-8 mt-8">
