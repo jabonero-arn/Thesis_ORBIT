@@ -138,15 +138,17 @@ export default function LoginPage() {
               Back to role selection
             </Link>
           </p>
-          <p className="text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              href="/signup"
-              className="font-semibold text-primary hover:underline"
-            >
-              Sign Up
-            </Link>
-          </p>
+          {role === 'student' && (
+            <p className="text-muted-foreground">
+              Don't have an account?{" "}
+              <Link
+                href="/signup"
+                className="font-semibold text-primary hover:underline"
+              >
+                Sign Up
+              </Link>
+            </p>
+          )}
         </CardFooter>
       </Card>
     </div>

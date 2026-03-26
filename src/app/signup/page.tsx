@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/firebase"
 import { createUserWithEmailAndPassword, AuthError } from "firebase/auth"
@@ -29,7 +28,6 @@ export default function SignUpPage() {
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
-  const [role, setRole] = React.useState('student');
   const [isLoading, setIsLoading] = React.useState(false);
 
 
@@ -52,12 +50,8 @@ export default function SignUpPage() {
             description: "You have successfully signed up. Redirecting...",
         });
         
-        let redirectPath = "/dashboard"; // default student
-        if (role === "teacher") {
-          redirectPath = "/teacher/dashboard";
-        }
-        // No other roles can be created from signup page.
-        router.push(redirectPath);
+        // Only students can sign up, so always redirect to the student dashboard.
+        router.push("/dashboard");
 
     } catch(e) {
         const error = e as AuthError;
@@ -83,7 +77,7 @@ export default function SignUpPage() {
       <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader className="items-center text-center">
           <Logo />
-          <CardTitle className="font-headline text-2xl pt-2">Create an Account</CardTitle>
+          <CardTitle className="font-headline text-2xl pt-2">Create a Student Account</CardTitle>
           <CardDescription>Join LabFlow to start borrowing equipment.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -105,19 +99,6 @@ export default function SignUpPage() {
                 <Label htmlFor="confirm-password">Confirm Password</Label>
                 <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
                 </div>
-            </div>
-             <div className="grid gap-2">
-                <Label>Role</Label>
-                <RadioGroup defaultValue="student" className="flex gap-4 pt-1" onValueChange={setRole} value={role}>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="student" id="role-student" />
-                        <Label htmlFor="role-student" className="font-normal">Student</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="teacher" id="role-teacher" />
-                        <Label htmlFor="role-teacher" className="font-normal">Teacher</Label>
-                    </div>
-                </RadioGroup>
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>
                 {isLoading ? <Loader2 className="animate-spin" /> : 'Create Account'}
