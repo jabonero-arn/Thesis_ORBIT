@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, channels, items as initialItems } from "@/lib/data"
+import { currentUser, channels, items as initialItems, allUsers } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -39,16 +39,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
-
-const allUsers = [
-    { id: 'user-7', name: 'Primary Custodian 1', role: 'Primary Custodian' },
-    { id: 'user-6', name: 'Admin 1', role: 'Admin' },
-    { id: 'user-5', name: 'Staff 1', role: 'Staff' },
-    { id: 'user-4', name: 'Teacher 1', role: 'Teacher' },
-    { id: 'user-1', name: 'Arnie Jabonero', role: 'Student' },
-    { id: 'user-2', name: 'Alex Doe', role: 'Student' },
-    { id: 'user-3', name: 'Jane Smith', role: 'Student' },
-];
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },

@@ -14,11 +14,121 @@ export const currentUser: User = {
   employeeId: 'EMP-98765',
 };
 
-export const teachers = [
-  { id: 'teacher-1', name: 'Ms. Frizzle', avatarUrl: 'https://i.pinimg.com/736x/b8/b5/c7/b8b5c7f8a7e3e9705f4e0499e2a77a94.jpg' },
-  { id: 'teacher-2', name: 'Mr. Garrison', avatarUrl: 'https://i.pinimg.com/736x/c7/18/af/c718af225e5b3f707f43a65251a37c34.jpg' },
-  { id: 'teacher-3', name: 'Mr. Keating', avatarUrl: 'https://i.pinimg.com/736x/87/05/9d/87059d4c72873831885b19163c46a655.jpg' },
+export const allUsers: User[] = [
+  { 
+    id: 'user-1', 
+    name: 'Arnie Jabonero', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/38/43/d4/3843d494d3ecb871de072528e60d06a8.jpg',
+    idNumber: '2021-01234',
+    year: '3rd Year',
+    course: 'BS in Computer Science',
+  },
+  { 
+    id: 'user-2', 
+    name: 'Alex Doe', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/1a/2b/3c/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.jpg',
+    idNumber: '2022-05678',
+    year: '2nd Year',
+    course: 'BS in Information Technology',
+  },
+  { 
+    id: 'user-3', 
+    name: 'Jane Smith', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/0a/1b/2c/0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d.jpg',
+    idNumber: '2020-02468',
+    year: '4th Year',
+    course: 'BS in Electronics Engineering',
+  },
+  { 
+    id: 'teacher-1', 
+    name: 'Ms. Frizzle', 
+    role: 'Teacher', 
+    avatarUrl: 'https://i.pinimg.com/736x/b8/b5/c7/b8b5c7f8a7e3e9705f4e0499e2a77a94.jpg',
+    department: 'Science Department',
+    employeeId: 'EMP-12345',
+  },
+  { 
+    id: 'teacher-2', 
+    name: 'Mr. Garrison', 
+    role: 'Teacher', 
+    avatarUrl: 'https://i.pinimg.com/736x/c7/18/af/c718af225e5b3f707f43a65251a37c34.jpg',
+    department: 'Social Studies',
+    employeeId: 'EMP-23456',
+  },
+  { 
+    id: 'teacher-3', 
+    name: 'Mr. Keating', 
+    role: 'Teacher', 
+    avatarUrl: 'https://i.pinimg.com/736x/87/05/9d/87059d4c72873831885b19163c46a655.jpg',
+    department: 'English Department',
+    employeeId: 'EMP-34567',
+  },
+   { 
+    id: 'user-5', 
+    name: 'Staff 1', 
+    role: 'Staff', 
+    avatarUrl: 'https://i.pinimg.com/736x/2a/3b/4c/2a3b4c5c2b5b4a5c5f8e5f7a0b3e8a8d.jpg',
+    department: 'Lab Support',
+    employeeId: 'EMP-45678',
+  },
+  { 
+    id: 'user-6', 
+    name: 'Admin 1', 
+    role: 'Admin', 
+    avatarUrl: 'https://i.pinimg.com/736x/5a/6e/8c/5a6e8c7c2b5b4a5c5f8e5f7a0b3e8a8d.jpg',
+    department: 'IT Services',
+    employeeId: 'EMP-56789',
+  },
+  { 
+    id: 'user-7', 
+    name: 'Primary Custodian 1', 
+    role: 'Primary Custodian', 
+    avatarUrl: 'https://i.pinimg.com/736x/8a/8d/3f/8a8d3f6a2d3b245a4a5c5f8e5f7a0b3e.jpg',
+    department: 'Facilities Management',
+    employeeId: 'EMP-67890',
+  },
+   { 
+    id: 'user-8', 
+    name: 'Sam Wilson', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/6e/a5/8a/6ea58a3e7c8a6a6a1b8a4f9e8f9e6a8e.jpg',
+    idNumber: '2021-01111',
+    year: '3rd Year',
+    course: 'BS in Computer Science',
+  },
+   { 
+    id: 'user-9', 
+    name: 'Casey Jones', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/4e/c5/4a/4ec54a8e7c8a6a6a1b8a4f9e8f9e6a8e.jpg',
+    idNumber: '2021-02222',
+    year: '3rd Year',
+    course: 'BS in Mechanical Engineering',
+  },
+  { 
+    id: 'user-10', 
+    name: 'Maria Garcia', 
+    role: 'Student', 
+    avatarUrl: 'https://i.pinimg.com/736x/5e/b5/4a/5eb54a8e7c8a6a6a1b8a4f9e8f9e6a8e.jpg',
+    idNumber: '2022-03333',
+    year: '2nd Year',
+    course: 'BS in Chemistry',
+  },
+  {
+    id: 'user-11',
+    name: 'John Appleseed',
+    role: 'Student',
+    avatarUrl: 'https://i.pinimg.com/736x/6e/b5/4a/6eb54a8e7c8a6a6a1b8a4f9e8f9e6a8e.jpg',
+    idNumber: '2023-04444',
+    year: '1st Year',
+    course: 'BS in Biology',
+  }
 ];
+
+export const teachers = allUsers.filter(user => user.role === 'Teacher').map(({ id, name, avatarUrl }) => ({ id, name, avatarUrl }));
 
 export const channels: Channel[] = [
   {
