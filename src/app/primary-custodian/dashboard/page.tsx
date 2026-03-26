@@ -59,7 +59,7 @@ const userRoles = [
 type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'users';
 type DashboardSubView = 'overall' | 'comp' | 'chem' | 'robo';
 type InventorySubView = 'all' | 'comp' | 'chem' | 'robo';
-type TransactionSubView = 'pickup' | 'borrowed';
+type TransactionSubView = 'borrowed';
 
 export default function PrimaryCustodianDashboardPage() {
     const { toast } = useToast()
@@ -69,7 +69,7 @@ export default function PrimaryCustodianDashboardPage() {
     const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
-    const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('pickup');
+    const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
     const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
     const [usersSubView, setUsersSubView] = React.useState<'all' | 'Primary Custodian' | 'Admin' | 'Staff' | 'Teacher' | 'Student'>('all');
     
@@ -165,26 +165,6 @@ export default function PrimaryCustodianDashboardPage() {
         setItems(prev => prev.filter(item => item.id !== itemId));
         toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
     }
-
-    const handleProcessPickup = (historyId: string) => {
-        const historyRecord = borrowHistory.find(h => h.id === historyId);
-        if (!historyRecord) return;
-        
-        setItems(prevItems => prevItems.map(item => {
-            if (item.name === historyRecord.itemName) {
-                const newQuantity = item.quantity - 1;
-                return {
-                    ...item,
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? item.status : 'Borrowed'
-                };
-            }
-            return item;
-        }));
-
-        setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Active' } : h));
-        toast({ title: "Pickup Confirmed", description: `${historyRecord.itemName} has been checked out.` });
-    }
     
     const handleReturnItem = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
@@ -219,7 +199,7 @@ export default function PrimaryCustodianDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary' } as const;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive' } as const;
         return <Badge variant={variants[status]}>{status}</Badge>;
     }
 
@@ -291,31 +271,18 @@ export default function PrimaryCustodianDashboardPage() {
                     </div>
                 );
             case 'transactions':
-                const approvedRequests = borrowHistory.filter(h => h.status === 'Approved' && !h.startTime);
                 const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-                        {transactionSubView === 'pickup' ? (
-                            <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Awaiting Pickup</CardTitle><CardDescription>Teacher-approved requests ready for student pickup.</CardDescription></CardHeader>
-                                <CardContent>
-                                    <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Approved</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                                        <TableBody>
-                                            {approvedRequests.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" onClick={() => handleProcessPickup(r.id)}><CheckCircle className="mr-2 h-4 w-4"/> Process Pickup</Button></TableCell></TableRow>))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        ) : (
-                             <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out.</CardDescription></CardHeader>
-                                <CardContent>
-                                    <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                                        <TableBody>
-                                            {activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" variant="secondary" onClick={() => handleReturnItem(r.id)}><PackageCheck className="mr-2 h-4 w-4"/> Mark as Returned</Button></TableCell></TableRow>))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                             </Card>
-                        )}
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out.</CardDescription></CardHeader>
+                           <CardContent>
+                               <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                                   <TableBody>
+                                       {activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" variant="secondary" onClick={() => handleReturnItem(r.id)}><PackageCheck className="mr-2 h-4 w-4"/> Mark as Returned</Button></TableCell></TableRow>))}
+                                   </TableBody>
+                               </Table>
+                           </CardContent>
+                        </Card>
                     </div>
                 );
             case 'history':
@@ -382,7 +349,6 @@ export default function PrimaryCustodianDashboardPage() {
                 <div className="p-2">
                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
                     <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setTransactionSubView('pickup'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'pickup' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Awaiting Pickup</button></li>
                         <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                     </ul>
                 </div>
@@ -480,7 +446,6 @@ export default function PrimaryCustodianDashboardPage() {
                                 <div className="py-4">
                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
                                     <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setTransactionSubView('pickup')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'pickup' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Awaiting Pickup</button></li>
                                         <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                                     </ul>
                                 </div>

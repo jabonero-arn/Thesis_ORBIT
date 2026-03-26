@@ -46,7 +46,7 @@ const departments = [
 ];
 
 type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history' | 'scanner';
-type TransactionSubView = 'pickup' | 'borrowed' | 'reservations';
+type TransactionSubView = 'reservations' | 'borrowed';
 
 export default function StaffDashboardPage() {
     const { toast } = useToast()
@@ -154,27 +154,6 @@ export default function StaffDashboardPage() {
         setItems(prev => prev.filter(item => item.id !== itemId));
         toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
     }
-
-
-    const handleProcessPickup = (historyId: string) => {
-        const historyRecord = borrowHistory.find(h => h.id === historyId);
-        if (!historyRecord) return;
-
-        setItems(prevItems => prevItems.map(item => {
-            if (item.name === historyRecord.itemName) {
-                const newQuantity = item.quantity - 1;
-                return {
-                    ...item,
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? item.status : 'Borrowed'
-                };
-            }
-            return item;
-        }));
-
-        setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Active' } : h));
-        toast({ title: "Pickup Confirmed", description: `${historyRecord.itemName} has been checked out.` });
-    }
     
     const handleReturnItem = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
@@ -251,7 +230,7 @@ export default function StaffDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary' } as const;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive' } as const;
         return <Badge variant={variants[status]}>{status}</Badge>;
     }
     
@@ -262,22 +241,6 @@ export default function StaffDashboardPage() {
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
     ];
     
-    const AwaitingPickupView = () => {
-        const approvedRequests = borrowHistory.filter(h => h.status === 'Approved' && !h.startTime);
-        return (
-            <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                <CardHeader><CardTitle>Awaiting Pickup</CardTitle><CardDescription>Teacher-approved requests or immediate borrows ready for student pickup.</CardDescription></CardHeader>
-                <CardContent>
-                    <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Approved</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {approvedRequests.length > 0 ? approvedRequests.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" onClick={() => handleProcessPickup(r.id)}><CheckCircle className="mr-2 h-4 w-4"/> Process Pickup</Button></TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No requests awaiting pickup.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-        )
-    };
-
     const CurrentlyBorrowedView = () => {
         const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
         return (
@@ -406,7 +369,6 @@ export default function StaffDashboardPage() {
                 return (
                      <div className="space-y-6">
                         {transactionSubView === 'reservations' && <PendingReservationsView />}
-                        {transactionSubView === 'pickup' && <AwaitingPickupView />}
                         {transactionSubView === 'borrowed' && <CurrentlyBorrowedView />}
                          <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader><CardTitle>Recent Activity</CardTitle><CardDescription>A feed of the latest return transactions.</CardDescription></CardHeader>
@@ -449,12 +411,10 @@ export default function StaffDashboardPage() {
         }
         if (activeView === 'transactions') {
             const labels = {
-                pickup: "Awaiting Pickup",
                 borrowed: "Currently Borrowed",
                 reservations: "Pending Reservations"
             };
             const icons = {
-                pickup: <Hourglass />,
                 borrowed: <PackageCheck />,
                 reservations: <Hourglass />
             };
@@ -520,7 +480,6 @@ export default function StaffDashboardPage() {
                     </h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setTransactionSubView('reservations'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
-                        <li><button onClick={() => {setTransactionSubView('pickup'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'pickup' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Awaiting Pickup</button></li>
                         <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                     </ul>
                 </div>
@@ -597,7 +556,6 @@ export default function StaffDashboardPage() {
                                     </h2>
                                     <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
-                                        <li><button onClick={() => setTransactionSubView('pickup')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'pickup' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Awaiting Pickup</button></li>
                                         <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                                     </ul>
                                 </div>

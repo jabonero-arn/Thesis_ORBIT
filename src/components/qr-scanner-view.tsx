@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, Hourglass, ShoppingBag } from "lucide-react"
+import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, Hourglass, ShoppingBag, Trash2 } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -10,18 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { allUsers } from "@/lib/data"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
-import { format } from "date-fns"
 
 type CheckoutSession = {
   studentName: string;
-  items: string[];
+  items: BorrowHistory[];
   date: string;
-  type: 'immediate' | 'reservation';
-  // For immediate borrows
-  checkoutSessionId?: string;
-  // For reservations
-  startTime?: string;
-  endTime?: string;
+  checkoutSessionId: string;
 }
 
 type QrScannerViewProps = {
@@ -32,11 +26,12 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
   const { borrowHistory, setBorrowHistory, setItems } = useAppContext();
   const { toast } = useToast();
   
-  const [sessionForApproval, setSessionForApproval] = React.useState<CheckoutSession | null>(null);
+  const [sessionInView, setSessionInView] = React.useState<CheckoutSession | null>(null);
+  const [itemsInDialog, setItemsInDialog] = React.useState<BorrowHistory[]>([]);
   const [selectedReturn, setSelectedReturn] = React.useState<BorrowHistory | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
 
-  const pendingImmediateBorrows = React.useMemo(() => {
+  const incomingRequests = React.useMemo(() => {
     const sessions = new Map<string, CheckoutSession>();
 
     borrowHistory.forEach(record => {
@@ -47,42 +42,12 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
             studentName: record.studentName,
             items: [],
             date: record.date,
-            type: 'immediate'
           });
         }
-        sessions.get(record.checkoutSessionId)!.items.push(record.itemName);
+        sessions.get(record.checkoutSessionId)!.items.push(record);
       }
     });
 
-    return Array.from(sessions.values());
-  }, [borrowHistory]);
-
-  const pendingReservationPickups = React.useMemo(() => {
-    const now = new Date();
-    const sessions = new Map<string, CheckoutSession>();
-
-    borrowHistory.forEach(record => {
-        if (record.status === 'Approved' && record.startTime && !record.checkoutSessionId) {
-            const reservationDate = new Date(`${record.date}T00:00:00`);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            if (reservationDate <= today) {
-                const sessionKey = `${record.studentName}-${record.date}-${record.startTime}`;
-                if (!sessions.has(sessionKey)) {
-                    sessions.set(sessionKey, {
-                        studentName: record.studentName,
-                        items: [],
-                        date: record.date,
-                        startTime: record.startTime,
-                        endTime: record.endTime,
-                        type: 'reservation'
-                    });
-                }
-                sessions.get(sessionKey)!.items.push(record.itemName);
-            }
-        }
-    });
     return Array.from(sessions.values());
   }, [borrowHistory]);
 
@@ -92,95 +57,70 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
   }, [borrowHistory]);
 
   
-  const handleAutomaticCheckout = (session: CheckoutSession) => {
-      if (!session.checkoutSessionId) return;
-
-      const itemUpdates = new Map<string, number>();
-      session.items.forEach(itemName => {
-          itemUpdates.set(itemName, (itemUpdates.get(itemName) || 0) + 1);
-      });
-
-      setItems(prevItems => prevItems.map(item => {
-          if (itemUpdates.has(item.name)) {
-              const newQuantity = item.quantity - (itemUpdates.get(item.name) || 0);
-              return {
-                  ...item,
-                  quantity: Math.max(0, newQuantity),
-                  status: newQuantity > 0 ? item.status : 'Borrowed'
-              };
-          }
-          return item;
-      }));
-
-      setBorrowHistory(prev => 
-          prev.map(record => 
-              record.checkoutSessionId === session.checkoutSessionId 
-                  ? { ...record, status: 'Active' } 
-                  : record
-          )
-      );
-
-      toast({
-          title: "Checkout Confirmed",
-          description: `${session.items.length} item(s) checked out to ${session.studentName}.`
-      });
-  }
-  
-  const handleSelectReservationForApproval = (session: CheckoutSession) => {
-    setSessionForApproval(session);
+  const handleSelectRequestForCheckout = (session: CheckoutSession) => {
+    setSessionInView(session);
+    setItemsInDialog([...session.items]);
   }
 
   const handleSelectReturn = (returnRecord: BorrowHistory) => {
     setSelectedReturn(returnRecord);
   }
 
-  const handleConfirmReservationPickup = () => {
-    if (!sessionForApproval || sessionForApproval.type !== 'reservation') return;
+  const handleRemoveItemFromDialog = (historyId: string) => {
+    setItemsInDialog(prev => prev.filter(item => item.id !== historyId));
+  }
+  
+  const handleConfirmCheckout = () => {
+    if (!sessionInView) return;
     setIsProcessing(true);
-    
+
     setTimeout(() => {
-        const { studentName, date, startTime, items } = sessionForApproval;
-        
-        const itemUpdates = new Map<string, number>();
-        items.forEach(itemName => {
-            itemUpdates.set(itemName, (itemUpdates.get(itemName) || 0) + 1);
-        });
+      const originalItemIds = new Set(sessionInView.items.map(i => i.id));
+      const finalItemIds = new Set(itemsInDialog.map(i => i.id));
 
-        setItems(prevItems => prevItems.map(item => {
-            if (itemUpdates.has(item.name)) {
-                const newQuantity = item.quantity - (itemUpdates.get(item.name) || 0);
-                return {
-                    ...item,
-                    quantity: Math.max(0, newQuantity),
-                    status: newQuantity > 0 ? item.status : 'Borrowed'
-                };
-            }
-            return item;
-        }));
+      const itemsToCheckout = itemsInDialog;
+      const itemsToCancel = sessionInView.items.filter(item => !finalItemIds.has(item.id));
 
-        setBorrowHistory(prev => 
-            prev.map(record => {
-                if (
-                    record.status === 'Approved' &&
-                    record.studentName === studentName &&
-                    record.date === date &&
-                    record.startTime === startTime
-                ) {
-                    return { ...record, status: 'Active' };
-                }
-                return record;
-            })
-        );
+      const itemQuantityUpdates = new Map<string, number>();
+      itemsToCheckout.forEach(item => {
+        itemQuantityUpdates.set(item.itemName, (itemQuantityUpdates.get(item.itemName) || 0) + 1);
+      });
 
-        toast({
-            title: "Reservation Pickup Confirmed",
-            description: `${items.length} item(s) have been checked out to ${studentName}.`
-        });
+      setItems(prevItems => prevItems.map(item => {
+        if (itemQuantityUpdates.has(item.name)) {
+          const quantityToDecrement = itemQuantityUpdates.get(item.name) || 0;
+          const newQuantity = item.quantity - quantityToDecrement;
+          return {
+            ...item,
+            quantity: Math.max(0, newQuantity),
+            status: newQuantity > 0 ? item.status : 'Borrowed'
+          };
+        }
+        return item;
+      }));
 
-        setIsProcessing(false);
-        setSessionForApproval(null);
+      setBorrowHistory(prev => prev.map(record => {
+        if (finalItemIds.has(record.id)) {
+          return { ...record, status: 'Active' };
+        }
+        if (itemsToCancel.some(cancelled => cancelled.id === record.id)) {
+          return { ...record, status: 'Cancelled' };
+        }
+        return record;
+      }));
+      
+      toast({
+        title: "Checkout Confirmed",
+        description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length} item(s) cancelled.`
+      });
+
+      setIsProcessing(false);
+      setSessionInView(null);
+      setItemsInDialog([]);
+
     }, 1000);
   }
+
 
   const handleConfirmReturn = () => {
     if(!selectedReturn) return;
@@ -192,28 +132,28 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
     }, 1000)
   }
 
-  const studentForApproval = sessionForApproval ? allUsers.find(u => u.name === sessionForApproval.studentName) || { name: sessionForApproval.studentName, avatarUrl: '', role: 'Student' } : null;
+  const studentInView = sessionInView ? allUsers.find(u => u.name === sessionInView.studentName) || { name: sessionInView.studentName, avatarUrl: '', role: 'Student' } : null;
   const studentForReturn = selectedReturn ? allUsers.find(u => u.name === selectedReturn.studentName) || { name: selectedReturn.studentName, avatarUrl: '', role: 'Student' } : null;
 
   return (
     <div className="space-y-8">
       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ShoppingBag /> Immediate Checkouts</CardTitle>
+          <CardTitle className="flex items-center gap-2"><ShoppingBag /> Incoming Requests: Awaiting Checkout</CardTitle>
           <CardDescription>
-            Click a session to automatically process a student's borrowed items. No confirmation needed.
+            These are self-service borrow requests. Staff can prepare items and remove them if needed before the student scans to finalize.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {pendingImmediateBorrows.length > 0 ? (
+          {incomingRequests.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {pendingImmediateBorrows.map(session => (
+              {incomingRequests.map(session => (
                 <button 
                   key={session.checkoutSessionId}
-                  onClick={() => handleAutomaticCheckout(session)}
+                  onClick={() => handleSelectRequestForCheckout(session)}
                   className="p-4 rounded-lg bg-secondary hover:bg-accent text-left transition-colors flex items-start gap-4"
                 >
-                    <QrCode className="h-8 w-8 text-primary flex-shrink-0 mt-1"/>
+                    <User className="h-8 w-8 text-primary flex-shrink-0 mt-1"/>
                     <div>
                         <p className="font-semibold">{session.studentName}</p>
                         <p className="text-sm text-muted-foreground">{session.items.length} item(s)</p>
@@ -227,41 +167,6 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
               <QrCode className="h-12 w-12 mb-4" />
               <p className="font-semibold">No pending checkouts</p>
               <p className="text-sm">Wait for a student to generate a borrow QR code.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><Hourglass/> Reservation Pickups</CardTitle>
-          <CardDescription>
-            These are approved reservations ready for pickup. Manual confirmation is required.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {pendingReservationPickups.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {pendingReservationPickups.map((session, idx) => (
-                <button 
-                  key={`${session.studentName}-${session.date}-${idx}`}
-                  onClick={() => handleSelectReservationForApproval(session)}
-                  className="p-4 rounded-lg bg-secondary hover:bg-accent text-left transition-colors flex items-start gap-4"
-                >
-                    <User className="h-8 w-8 text-blue-400 flex-shrink-0 mt-1"/>
-                    <div>
-                        <p className="font-semibold">{session.studentName}</p>
-                        <p className="text-sm text-muted-foreground">{session.items.length} item(s)</p>
-                        <p className="text-xs text-muted-foreground mt-1">{format(new Date(`${session.date}T00:00:00`), 'PPP')} @ {session.startTime}</p>
-                    </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-             <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-48 border-2 border-dashed border-border/50 rounded-lg">
-              <Hourglass className="h-12 w-12 mb-4" />
-              <p className="font-semibold">No pending reservation pickups</p>
-              <p className="text-sm">Reservations for today will appear here.</p>
             </div>
           )}
         </CardContent>
@@ -302,39 +207,48 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
         </CardContent>
       </Card>
 
-      <Dialog open={!!sessionForApproval} onOpenChange={(open) => !open && setSessionForApproval(null)}>
-        <DialogContent>
+      <Dialog open={!!sessionInView} onOpenChange={(open) => !open && setSessionInView(null)}>
+        <DialogContent className="max-w-lg">
             <DialogHeader>
-                <DialogTitle className="font-headline">Confirm Reservation Pickup</DialogTitle>
-                <DialogDescription>Review the items and confirm the checkout for the student.</DialogDescription>
+                <DialogTitle className="font-headline">Confirm Checkout</DialogTitle>
+                <DialogDescription>Simulating QR Scan. Review items, remove if necessary, and confirm to finalize the checkout.</DialogDescription>
             </DialogHeader>
-            {sessionForApproval && studentForApproval && (
+            {sessionInView && studentInView && (
                 <div className="py-4 space-y-4">
                     <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
                         <Avatar className="h-12 w-12">
-                           <AvatarImage src={studentForApproval.avatarUrl} alt={studentForApproval.name} />
-                           <AvatarFallback>{studentForApproval.name.charAt(0)}</AvatarFallback>
+                           <AvatarImage src={studentInView.avatarUrl} alt={studentInView.name} />
+                           <AvatarFallback>{studentInView.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="font-semibold">{studentForApproval.name}</p>
-                            <p className="text-sm text-muted-foreground">{studentForApproval.role}</p>
+                            <p className="font-semibold">{studentInView.name}</p>
+                            <p className="text-sm text-muted-foreground">{studentInView.role}</p>
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2">Items to Check Out:</h4>
-                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md">
-                           {sessionForApproval.items.map((item, index) => (
-                               <li key={index}>{item}</li>
-                           ))}
-                        </ul>
+                        <h4 className="font-semibold mb-2">Items to Check Out ({itemsInDialog.length}):</h4>
+                         {itemsInDialog.length > 0 ? (
+                             <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                               {itemsInDialog.map((item, index) => (
+                                   <li key={item.id} className="flex items-center justify-between p-2 rounded-md bg-black/20">
+                                       <span>{item.itemName}</span>
+                                       <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleRemoveItemFromDialog(item.id)}>
+                                            <Trash2 className="h-4 w-4"/>
+                                       </Button>
+                                   </li>
+                               ))}
+                            </ul>
+                         ) : (
+                            <p className="text-muted-foreground text-center p-4">All items have been removed.</p>
+                         )}
                     </div>
                 </div>
             )}
             <DialogFooter>
-                <Button variant="outline" onClick={() => setSessionForApproval(null)} disabled={isProcessing}>Cancel</Button>
-                <Button onClick={handleConfirmReservationPickup} disabled={isProcessing}>
+                <Button variant="outline" onClick={() => setSessionInView(null)} disabled={isProcessing}>Cancel</Button>
+                <Button onClick={handleConfirmCheckout} disabled={isProcessing || itemsInDialog.length === 0}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm Pickup
+                    Confirm Checkout
                 </Button>
             </DialogFooter>
         </DialogContent>

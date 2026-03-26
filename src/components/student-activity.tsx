@@ -17,8 +17,9 @@ const getStatusBadge = (record: BorrowHistory) => {
         case 'Active':
             return <Badge variant="destructive">Borrowed</Badge>
         case 'Approved':
-             if (record.startTime) {
-                return <Badge variant="default">Reserved</Badge>;
+            // This is for a reservation or a teacher-approved locked item
+            if (record.startTime) {
+                return <Badge variant="default">Reservation Confirmed</Badge>;
             }
             return <Badge variant="default">Approved for Pickup</Badge>;
         case 'Pending':
@@ -35,17 +36,23 @@ const getStatusBadge = (record: BorrowHistory) => {
             return <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Returned</Badge>
         case 'Denied':
             return <Badge variant="destructive" className="bg-red-900/80 border-red-700 text-red-300">Denied</Badge>
+        case 'Cancelled':
+            return <Badge variant="destructive">Cancelled</Badge>
         default:
             return null
     }
 }
 
 export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivityProps) {
-    const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
-    const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
+    const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
     
     const requestHistory = borrowHistory
-        .filter(h => !borrowedStatuses.includes(h.status))
+        // Exclude active borrows and immediate borrows awaiting scan
+        .filter(h => 
+            h.status !== 'Active' && 
+            h.status !== 'Pending Return' &&
+            !(h.status === 'Approved' && h.checkoutSessionId)
+        )
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
