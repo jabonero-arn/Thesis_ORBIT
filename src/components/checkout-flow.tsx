@@ -45,7 +45,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const [qrCodeData, setQrCodeData] = React.useState<string>("");
   const { toast } = useToast()
-  const { setItems, setBorrowHistory } = useAppContext();
+  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
 
   const handleSubmit = () => {
     if (isReserve) {
@@ -60,7 +60,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
     const checkoutSessionId = `cs-${Date.now()}`;
     const newHistoryRecords: BorrowHistory[] = [];
-    const itemUpdates: { [id: string]: number } = {};
 
     cartItems.forEach(({ item, quantity }) => {
         for (let i = 0; i < quantity; i++) {
@@ -73,22 +72,9 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 checkoutSessionId: checkoutSessionId,
             });
         }
-        itemUpdates[item.id] = (itemUpdates[item.id] || 0) + quantity;
     });
 
     setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
-
-    setItems(prevItems => prevItems.map(item => {
-        if (itemUpdates[item.id]) {
-            const newQuantity = item.quantity - itemUpdates[item.id];
-            return {
-                ...item,
-                quantity: newQuantity,
-                status: newQuantity > 0 ? item.status : 'Borrowed'
-            };
-        }
-        return item;
-    }));
     
     setQrCodeData(JSON.stringify({ checkoutSessionId }));
 
@@ -113,8 +99,50 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
     
     setIsLoading(true);
+
+    // --- CONFLICT CHECK LOGIC ---
+    let hasConflict = false;
+    for (const cartItem of cartItems) {
+        const { item, quantity: requestedQuantity } = cartItem;
+
+        const allItemsInDB = allItems.find(i => i.id === item.id)
+        if (!allItemsInDB) continue;
+
+        // Get all approved, overlapping reservations for this item
+        const overlappingReservations = borrowHistory.filter(h => 
+            h.itemName === item.name &&
+            h.status === 'Approved' &&
+            h.date === format(reservationDate, "yyyy-MM-dd") &&
+            h.startTime && h.endTime && startTime && endTime &&
+            h.startTime < endTime && h.endTime > startTime
+        ).length;
+
+        // Get all currently active borrows for this item
+        const activeBorrows = borrowHistory.filter(h => 
+            h.itemName === item.name && h.status === 'Active'
+        ).length;
+
+        const availableForReservation = allItemsInDB.quantity - activeBorrows;
+
+        if ((overlappingReservations + requestedQuantity) > availableForReservation) {
+            hasConflict = true;
+            const canStillReserve = availableForReservation - overlappingReservations;
+            toast({
+                variant: 'destructive',
+                title: 'Reservation Conflict',
+                description: `Not enough stock for "${item.name}" at the selected time. Only ${canStillReserve > 0 ? canStillReserve : 0} more can be reserved.`
+            });
+            break; 
+        }
+    }
+
+    if (hasConflict) {
+        setIsLoading(false);
+        return;
+    }
+    // --- END CONFLICT CHECK ---
+
     const newHistoryRecords: BorrowHistory[] = [];
-    const itemUpdates: { [id: string]: number } = {};
 
     cartItems.forEach(({ item, quantity }) => {
         for (let i = 0; i < quantity; i++) {
@@ -123,25 +151,14 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 studentName: currentUser.name,
                 itemName: item.name,
                 date: format(reservationDate, "yyyy-MM-dd"),
-                status: 'Approved', // Reserved for pickup
+                status: 'Approved', 
+                startTime: startTime,
+                endTime: endTime,
             });
         }
-        itemUpdates[item.id] = (itemUpdates[item.id] || 0) + quantity;
     });
     
     setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
-
-    setItems(prevItems => prevItems.map(item => {
-        if (itemUpdates[item.id]) {
-            const newQuantity = item.quantity - itemUpdates[item.id];
-            return {
-                ...item,
-                quantity: newQuantity,
-                status: newQuantity > 0 ? item.status : 'Borrowed'
-            };
-        }
-        return item;
-    }));
 
     setTimeout(() => {
        toast({ title: "Reservation Confirmed!", description: `Items reserved for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime}` })
@@ -231,7 +248,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                             mode="single"
                             selected={reservationDate}
                             onSelect={setReservationDate}
-                            disabled={(date) => date < new Date() || date < new Date("1900-01-01")}
+                            disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                             initialFocus
                         />
                         </PopoverContent>

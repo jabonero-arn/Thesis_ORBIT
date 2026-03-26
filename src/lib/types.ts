@@ -33,7 +33,7 @@ export type InventoryItem = {
   quantity: number;
 };
 
-export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned';
+export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return';
 
 export type BorrowHistory = {
     id: string;
@@ -43,6 +43,8 @@ export type BorrowHistory = {
     status: BorrowHistoryStatus;
     teacherId?: string;
     checkoutSessionId?: string;
+    startTime?: string;
+    endTime?: string;
 };
 
 export type CartItem = {

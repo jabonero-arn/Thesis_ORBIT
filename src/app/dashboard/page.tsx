@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
+import Image from "next/image"
 import { channels, currentUser, teachers } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -15,10 +15,11 @@ import { CheckoutFlow } from "@/components/checkout-flow"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { UserNav } from "@/components/user-nav"
-import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { RequestApprovalDialog } from "@/components/request-approval-dialog"
+import { StudentActivity } from "@/components/student-activity"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -39,19 +40,24 @@ export default function Home() {
 
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
+  const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory | null>(null);
+
+  const studentBorrowHistory = React.useMemo(() => 
+    borrowHistory.filter(h => h.studentName === currentUser.name), 
+  [borrowHistory]);
 
   const pendingRequestedItemNames = React.useMemo(() =>
-    new Set(borrowHistory
-      .filter(h => h.studentName === currentUser.name && h.status === 'Pending')
+    new Set(studentBorrowHistory
+      .filter(h => h.status === 'Pending')
       .map(h => h.itemName)),
-    [borrowHistory]
+    [studentBorrowHistory]
   );
   
   const approvedForBorrowItemNames = React.useMemo(() =>
-    new Set(borrowHistory
-        .filter(h => h.studentName === currentUser.name && h.status === 'Approved')
+    new Set(studentBorrowHistory
+        .filter(h => h.status === 'Approved')
         .map(h => h.itemName)),
-    [borrowHistory]
+    [studentBorrowHistory]
   );
 
   const handleDepartmentSelect = (deptId: string) => {
@@ -124,6 +130,15 @@ export default function Home() {
         description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
     });
   }
+  
+  const handleInitiateReturn = (historyId: string) => {
+    const record = borrowHistory.find(h => h.id === historyId);
+    if (!record) return;
+
+    setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Pending Return' } : h));
+    setItemToReturn(record);
+  }
+
 
   const handleChannelSelect = (id: string) => {
     setSelectedChannelId(id)
@@ -279,6 +294,7 @@ export default function Home() {
               pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
               approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
             />
+            <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} />
           </div>
         </main>
         
@@ -300,6 +316,28 @@ export default function Home() {
           onOpenChange={setIsApprovalDialogOpen}
           onConfirm={handleConfirmRequest}
         />
+        
+        <Dialog open={!!itemToReturn} onOpenChange={(open) => !open && setItemToReturn(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for "{itemToReturn?.itemName}"</DialogTitle>
+                    <DialogDescription>Present this QR code to lab staff to process your return.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-4">
+                    {itemToReturn && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${JSON.stringify({ returnId: itemToReturn.id })}`}
+                        alt="Return QR Code"
+                        width={256}
+                        height={256}
+                        className="rounded-lg bg-white p-2"
+                        data-ai-hint="qr code"
+                    />}
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => setItemToReturn(null)}>Done</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   )

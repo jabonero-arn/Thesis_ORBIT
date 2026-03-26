@@ -3,7 +3,7 @@
 import * as React from "react"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
-    PlusCircle, Edit, Trash, QrCode
+    PlusCircle, Edit, Trash, QrCode, CornerDownLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -52,7 +52,7 @@ export default function StaffDashboardPage() {
     const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
     // View state
-    const [activeView, setActiveView] = React.useState<StaffView>('transactions');
+    const [activeView, setActiveView] = React.useState<StaffView>('scanner');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('pickup');
     
     // Borrowing view states
@@ -158,6 +158,19 @@ export default function StaffDashboardPage() {
     const handleProcessPickup = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
         if (!historyRecord) return;
+
+        setItems(prevItems => prevItems.map(item => {
+            if (item.name === historyRecord.itemName) {
+                const newQuantity = item.quantity - 1;
+                return {
+                    ...item,
+                    quantity: newQuantity,
+                    status: newQuantity > 0 ? item.status : 'Borrowed'
+                };
+            }
+            return item;
+        }));
+
         setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Active' } : h));
         toast({ title: "Pickup Confirmed", description: `${historyRecord.itemName} has been checked out.` });
     }
@@ -171,14 +184,15 @@ export default function StaffDashboardPage() {
         setItems(prevItems => prevItems.map(item => {
             if (item.name === historyRecord.itemName) {
                 const newQuantity = item.quantity + 1;
-                // Check original item data to see if it should revert to 'Locked' or 'Available'
                 const originalItem = initialItems.find(i => i.name === item.name);
-                const newStatus = originalItem?.status === 'Locked' ? 'Locked' : 'Available';
+                const newStatus = newQuantity > 0 && item.status === 'Borrowed' 
+                    ? (originalItem?.status === 'Locked' ? 'Locked' : 'Available') 
+                    : item.status;
 
                 return {
                     ...item,
                     quantity: newQuantity,
-                    status: item.status === 'Borrowed' ? newStatus : item.status
+                    status: newStatus
                 };
             }
             return item;
@@ -208,7 +222,7 @@ export default function StaffDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary' } as const;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary' } as const;
         return <Badge variant={variants[status]}>{status}</Badge>;
     }
     
@@ -298,6 +312,7 @@ export default function StaffDashboardPage() {
     );
 
     const renderContent = () => {
+        const recentlyReturned = borrowHistory.filter(h => h.status === 'Returned').slice(0, 5);
         switch (activeView) {
             case 'borrow':
                 return (
@@ -325,7 +340,22 @@ export default function StaffDashboardPage() {
             case 'transactions':
                 return (
                      <div className="space-y-6">
-                         {transactionSubView === 'pickup' ? <AwaitingPickupView /> : <CurrentlyBorrowedView />}
+                        {transactionSubView === 'pickup' ? <AwaitingPickupView /> : <CurrentlyBorrowedView />}
+                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader><CardTitle>Recent Activity</CardTitle><CardDescription>A feed of the latest return transactions.</CardDescription></CardHeader>
+                            <CardContent>
+                                {recentlyReturned.length > 0 ? (
+                                    <ul className="space-y-2">
+                                        {recentlyReturned.map(r => (
+                                            <li key={r.id} className="text-sm text-muted-foreground flex items-center gap-2">
+                                               <CornerDownLeft className="h-4 w-4 text-green-500" />
+                                               <span><span className="font-semibold text-foreground">{r.studentName}</span> returned <span className="font-semibold text-foreground">{r.itemName}</span>.</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : <p className="text-muted-foreground text-center p-4">No recent returns.</p>}
+                            </CardContent>
+                        </Card>
                     </div>
                 );
             case 'history':
@@ -336,7 +366,7 @@ export default function StaffDashboardPage() {
                     </Card>
                 );
             case 'scanner':
-                return <QrScannerView />;
+                return <QrScannerView onReturn={handleReturnItem}/>;
             default: return null;
         }
     };

@@ -4,7 +4,7 @@ import * as React from "react"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown
+    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity
 } from "lucide-react"
 import {
   Card,
@@ -37,7 +37,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 
@@ -180,6 +179,19 @@ export default function AdminDashboardPage() {
     const handleProcessPickup = (historyId: string) => {
         const historyRecord = borrowHistory.find(h => h.id === historyId);
         if (!historyRecord) return;
+
+        setItems(prevItems => prevItems.map(item => {
+            if (item.name === historyRecord.itemName) {
+                const newQuantity = item.quantity - 1;
+                return {
+                    ...item,
+                    quantity: newQuantity,
+                    status: newQuantity > 0 ? item.status : 'Borrowed'
+                };
+            }
+            return item;
+        }));
+        
         setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Active' } : h));
         toast({ title: "Pickup Confirmed", description: `${historyRecord.itemName} has been checked out.` });
     }
@@ -193,14 +205,15 @@ export default function AdminDashboardPage() {
         setItems(prevItems => prevItems.map(item => {
             if (item.name === historyRecord.itemName) {
                 const newQuantity = item.quantity + 1;
-                // Check original item data to see if it should revert to 'Locked' or 'Available'
                 const originalItem = initialItems.find(i => i.name === item.name);
-                const newStatus = originalItem?.status === 'Locked' ? 'Locked' : 'Available';
+                const newStatus = newQuantity > 0 && item.status === 'Borrowed' 
+                    ? (originalItem?.status === 'Locked' ? 'Locked' : 'Available') 
+                    : item.status;
 
                 return {
                     ...item,
                     quantity: newQuantity,
-                    status: item.status === 'Borrowed' ? newStatus : item.status
+                    status: newStatus
                 };
             }
             return item;
@@ -216,7 +229,7 @@ export default function AdminDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary' } as const;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary' } as const;
         return <Badge variant={variants[status]}>{status}</Badge>;
     }
 
@@ -268,7 +281,7 @@ export default function AdminDashboardPage() {
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Item Types</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemTypes}</div></CardContent></Card>
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Stock Quantity</CardTitle><PackageOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalStock}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Borrowed</CardTitle><PackageCheck className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedItemsCount}</div></CardContent></Card>
+                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Borrowed</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedItemsCount}</div></CardContent></Card>
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Reserved</CardTitle><Hourglass className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{reservedItemsCount}</div></CardContent></Card>
                         </div>
                      </div>
@@ -297,7 +310,7 @@ export default function AdminDashboardPage() {
                                 <CardContent>
                                     <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Approved</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                                         <TableBody>
-                                            {approvedRequests.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" onClick={() => handleProcessPickup(r.id)}><CheckCircle className="mr-2 h-4 w-4"/> Process Pickup</Button></TableCell></TableRow>))}
+                                            {approvedRequests.length > 0 ? approvedRequests.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" onClick={() => handleProcessPickup(r.id)}><CheckCircle className="mr-2 h-4 w-4"/> Process Pickup</Button></TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items awaiting pickup.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
@@ -307,7 +320,7 @@ export default function AdminDashboardPage() {
                                 <CardContent>
                                     <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                                         <TableBody>
-                                            {activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" variant="secondary" onClick={() => handleReturnItem(r.id)}><PackageCheck className="mr-2 h-4 w-4"/> Mark as Returned</Button></TableCell></TableRow>))}
+                                            {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right"><Button size="sm" variant="secondary" onClick={() => handleReturnItem(r.id)}><PackageCheck className="mr-2 h-4 w-4"/> Mark as Returned</Button></TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
