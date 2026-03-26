@@ -234,7 +234,7 @@ export default function StaffDashboardPage() {
     ];
     
     const AwaitingPickupView = () => {
-        const approvedRequests = borrowHistory.filter(h => h.status === 'Approved');
+        const approvedRequests = borrowHistory.filter(h => h.status === 'Approved' && !h.startTime);
         return (
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                 <CardHeader><CardTitle>Awaiting Pickup</CardTitle><CardDescription>Teacher-approved requests or immediate borrows ready for student pickup.</CardDescription></CardHeader>

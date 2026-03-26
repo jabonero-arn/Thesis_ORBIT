@@ -38,23 +38,9 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
     const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
     const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
     
-    // In "My Requests", we show items that are not yet active borrows.
-    // This includes pending requests, reservations, and historical (denied/returned) items.
-    const requestHistory = borrowHistory.filter(h => {
-        switch (h.status) {
-            case 'Pending':
-            case 'Denied':
-            case 'Returned':
-                return true; // Historical and pending items are always part of the request history.
-            case 'Approved':
-                // An "Approved" item is a reservation only if it has a start time.
-                // If it doesn't, it's an immediate borrow awaiting pickup by staff, which shouldn't be in this list.
-                return !!h.startTime && !!h.endTime;
-            default:
-                // 'Active' and 'Pending Return' statuses belong in the 'borrowed' list, not here.
-                return false;
-        }
-    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const requestHistory = borrowHistory
+        .filter(h => !borrowedStatuses.includes(h.status))
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
 
     if (view === 'borrowed') {
