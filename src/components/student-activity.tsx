@@ -4,7 +4,7 @@ import type { BorrowHistory } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Hourglass, PackageCheck, CornerDownLeft } from "lucide-react"
+import { PackageCheck, CornerDownLeft } from "lucide-react"
 
 type StudentActivityProps = {
     borrowHistory: BorrowHistory[]
@@ -28,10 +28,7 @@ const getStatusBadge = (status: BorrowHistory['status']) => {
 
 export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProps) {
     const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
-    const reservationStatuses: BorrowHistory['status'][] = ['Approved', 'Pending'];
-
     const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
-    const pendingReservations = borrowHistory.filter(h => reservationStatuses.includes(h.status));
 
     return (
         <div className="space-y-8 mt-8">
@@ -65,35 +62,6 @@ export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProp
                     ) : (
                         <p className="text-muted-foreground text-center p-4">You have no items currently borrowed.</p>
                     )}
-                </CardContent>
-            </Card>
-
-            <Card id="reservations" className="bg-card/80 scroll-mt-20">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2 font-headline">
-                        <Hourglass className="h-6 w-6" /> My Requests & Reservations
-                    </CardTitle>
-                    <CardDescription>Items you have requested or reserved for a future date.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {pendingReservations.length > 0 ? (
-                        <div className="space-y-4">
-                            {pendingReservations.map(record => (
-                                <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                    <div>
-                                        <p className="font-semibold">{record.itemName}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Requested for: {new Date(record.date).toLocaleDateString()}
-                                            {record.startTime && record.endTime && ` from ${record.startTime} to ${record.endTime}`}
-                                        </p>
-                                    </div>
-                                    {getStatusBadge(record.status)}
-                                </div>
-                            ))}
-                        </div>
-                     ) : (
-                        <p className="text-muted-foreground text-center p-4">You have no pending requests or reservations.</p>
-                     )}
                 </CardContent>
             </Card>
         </div>

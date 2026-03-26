@@ -240,18 +240,10 @@ export default function Home() {
                             My Activity
                         </div>
                          <div className="flex-1 py-4">
-                            <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                SECTIONS
-                            </h2>
                              <ul className="flex flex-col gap-1">
                                 <li>
                                     <a href="#borrowed-items" onClick={() => setIsMobileMenuOpen(false)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors text-muted-foreground hover:bg-accent/50 hover:text-white">
-                                        <PackageCheck className="h-5 w-5" /> Borrowed Items
-                                    </a>
-                                </li>
-                                <li>
-                                     <a href="#reservations" onClick={() => setIsMobileMenuOpen(false)} className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors text-muted-foreground hover:bg-accent/50 hover:text-white">
-                                        <Hourglass className="h-5 w-5" /> Requests & Reservations
+                                        <PackageCheck className="h-5 w-5" /> My Borrowed Items
                                     </a>
                                 </li>
                             </ul>
