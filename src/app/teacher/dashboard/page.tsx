@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@/firebase"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { channels, currentUser as studentUser, teachers } from "@/lib/data"
@@ -51,9 +53,17 @@ const currentUser = {
 
 
 export default function TeacherDashboardPage() {
+  const router = useRouter()
+  const { user, isUserLoading } = useUser()
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
   
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login?role=teacher")
+    }
+  }, [user, isUserLoading, router])
+
   // View state
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
   const [requestSubView, setRequestSubView] = React.useState<RequestSubView>('pending');
@@ -355,6 +365,13 @@ export default function TeacherDashboardPage() {
     </>
   );
 
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>

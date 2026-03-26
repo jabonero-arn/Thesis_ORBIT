@@ -1,10 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@/firebase"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity
+    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity, Loader2
 } from "lucide-react"
 import {
   Card,
@@ -62,9 +64,17 @@ type InventorySubView = 'all' | 'comp' | 'chem' | 'robo';
 type TransactionSubView = 'borrowed';
 
 export default function AdminDashboardPage() {
+    const router = useRouter()
+    const { user, isUserLoading } = useUser()
     const { toast } = useToast()
     const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
+    React.useEffect(() => {
+      if (!isUserLoading && !user) {
+        router.push("/login?role=admin")
+      }
+    }, [user, isUserLoading, router])
+
     // View state
     const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
@@ -390,6 +400,14 @@ export default function AdminDashboardPage() {
           </div>
       </div>
     );
+    
+    if (isUserLoading || !user) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
+    }
 
     return (
         <TooltipProvider>

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   User,
   History,
@@ -20,13 +21,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { currentUser } from "@/lib/data"
+import { useAuth, useUser } from "@/firebase"
+import { signOut } from "firebase/auth"
 import { HelpDialog } from "./help-dialog"
 import type { Role } from "@/lib/types"
 import { Button } from "./ui/button"
 
 export function UserNav({ role }: { role?: Role }) {
-  const displayRole = role || currentUser.role;
+  const router = useRouter()
+  const auth = useAuth()
+  const { user } = useUser()
+  const displayRole = role || "Student";
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push('/')
+  }
 
   const getDashboardPath = () => {
     switch (displayRole) {
@@ -55,7 +65,7 @@ export function UserNav({ role }: { role?: Role }) {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{currentUser.name}</p>
+            <p className="text-sm font-medium leading-none">{user?.email || "Guest"}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {displayRole}
             </p>
@@ -84,11 +94,9 @@ export function UserNav({ role }: { role?: Role }) {
           </DropdownMenuItem>
         </HelpDialog>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="cursor-pointer">
-           <Link href="/" className="w-full flex items-center">
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
-          </Link>
+        <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+           <LogOut className="mr-2 h-4 w-4" />
+           <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

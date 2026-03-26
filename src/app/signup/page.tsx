@@ -17,15 +17,23 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Logo } from "@/components/logo"
+import { useAuth } from "@/firebase"
+import { createUserWithEmailAndPassword, AuthError } from "firebase/auth"
+import { Loader2 } from "lucide-react"
 
 export default function SignUpPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const auth = useAuth()
+
+  const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
+  const [role, setRole] = React.useState('student');
+  const [isLoading, setIsLoading] = React.useState(false);
 
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (password !== confirmPassword) {
         toast({
@@ -35,15 +43,39 @@ export default function SignUpPage() {
         })
         return;
     }
+    setIsLoading(true);
 
-    toast({
-      title: "Account Created!",
-      description: "You have successfully signed up. Redirecting...",
-    })
-    
-    setTimeout(() => {
-        router.push("/dashboard")
-    }, 1000);
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        toast({
+            title: "Account Created!",
+            description: "You have successfully signed up. Redirecting...",
+        });
+        
+        let redirectPath = "/dashboard"; // default student
+        if (role === "teacher") {
+          redirectPath = "/teacher/dashboard";
+        }
+        // No other roles can be created from signup page.
+        router.push(redirectPath);
+
+    } catch(e) {
+        const error = e as AuthError;
+        if (error.code === 'auth/email-already-in-use') {
+            toast({
+                variant: "destructive",
+                title: "Sign Up Failed",
+                description: "User already exists. Please sign in.",
+            })
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Sign Up Failed",
+                description: error.message,
+            })
+        }
+        setIsLoading(false);
+    }
   };
 
   return (
@@ -61,8 +93,8 @@ export default function SignUpPage() {
               <Input id="name" placeholder="Arnie Jabonero" required />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
-              <Input id="username" type="text" placeholder="Enter a username" required />
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" placeholder="Enter your email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -76,7 +108,7 @@ export default function SignUpPage() {
             </div>
              <div className="grid gap-2">
                 <Label>Role</Label>
-                <RadioGroup defaultValue="student" className="flex gap-4 pt-1">
+                <RadioGroup defaultValue="student" className="flex gap-4 pt-1" onValueChange={setRole} value={role}>
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="student" id="role-student" />
                         <Label htmlFor="role-student" className="font-normal">Student</Label>
@@ -87,7 +119,9 @@ export default function SignUpPage() {
                     </div>
                 </RadioGroup>
             </div>
-            <Button type="submit" className="w-full mt-2">Create Account</Button>
+            <Button type="submit" className="w-full mt-2" disabled={isLoading}>
+                {isLoading ? <Loader2 className="animate-spin" /> : 'Create Account'}
+            </Button>
           </form>
         </CardContent>
         <CardFooter className="flex-col gap-2 text-center text-sm">

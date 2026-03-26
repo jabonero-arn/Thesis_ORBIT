@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@/firebase"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
-    PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X
+    PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X, Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -49,9 +51,17 @@ type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history' | 'scanner'
 type TransactionSubView = 'reservations' | 'borrowed';
 
 export default function StaffDashboardPage() {
+    const router = useRouter()
+    const { user, isUserLoading } = useUser()
     const { toast } = useToast()
     const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
     
+    React.useEffect(() => {
+      if (!isUserLoading && !user) {
+        router.push("/login?role=staff")
+      }
+    }, [user, isUserLoading, router])
+
     // View state
     const [activeView, setActiveView] = React.useState<StaffView>('scanner');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('reservations');
@@ -504,6 +514,14 @@ export default function StaffDashboardPage() {
           </div>
       </div>
     );
+    
+    if (isUserLoading || !user) {
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      );
+    }
 
     return (
         <TooltipProvider>

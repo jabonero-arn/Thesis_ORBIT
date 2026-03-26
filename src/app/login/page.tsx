@@ -16,11 +16,19 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
+import { useAuth } from "@/firebase"
+import { signInWithEmailAndPassword, AuthError } from "firebase/auth"
+import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const auth = useAuth()
+
+  const [email, setEmail] = React.useState("")
+  const [password, setPassword] = React.useState("")
+  const [isLoading, setIsLoading] = React.useState(false)
 
   const role = searchParams.get("role")
 
@@ -34,29 +42,47 @@ export default function LoginPage() {
     ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     : ""
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setIsLoading(true)
 
-    let redirectPath = "/dashboard" // Default to student dashboard
+    try {
+      await signInWithEmailAndPassword(auth, email, password)
+      toast({
+        title: "Logged In!",
+        description: `Welcome back. Redirecting...`,
+      })
+      // Redirect based on role after successful login
+      let redirectPath = "/dashboard"; // default to student
+      if (role === "teacher") {
+          redirectPath = "/teacher/dashboard";
+      } else if (role === "admin") {
+          redirectPath = "/admin/dashboard";
+      } else if (role === "staff") {
+          redirectPath = "/staff/dashboard";
+      } else if (role === "primary-custodian") {
+          redirectPath = "/primary-custodian/dashboard";
+      }
 
-    if (role === "teacher") {
-      redirectPath = "/teacher/dashboard"
-    } else if (role === "admin") {
-      redirectPath = "/admin/dashboard"
-    } else if (role === "staff") {
-      redirectPath = "/staff/dashboard"
-    } else if (role === "primary-custodian") {
-      redirectPath = "/primary-custodian/dashboard"
-    }
-
-    toast({
-      title: "Logged In!",
-      description: `Welcome back, ${capitalizedRole}. Redirecting...`,
-    })
-
-    setTimeout(() => {
       router.push(redirectPath)
-    }, 1000)
+    } catch (e) {
+      const error = e as AuthError;
+      console.error(error.code, error.message);
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "Email or password is incorrect.",
+        })
+      } else {
+         toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: error.message,
+        })
+      }
+      setIsLoading(false)
+    }
   }
 
   if (!role) {
@@ -78,12 +104,14 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
+                id="email"
+                type="email"
+                placeholder="Enter your email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -92,11 +120,12 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 required
-                defaultValue="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="mt-2 w-full">
-              Sign In
+            <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+              {isLoading ? <Loader2 className="animate-spin" /> : 'Sign In'}
             </Button>
           </form>
         </CardContent>

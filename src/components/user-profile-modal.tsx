@@ -10,30 +10,35 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { currentUser } from "@/lib/data"
+import { useUser } from "@/firebase"
 import { Edit } from "lucide-react"
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
+  const { user } = useUser()
   const { name, role, avatarUrl, idNumber, year, course, department, employeeId } = currentUser;
   
+  const displayName = user?.displayName || name;
+  const displayEmail = user?.email || `${name.toLowerCase().replace(' ','.')}24`;
+
   return (
     <Dialog>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-md bg-[#111214] border-none p-0 overflow-hidden">
-        <DialogTitle className="sr-only">{name}'s Profile</DialogTitle>
-        <DialogDescription className="sr-only">Detailed profile information for {name}.</DialogDescription>
+        <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
+        <DialogDescription className="sr-only">Detailed profile information for {displayName}.</DialogDescription>
         <div className="relative">
             <div className="h-24 bg-zinc-700"></div>
             <div className="absolute top-16 left-4">
                 <Avatar className="h-24 w-24 rounded-full border-[6px] border-[#111214]">
-                    <AvatarImage src={avatarUrl} alt={name} />
-                    <AvatarFallback>{name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                    <AvatarFallback>{displayName.charAt(0)}</AvatarFallback>
                 </Avatar>
             </div>
         </div>
         
         <div className="p-4 pt-16">
-            <h2 className="text-2xl font-bold text-white">{name}</h2>
-            <p className="text-sm text-gray-400">{name.toLowerCase().replace(' ','.')}24</p>
+            <h2 className="text-2xl font-bold text-white">{displayName}</h2>
+            <p className="text-sm text-gray-400">{displayEmail}</p>
         </div>
 
         <div className="px-4 pb-4">

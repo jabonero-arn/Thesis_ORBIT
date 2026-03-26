@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@/firebase"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { channels, currentUser, teachers } from "@/lib/data"
@@ -29,8 +31,16 @@ const departments = [
 ];
 
 export default function Home() {
+  const router = useRouter()
+  const { user, isUserLoading } = useUser()
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login?role=student")
+    }
+  }, [user, isUserLoading, router])
 
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
   const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests'>('borrowed');
@@ -178,6 +188,13 @@ export default function Home() {
     }
   };
 
+  if (isUserLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider>

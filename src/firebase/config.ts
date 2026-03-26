@@ -1,8 +1,10 @@
 export const firebaseConfig = {
-  "projectId": "labmat22-90952233-b068b",
-  "appId": "1:850994451949:web:c6252ca43be250d05b83e4",
-  "apiKey": "AIzaSyCtDY2ysu1rt75ei5SqULvjDM9MhF6nogw",
-  "authDomain": "labmat22-90952233-b068b.firebaseapp.com",
-  "measurementId": "",
-  "messagingSenderId": "850994451949"
+  apiKey: "AIzaSyCQmtyTDKTnzi2U2u0JJeeUzDWGD0uSDqk",
+  authDomain: "test-res-c5bab.firebaseapp.com",
+  databaseURL: "https://test-res-c5bab-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "test-res-c5bab",
+  storageBucket: "test-res-c5bab.appspot.com",
+  messagingSenderId: "848726776610",
+  appId: "1:848726776610:web:650f3cd0f2caa91d5fa37b",
+  measurementId: "G-9H23TEJJCB"
 };
