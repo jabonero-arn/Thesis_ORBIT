@@ -33,6 +33,7 @@ export default function Home() {
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
 
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests'>('borrowed');
 
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
@@ -77,6 +78,7 @@ export default function Home() {
 
   const handleActivitySelect = () => {
     setActiveView('activity');
+    setActivitySubView('borrowed');
     setIsMobileMenuOpen(false);
   }
 
@@ -240,7 +242,33 @@ export default function Home() {
                             My Activity
                         </div>
                          <div className="flex-1 py-4">
-                            <p className="px-3 text-sm text-muted-foreground">View your borrowed items and request history.</p>
+                            <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                CATEGORIES
+                            </h2>
+                            <ul className="flex flex-col gap-1">
+                                <li>
+                                    <button
+                                        onClick={() => setActivitySubView('borrowed')}
+                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                            activitySubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                        }`}
+                                    >
+                                        <PackageCheck className="h-5 w-5" />
+                                        <span className="truncate">My Borrowed Items</span>
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        onClick={() => setActivitySubView('requests')}
+                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                            activitySubView === 'requests' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                        }`}
+                                    >
+                                        <Hourglass className="h-5 w-5" />
+                                        <span className="truncate">My Requests</span>
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 )}
@@ -298,9 +326,13 @@ export default function Home() {
                             )}
                             <Separator className="my-2" />
                             <div className="p-2 space-y-1">
-                                <Button variant={activeView === 'activity' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={handleActivitySelect}>
-                                    <Inbox />
-                                    My Activity
+                                <Button variant={activeView === 'activity' && activitySubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('borrowed'); setIsMobileMenuOpen(false); }}>
+                                    <PackageCheck />
+                                    My Borrowed Items
+                                </Button>
+                                <Button variant={activeView === 'activity' && activitySubView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('requests'); setIsMobileMenuOpen(false); }}>
+                                    <Hourglass />
+                                    My Requests
                                 </Button>
                             </div>
                         </div>
@@ -331,8 +363,10 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                    <Inbox className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">My Activity</h1>
+                    {activitySubView === 'borrowed' ? <PackageCheck className="text-muted-foreground" /> : <Hourglass className="text-muted-foreground" />}
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                       {activitySubView === 'borrowed' ? 'My Borrowed Items' : 'My Requests'}
+                    </h1>
                 </div>
               )}
             </div>
@@ -347,7 +381,7 @@ export default function Home() {
                 approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
                 />
             ) : (
-                <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} />
+                <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} view={activitySubView} />
             )}
           </div>
         </main>

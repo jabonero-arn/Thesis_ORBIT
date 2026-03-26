@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PackageCheck, CornerDownLeft, Hourglass } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 type StudentActivityProps = {
     borrowHistory: BorrowHistory[]
     onReturn: (historyId: string) => void
+    view: 'borrowed' | 'requests'
 }
 
 const getStatusBadge = (status: BorrowHistory['status']) => {
@@ -31,90 +31,81 @@ const getStatusBadge = (status: BorrowHistory['status']) => {
     }
 }
 
-export function StudentActivity({ borrowHistory, onReturn }: StudentActivityProps) {
+export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivityProps) {
     const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
     const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
     
     const requestStatuses: BorrowHistory['status'][] = ['Pending', 'Approved', 'Denied', 'Returned', 'Active'];
     const requestHistory = borrowHistory.filter(h => requestStatuses.includes(h.status)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return (
-        <Tabs defaultValue="borrowed" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 max-w-lg mx-auto">
-                <TabsTrigger value="borrowed">
-                    <PackageCheck className="mr-2 h-4 w-4" />
-                    My Borrowed Items
-                </TabsTrigger>
-                <TabsTrigger value="requests">
-                    <Hourglass className="mr-2 h-4 w-4" />
-                    My Requests
-                </TabsTrigger>
-            </TabsList>
+    if (view === 'borrowed') {
+        return (
+            <Card id="borrowed-items" className="bg-card/80 scroll-mt-20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 font-headline">
+                        <PackageCheck className="h-6 w-6" /> My Borrowed Items
+                    </CardTitle>
+                    <CardDescription>Items you currently have checked out.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {activeBorrows.length > 0 ? (
+                        <div className="space-y-4">
+                            {activeBorrows.map(record => (
+                                <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
+                                    <div>
+                                        <p className="font-semibold">{record.itemName}</p>
+                                        <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {getStatusBadge(record.status)}
+                                        {record.status === 'Active' && (
+                                            <Button size="sm" variant="outline" onClick={() => onReturn(record.id)}>
+                                                <CornerDownLeft className="mr-2 h-4 w-4"/> Return
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center p-4">You have no items currently borrowed.</p>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    }
 
-            <TabsContent value="borrowed" className="mt-6">
-                <Card id="borrowed-items" className="bg-card/80 scroll-mt-20">
+    if (view === 'requests') {
+        return (
+            <Card id="requests" className="bg-card/80 scroll-mt-20">
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 font-headline">
-                            <PackageCheck className="h-6 w-6" /> My Borrowed Items
-                        </CardTitle>
-                        <CardDescription>Items you currently have checked out.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {activeBorrows.length > 0 ? (
-                            <div className="space-y-4">
-                                {activeBorrows.map(record => (
-                                    <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                        <div>
-                                            <p className="font-semibold">{record.itemName}</p>
-                                            <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusBadge(record.status)}
-                                            {record.status === 'Active' && (
-                                                <Button size="sm" variant="outline" onClick={() => onReturn(record.id)}>
-                                                    <CornerDownLeft className="mr-2 h-4 w-4"/> Return
-                                                </Button>
-                                            )}
-                                        </div>
+                    <CardTitle className="flex items-center gap-2 font-headline">
+                        <Hourglass className="h-6 w-6" /> My Requests & Reservations
+                    </CardTitle>
+                    <CardDescription>A history of your item requests and their status.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {requestHistory.length > 0 ? (
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                            {requestHistory.map(record => (
+                                <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
+                                    <div>
+                                        <p className="font-semibold">{record.itemName}</p>
+                                        <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground text-center p-4">You have no items currently borrowed.</p>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-            
-            <TabsContent value="requests" className="mt-6">
-                <Card id="requests" className="bg-card/80 scroll-mt-20">
-                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2 font-headline">
-                            <Hourglass className="h-6 w-6" /> My Requests & Reservations
-                        </CardTitle>
-                        <CardDescription>A history of your item requests and their status.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                       {requestHistory.length > 0 ? (
-                            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                                {requestHistory.map(record => (
-                                    <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                        <div>
-                                            <p className="font-semibold">{record.itemName}</p>
-                                            <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {getStatusBadge(record.status)}
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        {getStatusBadge(record.status)}
                                     </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-muted-foreground text-center p-4">You have not made any requests yet.</p>
-                        )}
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-    )
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center p-4">You have not made any requests yet.</p>
+                    )}
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return null;
 }
