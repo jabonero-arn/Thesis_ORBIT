@@ -12,12 +12,15 @@ type StudentActivityProps = {
     view: 'borrowed' | 'requests'
 }
 
-const getStatusBadge = (status: BorrowHistory['status']) => {
-    switch(status) {
+const getStatusBadge = (record: BorrowHistory) => {
+    switch(record.status) {
         case 'Active':
             return <Badge variant="destructive">Borrowed</Badge>
         case 'Approved':
-            return <Badge variant="default">Approved for Pickup</Badge>
+             if (record.startTime) {
+                return <Badge variant="default">Reserved</Badge>;
+            }
+            return <Badge variant="default">Approved for Pickup</Badge>;
         case 'Pending':
              return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>
         case 'Pending Return':
@@ -35,8 +38,24 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
     const borrowedStatuses: BorrowHistory['status'][] = ['Active', 'Pending Return'];
     const activeBorrows = borrowHistory.filter(h => borrowedStatuses.includes(h.status));
     
-    const requestStatuses: BorrowHistory['status'][] = ['Pending', 'Approved', 'Denied', 'Returned', 'Active'];
-    const requestHistory = borrowHistory.filter(h => requestStatuses.includes(h.status)).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // In "My Requests", we show items that are not yet active borrows.
+    // This includes pending requests, reservations, and historical (denied/returned) items.
+    const requestHistory = borrowHistory.filter(h => {
+        switch (h.status) {
+            case 'Pending':
+            case 'Denied':
+            case 'Returned':
+                return true; // Historical and pending items are always part of the request history.
+            case 'Approved':
+                // An "Approved" item is a reservation only if it has a start time.
+                // If it doesn't, it's an immediate borrow awaiting pickup by staff, which shouldn't be in this list.
+                return !!h.startTime && !!h.endTime;
+            default:
+                // 'Active' and 'Pending Return' statuses belong in the 'borrowed' list, not here.
+                return false;
+        }
+    }).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
 
     if (view === 'borrowed') {
         return (
@@ -57,7 +76,7 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
                                         <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {getStatusBadge(record.status)}
+                                        {getStatusBadge(record)}
                                         {record.status === 'Active' && (
                                             <Button size="sm" variant="outline" onClick={() => onReturn(record.id)}>
                                                 <CornerDownLeft className="mr-2 h-4 w-4"/> Return
@@ -80,7 +99,7 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
             <Card id="requests" className="bg-card/80 scroll-mt-20">
                     <CardHeader>
                     <CardTitle className="flex items-center gap-2 font-headline">
-                        <Hourglass className="h-6 w-6" /> My Requests & Reservations
+                        <Hourglass className="h-6 w-6" /> My Requests
                     </CardTitle>
                     <CardDescription>A history of your item requests and their status.</CardDescription>
                 </CardHeader>
@@ -94,7 +113,7 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
                                         <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {getStatusBadge(record.status)}
+                                        {getStatusBadge(record)}
                                     </div>
                                 </div>
                             ))}
