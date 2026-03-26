@@ -22,7 +22,13 @@ const getStatusBadge = (record: BorrowHistory) => {
             }
             return <Badge variant="default">Approved for Pickup</Badge>;
         case 'Pending':
-             return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>
+             if (record.teacherId) {
+                return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending Teacher Approval</Badge>
+             }
+             if (record.startTime) {
+                return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending Staff Approval</Badge>
+             }
+             return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>;
         case 'Pending Return':
             return <Badge variant="secondary">Pending Return</Badge>
         case 'Returned':

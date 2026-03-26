@@ -151,7 +151,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 studentName: currentUser.name,
                 itemName: item.name,
                 date: format(reservationDate, "yyyy-MM-dd"),
-                status: 'Approved', 
+                status: 'Pending', 
                 startTime: startTime,
                 endTime: endTime,
             });
@@ -161,7 +161,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
 
     setTimeout(() => {
-       toast({ title: "Reservation Confirmed!", description: `Items reserved for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime}` })
+       toast({ title: "Reservation Request Sent!", description: `Your request for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime} has been sent for staff approval.` })
        onSuccess()
        setIsLoading(false)
     }, 1000)
