@@ -44,6 +44,17 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    
+    // Special check for the specific email and role
+    if (email.toLowerCase() === "christianjayefernan@gmail.com" && role !== "staff") {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "This account can only log in as Staff.",
+      })
+      return;
+    }
+
     setIsLoading(true)
 
     try {
