@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -19,6 +20,13 @@ import { Logo } from "@/components/logo"
 import { useAuth } from "@/firebase"
 import { createUserWithEmailAndPassword, AuthError } from "firebase/auth"
 import { Loader2 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function SignUpPage() {
   const router = useRouter()
@@ -29,6 +37,27 @@ export default function SignUpPage() {
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
+  const [educationLevel, setEducationLevel] = React.useState<"college" | "shs" | "">("");
+
+  const collegeCourses = [
+    "BS in Computer Science",
+    "BS in Information Technology",
+    "BS in Electronics Engineering",
+    "BS in Mechanical Engineering",
+    "BS in Chemistry",
+    "BS in Biology",
+  ];
+
+  const shsStrands = [
+    "STEM (Science, Technology, Engineering, and Mathematics)",
+    "ABM (Accountancy, Business, and Management)",
+    "HUMSS (Humanities and Social Sciences)",
+    "GAS (General Academic Strand)",
+    "TVL (Technical-Vocational-Livelihood)",
+  ];
+
+  const collegeYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
+  const shsYearLevels = ["Grade 11", "Grade 12"];
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -90,16 +119,49 @@ export default function SignUpPage() {
                 <Label htmlFor="id-number">ID Number</Label>
                 <Input id="id-number" placeholder="2021-01234" required />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                    <Label htmlFor="course">Course</Label>
-                    <Input id="course" placeholder="BS in Computer Science" required />
-                </div>
-                <div className="grid gap-2">
-                    <Label htmlFor="year-level">Year Level</Label>
-                    <Input id="year-level" placeholder="3rd Year" required />
-                </div>
+             <div className="grid gap-2">
+                <Label htmlFor="education-level">Education Level</Label>
+                <Select onValueChange={(value: "college" | "shs") => setEducationLevel(value)} required>
+                    <SelectTrigger id="education-level">
+                        <SelectValue placeholder="Select education level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="college">College</SelectItem>
+                        <SelectItem value="shs">Senior High School</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
+
+            {educationLevel && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="course-strand">{educationLevel === 'college' ? 'Course' : 'Strand'}</Label>
+                        <Select name="course-strand" required>
+                            <SelectTrigger id="course-strand">
+                                <SelectValue placeholder={`Select ${educationLevel === 'college' ? 'course' : 'strand'}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {(educationLevel === 'college' ? collegeCourses : shsStrands).map(option => (
+                                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="year-level">Year Level</Label>
+                        <Select name="year-level" required>
+                            <SelectTrigger id="year-level">
+                                <SelectValue placeholder="Select year level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {(educationLevel === 'college' ? collegeYearLevels : shsYearLevels).map(option => (
+                                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="Enter your email" required value={email} onChange={(e) => setEmail(e.target.value)} />
