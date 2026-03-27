@@ -42,7 +42,6 @@ export default function SignUpPage() {
   const collegeCourses = [
     "BS in Information Technology",
     "BS in Electronics Engineering",
-    "BS in Mechanical Engineering",
     "BS in Computer Engineering",
     "BS in Industrial Engineering",
   ];
