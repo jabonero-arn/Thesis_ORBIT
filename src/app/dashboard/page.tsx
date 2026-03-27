@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, where, addDoc, doc, updateDoc } from "firebase/firestore"
+import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
@@ -179,12 +179,12 @@ export default function Home() {
     if (!records.length || !firestore) return;
 
     try {
-        const batch = doc(firestore, 'batch');
-        const updates = records.map(record => {
+        const batch = writeBatch(firestore);
+        records.forEach(record => {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            return updateDoc(historyDocRef, { status: 'Pending Return' });
+            batch.update(historyDocRef, { status: 'Pending Return' });
         });
-        await Promise.all(updates);
+        await batch.commit();
         setItemToReturn(records);
     } catch (error) {
         console.error("Error initiating return:", error);
