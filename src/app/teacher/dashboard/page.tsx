@@ -66,12 +66,24 @@ export default function TeacherDashboardPage() {
   }, [user, isUserLoading, router])
 
   React.useEffect(() => {
-      if (user && !isProfileLoading && userProfile === null) {
-          setShowProfileDialog(true);
-      } else if (userProfile && (!userProfile.department || !userProfile.employeeId)) {
-          setShowProfileDialog(true);
-      }
-  }, [user, userProfile, isProfileLoading]);
+    // Wait until user and profile loading is complete
+    if (isUserLoading || isProfileLoading) {
+      return;
+    }
+    // If there's no user, we'll be redirected anyway by the other effect
+    if (!user) {
+        return;
+    }
+
+    // Check if the profile is incomplete.
+    // This is true if the profile document doesn't exist (`!userProfile`)
+    // or if it's missing the required fields.
+    const isProfileIncomplete = !userProfile || !userProfile.department || !userProfile.employeeId;
+
+    if (isProfileIncomplete) {
+      setShowProfileDialog(true);
+    }
+  }, [user, userProfile, isUserLoading, isProfileLoading]);
 
   const teacherData = React.useMemo(() => {
       if (!user) return null;
