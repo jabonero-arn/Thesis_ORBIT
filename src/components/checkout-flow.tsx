@@ -75,22 +75,51 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         if (!firestore) throw new Error("Firestore not available");
         const batch = writeBatch(firestore);
 
-        cartItems.forEach(({ item, quantity }) => {
-            for (let i = 0; i < quantity; i++) {
-                const historyCollectionRef = collection(firestore, 'borrowing_transactions');
-                const newDocRef = doc(historyCollectionRef);
-                
-                const newHistoryRecord: Omit<BorrowHistory, 'id'> = {
-                    studentName: user.displayName!,
-                    itemName: item.name,
-                    date: new Date().toISOString(),
-                    status: 'Approved', 
-                    checkoutSessionId: checkoutSessionId,
-                    borrowerUserId: user.uid,
-                };
-                batch.set(newDocRef, newHistoryRecord);
+        for (const { item, quantity } of cartItems) {
+            // Find the master inventory item to check its original status
+            const masterItem = allItems.find(i => i.id === item.id);
+            const wasLocked = masterItem?.status === 'Locked';
+            
+            // This item was originally 'Locked' and required teacher approval
+            if (wasLocked) {
+                const approvalRecords = borrowHistory.filter(h => 
+                    h.borrowerUserId === user.uid &&
+                    h.itemName === item.name &&
+                    h.status === 'Approved' &&
+                    !h.checkoutSessionId // It's a teacher approval, not a checkout record
+                );
+
+                if (approvalRecords.length < quantity) {
+                    throw new Error(`Not enough approvals for "${item.name}". You need ${quantity} but have ${approvalRecords.length}.`);
+                }
+
+                // Consume the required number of approvals by updating them
+                for (let i = 0; i < quantity; i++) {
+                    const recordToUpdate = approvalRecords[i];
+                    const historyDocRef = doc(firestore, 'borrowing_transactions', recordToUpdate.id);
+                    batch.update(historyDocRef, { 
+                        checkoutSessionId: checkoutSessionId,
+                        date: new Date().toISOString() // Update date to actual checkout request date
+                    });
+                }
+            } else { 
+                // This item was 'Available' and can be borrowed directly
+                for (let i = 0; i < quantity; i++) {
+                    const historyCollectionRef = collection(firestore, 'borrowing_transactions');
+                    const newDocRef = doc(historyCollectionRef);
+                    
+                    const newHistoryRecord: Omit<BorrowHistory, 'id'> = {
+                        studentName: user.displayName!,
+                        itemName: item.name,
+                        date: new Date().toISOString(),
+                        status: 'Approved', // 'Approved' here means "ready for staff QR scan"
+                        checkoutSessionId: checkoutSessionId,
+                        borrowerUserId: user.uid,
+                    };
+                    batch.set(newDocRef, newHistoryRecord);
+                }
             }
-        });
+        }
 
         await batch.commit();
         
@@ -102,13 +131,13 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             description: "Present the generated QR code to the lab staff."
         })
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
         setIsLoading(false);
         toast({
             variant: "destructive",
             title: "Checkout Failed",
-            description: "Could not create borrowing request. Please try again.",
+            description: e.message || "Could not create borrowing request. Please try again.",
         })
     }
   }
