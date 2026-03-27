@@ -87,6 +87,20 @@ export default function SignUpPage() {
               <Input id="name" placeholder="Arnie Jabonero" required />
             </div>
             <div className="grid gap-2">
+                <Label htmlFor="id-number">ID Number</Label>
+                <Input id="id-number" placeholder="2021-01234" required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="course">Course</Label>
+                    <Input id="course" placeholder="BS in Computer Science" required />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="year-level">Year Level</Label>
+                    <Input id="year-level" placeholder="3rd Year" required />
+                </div>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="Enter your email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
