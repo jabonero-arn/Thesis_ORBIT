@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -117,8 +118,11 @@ export default function Home() {
   const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
 
   const handleItemSelect = (item: InventoryItem) => {
-    if (item.status === "Borrowed" && item.quantity === 0) return;
-    
+    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
+    if (isSelected) {
+        return; // Already in cart, do nothing
+    }
+
     if (pendingRequestedItemNames.has(item.name)) {
         toast({
             title: "Request Already Pending",
@@ -127,26 +131,37 @@ export default function Home() {
         return;
     }
 
-    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
-    if (isSelected) {
-        // Quantity is managed in the cart
+    const isApproved = approvedForBorrowItemNames.has(item.name);
+    
+    // Case 1: Item is "Available" and has stock
+    if (item.status === "Available" && item.quantity > 0) {
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
+        return;
+    }
+
+    // Case 2: Item was "Locked" but is now approved by a teacher, and has stock
+    if (isApproved && item.quantity > 0) {
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
+        toast({
+            title: "Approved Item Added",
+            description: `"${item.name}" has been added to your cart.`,
+        });
+        return;
+    }
+
+    // Case 3: Item is "Locked" and not yet approved
+    if (item.status === "Locked" && !isApproved) {
+        setItemToRequest(item);
+        setIsApprovalDialogOpen(true);
         return;
     }
     
-    const isApproved = approvedForBorrowItemNames.has(item.name);
-    
-    if (item.status === "Available" || isApproved || item.quantity > 0) {
-        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
-        if(isApproved){
-             toast({
-                title: "Approved Item Added",
-                description: `"${item.name}" has been added to your cart.`,
-            });
-        }
-    } else if (item.status === "Locked") {
-        setItemToRequest(item);
-        setIsApprovalDialogOpen(true);
-    }
+    // Case 4: Any other unavailable case (borrowed, no stock, etc.)
+    toast({
+        variant: "destructive",
+        title: "Item Unavailable",
+        description: `"${item.name}" is not available for borrowing at this time.`,
+    });
   }
 
   const handleConfirmRequest = async (teacherId: string) => {
@@ -496,3 +511,5 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    
