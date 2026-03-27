@@ -144,6 +144,7 @@ export default function PrimaryCustodianDashboardPage() {
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             quantity: parseInt(formData.get("quantity") as string, 10),
+            status: formData.get("status") as InventoryItem['status'],
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
             imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
@@ -155,10 +156,7 @@ export default function PrimaryCustodianDashboardPage() {
                 toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
             } else {
                 const inventoryCollection = collection(firestore, "inventory_items");
-                await addDoc(inventoryCollection, {
-                    ...itemData,
-                    status: "Available", // Default status for new items
-                });
+                await addDoc(inventoryCollection, itemData);
                 toast({ title: "Item Added", description: `${itemData.name} has been added to inventory.` });
             }
             closeForm();
@@ -550,6 +548,16 @@ export default function PrimaryCustodianDashboardPage() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
                                 <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="status">Status</Label>
+                                <Select name="status" defaultValue={editingItem?.status || 'Available'} required>
+                                    <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Available">Available</SelectItem>
+                                        <SelectItem value="Locked">Locked</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL</Label><Input id="imageUrl" name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="https://..."/></div>
                             <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">{editingItem ? "Save Changes" : "Add Item"}</Button></DialogFooter>
