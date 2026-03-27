@@ -40,12 +40,11 @@ export default function SignUpPage() {
   const [educationLevel, setEducationLevel] = React.useState<"college" | "shs" | "">("");
 
   const collegeCourses = [
-    "BS in Computer Science",
     "BS in Information Technology",
     "BS in Electronics Engineering",
     "BS in Mechanical Engineering",
-    "BS in Chemistry",
-    "BS in Biology",
+    "BS in Computer Engineering",
+    "BS in Industrial Engineering",
   ];
 
   const shsStrands = [
