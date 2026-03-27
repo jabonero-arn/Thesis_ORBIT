@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { allUsers } from "@/lib/data"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
+import { useFirestore } from "@/firebase"
+import { doc, updateDoc, writeBatch } from "firebase/firestore"
 
 type CheckoutSession = {
   studentName: string;
@@ -23,7 +25,8 @@ type QrScannerViewProps = {
 }
 
 export function QrScannerView({ onReturn }: QrScannerViewProps) {
-  const { borrowHistory, setBorrowHistory, setItems } = useAppContext();
+  const { items, borrowHistory } = useAppContext();
+  const firestore = useFirestore();
   const { toast } = useToast();
   
   const [sessionInView, setSessionInView] = React.useState<CheckoutSession | null>(null);
@@ -70,55 +73,55 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
     setItemsInDialog(prev => prev.filter(item => item.id !== historyId));
   }
   
-  const handleConfirmCheckout = () => {
-    if (!sessionInView) return;
+  const handleConfirmCheckout = async () => {
+    if (!sessionInView || !firestore) return;
     setIsProcessing(true);
 
-    setTimeout(() => {
-      const originalItemIds = new Set(sessionInView.items.map(i => i.id));
-      const finalItemIds = new Set(itemsInDialog.map(i => i.id));
+    try {
+        const batch = writeBatch(firestore);
 
-      const itemsToCheckout = itemsInDialog;
-      const itemsToCancel = sessionInView.items.filter(item => !finalItemIds.has(item.id));
+        const itemsToCheckout = itemsInDialog;
+        const itemsToCancel = sessionInView.items.filter(item => !itemsInDialog.some(i => i.id === item.id));
 
-      const itemQuantityUpdates = new Map<string, number>();
-      itemsToCheckout.forEach(item => {
-        itemQuantityUpdates.set(item.itemName, (itemQuantityUpdates.get(item.itemName) || 0) + 1);
-      });
+        const itemQuantityUpdates = new Map<string, number>();
+        itemsToCheckout.forEach(item => {
+            itemQuantityUpdates.set(item.itemName, (itemQuantityUpdates.get(item.itemName) || 0) + 1);
+        });
 
-      setItems(prevItems => prevItems.map(item => {
-        if (itemQuantityUpdates.has(item.name)) {
-          const quantityToDecrement = itemQuantityUpdates.get(item.name) || 0;
-          const newQuantity = item.quantity - quantityToDecrement;
-          return {
-            ...item,
-            quantity: Math.max(0, newQuantity),
-            status: newQuantity > 0 ? item.status : 'Borrowed'
-          };
-        }
-        return item;
-      }));
+        itemQuantityUpdates.forEach((quantityToDecrement, itemName) => {
+            const itemToUpdate = items.find(i => i.name === itemName);
+            if (itemToUpdate) {
+                const newQuantity = itemToUpdate.quantity - quantityToDecrement;
+                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+                batch.update(itemDocRef, { quantity: Math.max(0, newQuantity) });
+            }
+        });
 
-      setBorrowHistory(prev => prev.map(record => {
-        if (finalItemIds.has(record.id)) {
-          return { ...record, status: 'Active' };
-        }
-        if (itemsToCancel.some(cancelled => cancelled.id === record.id)) {
-          return { ...record, status: 'Cancelled' };
-        }
-        return record;
-      }));
+        itemsToCheckout.forEach(record => {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(historyDocRef, { status: 'Active' });
+        });
+
+        itemsToCancel.forEach(record => {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(historyDocRef, { status: 'Cancelled' });
+        });
+        
+        await batch.commit();
       
-      toast({
-        title: "Checkout Confirmed",
-        description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length} item(s) cancelled.`
-      });
+        toast({
+            title: "Checkout Confirmed",
+            description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length} item(s) cancelled.`
+        });
 
-      setIsProcessing(false);
-      setSessionInView(null);
-      setItemsInDialog([]);
-
-    }, 1000);
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not complete checkout.' });
+    } finally {
+        setIsProcessing(false);
+        setSessionInView(null);
+        setItemsInDialog([]);
+    }
   }
 
 

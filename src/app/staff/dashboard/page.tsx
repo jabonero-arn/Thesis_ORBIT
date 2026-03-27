@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@/firebase"
+import { useUser, useFirestore } from "@/firebase"
+import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
     PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X, Loader2
@@ -10,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, channels, items as initialItems } from "@/lib/data"
+import { currentUser, channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -54,7 +55,8 @@ export default function StaffDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, setItems, borrowHistory, setBorrowHistory } = useAppContext();
+    const { items, borrowHistory } = useAppContext();
+    const firestore = useFirestore();
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
@@ -113,36 +115,47 @@ export default function StaffDashboardPage() {
     }
     
     const handleQuantityChange = (itemId: string, newQuantity: number) => {
-        if (newQuantity < 0) return;
-        setItems(prev => prev.map(item => item.id === itemId ? { ...item, quantity: newQuantity } : item));
+        if (newQuantity < 0 || !firestore) return;
+        const itemDocRef = doc(firestore, 'inventory_items', itemId);
+        updateDoc(itemDocRef, { quantity: newQuantity });
     }
 
-     const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+     const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+            return;
+        }
+
         const formData = new FormData(event.currentTarget);
+        const name = formData.get("name") as string;
         const itemData = {
-            name: formData.get("name") as string,
+            name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             quantity: parseInt(formData.get("quantity") as string, 10),
-            imageUrl: formData.get("imageUrl") as string || 'https://picsum.photos/seed/new-item/600/400',
-            imageHint: 'new item'
+            imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
+            imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
 
-        if (editingItem) {
-            const updatedItem = { ...editingItem, ...itemData };
-            setItems(prev => prev.map(item => item.id === editingItem.id ? updatedItem : item));
-            toast({ title: "Item Updated", description: `${updatedItem.name} has been updated.` });
-        } else {
-            const newItem: InventoryItem = {
-                id: `item-${Date.now()}`,
-                status: "Available",
-                ...itemData
-            };
-            setItems(prev => [...prev, newItem]);
-            toast({ title: "Item Added", description: `${newItem.name} has been added to inventory.` });
+        try {
+            if (editingItem) {
+                const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
+                await updateDoc(itemDocRef, itemData);
+                toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
+            } else {
+                const inventoryCollection = collection(firestore, "inventory_items");
+                await addDoc(inventoryCollection, {
+                    ...itemData,
+                    status: "Available", // Default status for new items
+                });
+                toast({ title: "Item Added", description: `${itemData.name} has been added to inventory.` });
+            }
+            closeForm();
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Error", description: "Could not save the item." });
         }
-        closeForm();
     }
 
     const openEditForm = (item: InventoryItem) => {
@@ -160,57 +173,77 @@ export default function StaffDashboardPage() {
         setIsFormOpen(false);
     }
 
-    const handleDeleteItem = (itemId: string) => {
-        setItems(prev => prev.filter(item => item.id !== itemId));
-        toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
+    const handleDeleteItem = async (itemId: string) => {
+        if (!firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+            return;
+        }
+        try {
+            const itemDocRef = doc(firestore, "inventory_items", itemId);
+            await deleteDoc(itemDocRef);
+            toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
+        }
     }
     
-    const handleReturnItem = (historyId: string) => {
+    const handleReturnItem = async (historyId: string) => {
+        if(!firestore) return;
         const historyRecord = borrowHistory.find(h => h.id === historyId);
         if (!historyRecord) return;
-
-        setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Returned' } : h));
         
-        setItems(prevItems => prevItems.map(item => {
-            if (item.name === historyRecord.itemName) {
-                const newQuantity = item.quantity + 1;
-                const originalItem = initialItems.find(i => i.name === item.name);
-                const newStatus = newQuantity > 0 && item.status === 'Borrowed' 
-                    ? (originalItem?.status === 'Locked' ? 'Locked' : 'Available') 
-                    : item.status;
-
-                return {
-                    ...item,
-                    quantity: newQuantity,
-                    status: newStatus
-                };
+        try {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
+            await updateDoc(historyDocRef, { status: 'Returned' });
+            
+            const itemToUpdate = items.find(item => item.name === historyRecord.itemName);
+            if (itemToUpdate) {
+                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+                const newQuantity = itemToUpdate.quantity + 1;
+                await updateDoc(itemDocRef, { quantity: newQuantity });
             }
-            return item;
-        }));
-
-        toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
+            toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
+        } catch(e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not process return.' });
+        }
     }
     
-    const handleApproveReservation = (historyId: string) => {
-        setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Approved' } : h));
+    const handleApproveReservation = async (historyId: string) => {
+        if (!firestore) return;
         const record = borrowHistory.find(h => h.id === historyId);
-        if (record) {
+        if (!record) return;
+
+        try {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
+            await updateDoc(historyDocRef, { status: 'Approved' });
             toast({
                 title: "Reservation Approved",
                 description: `Reservation for ${record.itemName} by ${record.studentName} has been approved.`
             });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Error", description: `Could not approve reservation.` });
         }
     }
 
-    const handleDenyReservation = (historyId: string) => {
-        setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Denied' } : h));
+    const handleDenyReservation = async (historyId: string) => {
+        if (!firestore) return;
         const record = borrowHistory.find(h => h.id === historyId);
-        if (record) {
+        if (!record) return;
+
+        try {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
+            await updateDoc(historyDocRef, { status: 'Denied' });
             toast({
                 variant: "destructive",
                 title: "Reservation Denied",
                 description: `Reservation for ${record.itemName} by ${record.studentName} has been denied.`
             });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Error", description: `Could not deny reservation.` });
         }
     }
 
