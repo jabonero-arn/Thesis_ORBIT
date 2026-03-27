@@ -50,10 +50,7 @@ export function ItemCard({
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
         (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView && !isPending) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        (item.status === "Borrowed" || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed",
-        showPending && "!border-amber-500 shadow-lg shadow-amber-500/20",
-        showApproved && "!border-green-500 shadow-lg shadow-green-500/20",
-        item.status === "Borrowed" && isSelectionEnabled && !isManagementView && "opacity-60"
+        (item.status === "Borrowed" || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed"
       )}
     >
       <div className="relative aspect-video overflow-hidden">
@@ -81,7 +78,7 @@ export function ItemCard({
         )}
 
 
-        {item.status === 'Borrowed' && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
+        {item.status === 'Borrowed' && item.quantity === 0 && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
         
         {showPending && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-amber-500/20 border-amber-500 text-amber-300 flex items-center">
