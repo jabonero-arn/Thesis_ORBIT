@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Logo } from "@/components/logo"
+import { Logo } from "@/components/ui/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -199,7 +199,10 @@ export default function StaffDashboardPage() {
             if (itemToUpdate) {
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
                 const newQuantity = itemToUpdate.quantity + 1;
-                await updateDoc(itemDocRef, { quantity: newQuantity });
+                await updateDoc(itemDocRef, { 
+                    quantity: newQuantity,
+                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
+                });
             }
             toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
         } catch(e) {
@@ -320,7 +323,7 @@ export default function StaffDashboardPage() {
                             <TableRow key={r.id}>
                                 <TableCell>{r.studentName}</TableCell>
                                 <TableCell>{r.itemName}</TableCell>
-                                <TableCell>{format(new Date(r.date + 'T00:00:00'), 'MMM d, yyyy')}</TableCell>
+                                <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
                                 <TableCell>{r.startTime} - {r.endTime}</TableCell>
                                 <TableCell className="text-right space-x-2">
                                     <Button size="sm" onClick={() => handleApproveReservation(r.id)}><Check className="mr-2 h-4 w-4" /> Approve</Button>
@@ -531,11 +534,11 @@ export default function StaffDashboardPage() {
                  <UserProfileModal role="Staff">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                         <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                             <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
+                             <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                          <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Staff"}</p>
                           <p className="text-xs text-muted-foreground">Staff</p>
                         </div>
                     </div>
@@ -659,11 +662,11 @@ export default function StaffDashboardPage() {
                             <UserProfileModal role="Staff">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                   <Avatar className="h-8 w-8 flex-shrink-0">
-                                      <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                      <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                      <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
+                                      <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                   </Avatar>
                                   <div className="overflow-hidden">
-                                    <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                    <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Staff"}</p>
                                     <p className="text-xs text-muted-foreground">Staff</p>
                                   </div>
                                 </div>

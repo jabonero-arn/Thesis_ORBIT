@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Logo } from "@/components/logo"
+import { Logo } from "@/components/ui/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -209,7 +209,10 @@ export default function PrimaryCustodianDashboardPage() {
             if (itemToUpdate) {
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
                 const newQuantity = itemToUpdate.quantity + 1;
-                await updateDoc(itemDocRef, { quantity: newQuantity });
+                await updateDoc(itemDocRef, { 
+                    quantity: newQuantity,
+                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
+                });
             }
             toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
         } catch(e) {
@@ -402,11 +405,11 @@ export default function PrimaryCustodianDashboardPage() {
                   <UserProfileModal role="Primary Custodian">
                       <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                           <Avatar className="h-8 w-8 flex-shrink-0">
-                              <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                              <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
+                              <AvatarFallback>{user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
                           </Avatar>
                           <div className="overflow-hidden">
-                              <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                              <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Primary Custodian"}</p>
                               <p className="text-xs text-muted-foreground">Primary Custodian</p>
                           </div>
                       </div>
@@ -515,11 +518,11 @@ export default function PrimaryCustodianDashboardPage() {
                              <UserProfileModal role="Primary Custodian">
                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                      <Avatar className="h-8 w-8 flex-shrink-0">
-                                         <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                         <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                         <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
+                                         <AvatarFallback>{user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
                                      </Avatar>
                                      <div className="overflow-hidden">
-                                         <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                         <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Primary Custodian"}</p>
                                          <p className="text-xs text-muted-foreground">Primary Custodian</p>
                                      </div>
                                  </div>
@@ -549,7 +552,7 @@ export default function PrimaryCustodianDashboardPage() {
                                 <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
                                 <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                             </div>
-                            <div className="grid gap-2">
+                             <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
                                 <Select name="status" defaultValue={editingItem?.status || 'Available'} required>
                                     <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>

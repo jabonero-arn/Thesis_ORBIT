@@ -11,7 +11,7 @@ import { channels, teachers } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
-import { Logo } from "@/components/logo"
+import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { CheckoutFlow } from "@/components/checkout-flow"
@@ -93,7 +93,7 @@ export default function TeacherDashboardPage() {
           id: user.uid,
           name: userProfile?.displayName || user.displayName || 'Teacher',
           role: 'Teacher',
-          avatarUrl: user.photoURL || 'https://i.pinimg.com/736x/b8/b5/c7/b8b5c7f8a7e3e9705f4e0499e2a77a94.jpg',
+          avatarUrl: user.photoURL || undefined,
           department: userProfile?.department,
           employeeId: userProfile?.employeeId,
       }
@@ -337,11 +337,11 @@ export default function TeacherDashboardPage() {
             <UserProfileModal role="Teacher">
               <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={teacherData?.avatarUrl} alt={teacherData?.name} />
-                    <AvatarFallback>{teacherData?.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={teacherData?.avatarUrl || undefined} alt={teacherData?.name || ""} />
+                    <AvatarFallback>{teacherData?.name?.charAt(0) || 'T'}</AvatarFallback>
                 </Avatar>
                 <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{teacherData?.name}</p>
+                  <p className="truncate text-sm font-semibold leading-none">{teacherData?.name || "Teacher"}</p>
                   <p className="text-xs text-muted-foreground">Teacher</p>
                 </div>
               </div>
@@ -524,11 +524,11 @@ export default function TeacherDashboardPage() {
                   <UserProfileModal role="Teacher">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarImage src={teacherData.avatarUrl} alt={teacherData.name} />
-                          <AvatarFallback>{teacherData.name.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={teacherData?.avatarUrl || undefined} alt={teacherData?.name || ""} />
+                          <AvatarFallback>{teacherData?.name?.charAt(0) || 'T'}</AvatarFallback>
                       </Avatar>
                       <div className="overflow-hidden">
-                        <p className="truncate text-sm font-semibold leading-none">{teacherData.name}</p>
+                        <p className="truncate text-sm font-semibold leading-none">{teacherData?.name || "Teacher"}</p>
                         <p className="text-xs text-muted-foreground">Teacher</p>
                       </div>
                     </div>
