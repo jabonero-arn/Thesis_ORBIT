@@ -41,6 +41,10 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [educationLevel, setEducationLevel] = React.useState<"college" | "shs" | "">("");
+  const [idNumber, setIdNumber] = React.useState("");
+  const [courseOrStrand, setCourseOrStrand] = React.useState("");
+  const [yearLevel, setYearLevel] = React.useState("");
+
 
   const collegeCourses = [
     "BS in Information Technology",
@@ -85,10 +89,10 @@ export default function SignUpPage() {
             displayName: name,
             email: user.email,
             role: "Student",
-            idNumber: (event.currentTarget.elements.namedItem('id-number') as HTMLInputElement).value,
+            idNumber: idNumber,
             educationLevel: educationLevel,
-            courseOrStrand: (event.currentTarget.querySelector('[name="course-strand"]') as HTMLInputElement)?.value,
-            yearLevel: (event.currentTarget.querySelector('[name="year-level"]') as HTMLInputElement)?.value,
+            courseOrStrand: courseOrStrand,
+            yearLevel: yearLevel,
         };
 
         const userDocRef = doc(firestore, "users", user.uid);
@@ -152,11 +156,15 @@ export default function SignUpPage() {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="id-number">ID Number</Label>
-                <Input id="id-number" name="id-number" placeholder="2021-01234" required />
+                <Input id="id-number" name="id-number" placeholder="2021-01234" required value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="education-level">Education Level</Label>
-                <Select onValueChange={(value: "college" | "shs") => setEducationLevel(value)} required>
+                <Select onValueChange={(value: "college" | "shs") => {
+                    setEducationLevel(value);
+                    setCourseOrStrand("");
+                    setYearLevel("");
+                }} required>
                     <SelectTrigger id="education-level">
                         <SelectValue placeholder="Select education level" />
                     </SelectTrigger>
@@ -171,7 +179,7 @@ export default function SignUpPage() {
                 <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="course-strand">{educationLevel === 'college' ? 'Course' : 'Strand'}</Label>
-                        <Select name="course-strand" required>
+                        <Select name="course-strand" required value={courseOrStrand} onValueChange={setCourseOrStrand}>
                             <SelectTrigger id="course-strand">
                                 <SelectValue placeholder={`Select ${educationLevel === 'college' ? 'course' : 'strand'}`} />
                             </SelectTrigger>
@@ -184,7 +192,7 @@ export default function SignUpPage() {
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="year-level">Year Level</Label>
-                        <Select name="year-level" required>
+                        <Select name="year-level" required value={yearLevel} onValueChange={setYearLevel}>
                             <SelectTrigger id="year-level">
                                 <SelectValue placeholder="Select year level" />
                             </SelectTrigger>
