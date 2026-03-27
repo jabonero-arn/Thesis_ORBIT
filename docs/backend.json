@@ -83,9 +83,10 @@
         "teacherId": { "type": "string" },
         "checkoutSessionId": { "type": "string" },
         "startTime": { "type": "string" },
-        "endTime": { "type": "string" }
+        "endTime": { "type": "string" },
+        "borrowerUserId": { "type": "string" }
       },
-      "required": ["studentName", "itemName", "date", "status"]
+      "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
     }
   },
   "auth": {

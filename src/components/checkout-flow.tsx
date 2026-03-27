@@ -4,12 +4,12 @@ import * as React from "react"
 import Image from "next/image"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
-import { useUser } from "@/firebase"
+import { useUser, useFirestore } from "@/firebase"
+import { collection, writeBatch, doc } from "firebase/firestore"
 
 import type { BorrowHistory, CartItem, InventoryItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { currentUser } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -47,7 +47,8 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const [qrCodeData, setQrCodeData] = React.useState<string>("");
   const { toast } = useToast()
   const { user } = useUser();
-  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+  const { items: allItems, borrowHistory } = useAppContext();
+  const firestore = useFirestore();
 
   const handleSubmit = () => {
     if (isReserve) {
@@ -57,8 +58,8 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
   }
 
-  const handleBorrow = () => {
-     if (!user?.displayName) {
+  const handleBorrow = async () => {
+     if (!user || !user.uid || !user.displayName) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -69,37 +70,51 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     setIsLoading(true);
 
     const checkoutSessionId = `cs-${Date.now()}`;
-    const newHistoryRecords: BorrowHistory[] = [];
-
-    cartItems.forEach(({ item, quantity }) => {
-        for (let i = 0; i < quantity; i++) {
-            newHistoryRecords.push({
-                id: `bh-${Date.now()}-${item.id}-${i}`,
-                studentName: user.displayName,
-                itemName: item.name,
-                date: new Date().toISOString().split('T')[0],
-                status: 'Approved', // Ready for staff pickup
-                checkoutSessionId: checkoutSessionId,
-            });
-        }
-    });
-
-    setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
     
-    setQrCodeData(JSON.stringify({ checkoutSessionId }));
+    try {
+        if (!firestore) throw new Error("Firestore not available");
+        const batch = writeBatch(firestore);
 
-    setTimeout(() => {
-      setIsLoading(false)
-      setIsQrCodeOpen(true)
-      toast({
-          title: "Ready for Pickup",
-          description: "Present the generated QR code to the lab staff."
-      })
-    }, 1000)
+        cartItems.forEach(({ item, quantity }) => {
+            for (let i = 0; i < quantity; i++) {
+                const historyCollectionRef = collection(firestore, 'borrowing_transactions');
+                const newDocRef = doc(historyCollectionRef);
+                
+                const newHistoryRecord: Omit<BorrowHistory, 'id'> = {
+                    studentName: user.displayName!,
+                    itemName: item.name,
+                    date: new Date().toISOString(),
+                    status: 'Approved', 
+                    checkoutSessionId: checkoutSessionId,
+                    borrowerUserId: user.uid,
+                };
+                batch.set(newDocRef, newHistoryRecord);
+            }
+        });
+
+        await batch.commit();
+        
+        setQrCodeData(JSON.stringify({ checkoutSessionId }));
+        setIsLoading(false)
+        setIsQrCodeOpen(true)
+        toast({
+            title: "Ready for Pickup",
+            description: "Present the generated QR code to the lab staff."
+        })
+
+    } catch (e) {
+        console.error(e);
+        setIsLoading(false);
+        toast({
+            variant: "destructive",
+            title: "Checkout Failed",
+            description: "Could not create borrowing request. Please try again.",
+        })
+    }
   }
   
-  const handleReserve = () => {
-     if (!user?.displayName) {
+  const handleReserve = async () => {
+     if (!user || !user.uid || !user.displayName) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -160,29 +175,47 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
     // --- END CONFLICT CHECK ---
 
-    const newHistoryRecords: BorrowHistory[] = [];
+    const newHistoryRecords: Omit<BorrowHistory, 'id'>[] = [];
 
     cartItems.forEach(({ item, quantity }) => {
         for (let i = 0; i < quantity; i++) {
             newHistoryRecords.push({
-                id: `bh-${Date.now()}-${item.id}-${i}`,
-                studentName: user.displayName,
+                studentName: user.displayName!,
                 itemName: item.name,
-                date: format(reservationDate, "yyyy-MM-dd"),
+                date: reservationDate.toISOString(),
                 status: 'Pending', 
                 startTime: startTime,
                 endTime: endTime,
+                borrowerUserId: user.uid,
             });
         }
     });
     
-    setBorrowHistory(prev => [...newHistoryRecords, ...prev]);
+    try {
+        if (!firestore) throw new Error("Firestore not available");
+        const batch = writeBatch(firestore);
+        const historyCollectionRef = collection(firestore, 'borrowing_transactions');
 
-    setTimeout(() => {
-       toast({ title: "Reservation Request Sent!", description: `Your request for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime} has been sent for staff approval.` })
-       onSuccess()
-       setIsLoading(false)
-    }, 1000)
+        newHistoryRecords.forEach(record => {
+            const newDocRef = doc(historyCollectionRef);
+            batch.set(newDocRef, record);
+        });
+
+        await batch.commit();
+
+        toast({ title: "Reservation Request Sent!", description: `Your request for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime} has been sent for staff approval.` })
+        onSuccess()
+        setIsLoading(false)
+
+    } catch (e) {
+        console.error(e);
+        setIsLoading(false);
+        toast({
+            variant: "destructive",
+            title: "Reservation Failed",
+            description: "Could not send reservation request. Please try again.",
+        })
+    }
   }
 
   const handleQrDialogClose = () => {

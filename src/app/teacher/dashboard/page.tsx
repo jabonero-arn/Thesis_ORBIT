@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { doc, updateDoc } from "firebase/firestore"
 import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
@@ -48,7 +48,7 @@ export default function TeacherDashboardPage() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+  const { items: allItems, borrowHistory } = useAppContext();
   
   const [showProfileDialog, setShowProfileDialog] = React.useState(false);
 
@@ -115,14 +115,25 @@ export default function TeacherDashboardPage() {
   const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
+  const handleRequest = async (id: string, newStatus: 'Approved' | 'Denied') => {
+    if (!firestore) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      setBorrowHistory(prev => prev.map(r => r.id === id ? {...r, status: newStatus} : r))
-      toast({
-        title: `Request ${newStatus}`,
-        description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.`,
-      });
+      try {
+        const docRef = doc(firestore, 'borrowing_transactions', id);
+        await updateDoc(docRef, { status: newStatus });
+        toast({
+          title: `Request ${newStatus}`,
+          description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.`,
+        });
+      } catch (e) {
+        console.error(e);
+        toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: "Could not update the request status.",
+        })
+      }
     }
   }
 

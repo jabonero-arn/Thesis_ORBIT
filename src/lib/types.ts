@@ -43,6 +43,7 @@ export type BorrowHistory = {
     status: BorrowHistoryStatus;
     teacherId?: string;
     checkoutSessionId?: string;
+    borrowerUserId?: string;
     startTime?: string;
     endTime?: string;
 };

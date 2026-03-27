@@ -8,7 +8,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { allUsers } from "@/lib/data"
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
 import { doc, updateDoc, writeBatch } from "firebase/firestore"
@@ -18,6 +17,7 @@ type CheckoutSession = {
   items: BorrowHistory[];
   date: string;
   checkoutSessionId: string;
+  borrowerUserId: string;
 }
 
 type QrScannerViewProps = {
@@ -38,13 +38,14 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
     const sessions = new Map<string, CheckoutSession>();
 
     borrowHistory.forEach(record => {
-      if (record.status === 'Approved' && record.checkoutSessionId) {
+      if (record.status === 'Approved' && record.checkoutSessionId && record.borrowerUserId) {
         if (!sessions.has(record.checkoutSessionId)) {
           sessions.set(record.checkoutSessionId, {
             checkoutSessionId: record.checkoutSessionId,
             studentName: record.studentName,
             items: [],
             date: record.date,
+            borrowerUserId: record.borrowerUserId
           });
         }
         sessions.get(record.checkoutSessionId)!.items.push(record);
@@ -91,9 +92,15 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
         itemQuantityUpdates.forEach((quantityToDecrement, itemName) => {
             const itemToUpdate = items.find(i => i.name === itemName);
             if (itemToUpdate) {
+                if (itemToUpdate.quantity < quantityToDecrement) {
+                    throw new Error(`Not enough stock for ${itemName}.`);
+                }
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                batch.update(itemDocRef, { quantity: Math.max(0, newQuantity) });
+                 batch.update(itemDocRef, { 
+                    quantity: newQuantity,
+                    status: newQuantity === 0 ? 'Borrowed' : itemToUpdate.status 
+                });
             }
         });
 
@@ -111,12 +118,12 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
       
         toast({
             title: "Checkout Confirmed",
-            description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length} item(s) cancelled.`
+            description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length > 0 ? `${itemsToCancel.length} item(s) cancelled.` : ''}`
         });
 
-    } catch (e) {
+    } catch (e: any) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not complete checkout.' });
+        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not complete checkout.' });
     } finally {
         setIsProcessing(false);
         setSessionInView(null);
@@ -134,9 +141,6 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
         setSelectedReturn(null);
     }, 1000)
   }
-
-  const studentInView = sessionInView ? allUsers.find(u => u.name === sessionInView.studentName) || { name: sessionInView.studentName, avatarUrl: '', role: 'Student' } : null;
-  const studentForReturn = selectedReturn ? allUsers.find(u => u.name === selectedReturn.studentName) || { name: selectedReturn.studentName, avatarUrl: '', role: 'Student' } : null;
 
   return (
     <div className="space-y-8">
@@ -216,16 +220,15 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
                 <DialogTitle className="font-headline">Confirm Checkout</DialogTitle>
                 <DialogDescription>Simulating QR Scan. Review items, remove if necessary, and confirm to finalize the checkout.</DialogDescription>
             </DialogHeader>
-            {sessionInView && studentInView && (
+            {sessionInView && (
                 <div className="py-4 space-y-4">
                     <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
                         <Avatar className="h-12 w-12">
-                           <AvatarImage src={studentInView.avatarUrl} alt={studentInView.name} />
-                           <AvatarFallback>{studentInView.name.charAt(0)}</AvatarFallback>
+                           <AvatarFallback>{sessionInView.studentName.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="font-semibold">{studentInView.name}</p>
-                            <p className="text-sm text-muted-foreground">{studentInView.role}</p>
+                            <p className="font-semibold">{sessionInView.studentName}</p>
+                            <p className="text-sm text-muted-foreground">Student</p>
                         </div>
                     </div>
                     <div>
@@ -263,16 +266,15 @@ export function QrScannerView({ onReturn }: QrScannerViewProps) {
                 <DialogTitle className="font-headline">Confirm Return</DialogTitle>
                 <DialogDescription>Review the item and confirm the return for the student.</DialogDescription>
             </DialogHeader>
-            {selectedReturn && studentForReturn && (
+            {selectedReturn && (
                 <div className="py-4 space-y-4">
                     <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
                         <Avatar className="h-12 w-12">
-                           <AvatarImage src={studentForReturn.avatarUrl} alt={studentForReturn.name} />
-                           <AvatarFallback>{studentForReturn.name.charAt(0)}</AvatarFallback>
+                           <AvatarFallback>{selectedReturn.studentName.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="font-semibold">{studentForReturn.name}</p>
-                            <p className="text-sm text-muted-foreground">{studentForReturn.role}</p>
+                            <p className="font-semibold">{selectedReturn.studentName}</p>
+                            <p className="text-sm text-muted-foreground">Student</p>
                         </div>
                     </div>
                     <div>
