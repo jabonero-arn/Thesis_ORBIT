@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@/firebase"
+import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { collection, query, where } from "firebase/firestore"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import { channels, currentUser, teachers } from "@/lib/data"
+import { channels, currentUser } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -33,8 +34,21 @@ const departments = [
 export default function Home() {
   const router = useRouter()
   const { user, isUserLoading } = useUser()
+  const firestore = useFirestore()
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+
+  const teachersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), where('role', '==', 'Teacher'));
+  }, [firestore]);
+
+  const { data: teacherUsers } = useCollection<{ id: string, displayName: string }>(teachersQuery);
+
+  const teachersForDialog = React.useMemo(() => {
+      if (!teacherUsers) return [];
+      return teacherUsers.map(t => ({ id: t.id, name: t.displayName }));
+  }, [teacherUsers]);
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -420,7 +434,7 @@ export default function Home() {
 
         <RequestApprovalDialog
           item={itemToRequest}
-          teachers={teachers}
+          teachers={teachersForDialog}
           open={isApprovalDialogOpen}
           onOpenChange={setIsApprovalDialogOpen}
           onConfirm={handleConfirmRequest}
