@@ -15,10 +15,12 @@ import { Edit } from "lucide-react"
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
   const { user } = useUser()
-  const { name, role, avatarUrl, idNumber, year, course, department, employeeId } = currentUser;
+  const { idNumber, year, course, department, employeeId } = currentUser;
   
-  const displayName = user?.displayName || name;
-  const displayEmail = user?.email || `${name.toLowerCase().replace(' ','.')}24`;
+  const displayName = user?.displayName || "Student";
+  const displayEmail = user?.email || "student@example.com";
+  const avatarUrl = user?.photoURL || currentUser.avatarUrl;
+
 
   return (
     <Dialog>

@@ -4,6 +4,7 @@ import * as React from "react"
 import Image from "next/image"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
+import { useUser } from "@/firebase"
 
 import type { BorrowHistory, CartItem, InventoryItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
@@ -45,6 +46,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const [qrCodeData, setQrCodeData] = React.useState<string>("");
   const { toast } = useToast()
+  const { user } = useUser();
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
 
   const handleSubmit = () => {
@@ -56,6 +58,14 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   }
 
   const handleBorrow = () => {
+     if (!user?.displayName) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not identify user. Please log in again.",
+      })
+      return;
+    }
     setIsLoading(true);
 
     const checkoutSessionId = `cs-${Date.now()}`;
@@ -65,7 +75,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         for (let i = 0; i < quantity; i++) {
             newHistoryRecords.push({
                 id: `bh-${Date.now()}-${item.id}-${i}`,
-                studentName: currentUser.name,
+                studentName: user.displayName,
                 itemName: item.name,
                 date: new Date().toISOString().split('T')[0],
                 status: 'Approved', // Ready for staff pickup
@@ -89,6 +99,14 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   }
   
   const handleReserve = () => {
+     if (!user?.displayName) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not identify user. Please log in again.",
+      })
+      return;
+    }
     if (!reservationDate || !startTime || !endTime) {
          toast({
           variant: "destructive",
@@ -148,7 +166,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         for (let i = 0; i < quantity; i++) {
             newHistoryRecords.push({
                 id: `bh-${Date.now()}-${item.id}-${i}`,
-                studentName: currentUser.name,
+                studentName: user.displayName,
                 itemName: item.name,
                 date: format(reservationDate, "yyyy-MM-dd"),
                 status: 'Pending', 

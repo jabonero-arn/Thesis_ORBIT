@@ -57,9 +57,11 @@ export default function Home() {
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
   const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory | null>(null);
 
-  const studentBorrowHistory = React.useMemo(() => 
-    borrowHistory.filter(h => h.studentName === currentUser.name), 
-  [borrowHistory]);
+  const studentBorrowHistory = React.useMemo(() => {
+    if (!user?.displayName) return [];
+    return borrowHistory.filter(h => h.studentName === user.displayName);
+  }, [borrowHistory, user]);
+
 
   const pendingRequestedItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
@@ -134,11 +136,11 @@ export default function Home() {
   }
 
   const handleConfirmRequest = (teacherId: string) => {
-    if (!itemToRequest) return;
+    if (!itemToRequest || !user?.displayName) return;
     
     const newRequest: BorrowHistory = {
         id: `bh-${Date.now()}`,
-        studentName: currentUser.name,
+        studentName: user.displayName,
         itemName: itemToRequest.name,
         date: new Date().toISOString().split('T')[0],
         status: 'Pending',
@@ -295,11 +297,11 @@ export default function Home() {
                   <UserProfileModal role="Student">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                         <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={user?.photoURL || currentUser.avatarUrl} alt={user?.displayName || ""} />
+                            <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                          <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Student"}</p>
                           <p className="text-xs text-muted-foreground">Student</p>
                         </div>
                     </div>
@@ -358,11 +360,11 @@ export default function Home() {
                               <UserProfileModal role="Student">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                        <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                                        <AvatarImage src={user?.photoURL || currentUser.avatarUrl} alt={user?.displayName || ""} />
+                                        <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                     <div className="overflow-hidden">
-                                      <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                                      <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Student"}</p>
                                       <p className="text-xs text-muted-foreground">Student</p>
                                     </div>
                                 </div>

@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { useAuth } from "@/firebase"
-import { createUserWithEmailAndPassword, AuthError } from "firebase/auth"
+import { createUserWithEmailAndPassword, updateProfile, AuthError } from "firebase/auth"
 import { Loader2 } from "lucide-react"
 import {
   Select,
@@ -33,6 +33,7 @@ export default function SignUpPage() {
   const { toast } = useToast()
   const auth = useAuth()
 
+  const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
@@ -71,7 +72,11 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(userCredential.user, {
+            displayName: name
+        });
+
         toast({
             title: "Account Created!",
             description: "You have successfully signed up. Redirecting...",
@@ -111,7 +116,7 @@ export default function SignUpPage() {
           <form onSubmit={handleSubmit} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="Arnie Jabonero" required />
+              <Input id="name" placeholder="Juan Dela Cruz" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="id-number">ID Number</Label>
