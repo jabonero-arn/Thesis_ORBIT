@@ -2,12 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser } from "@/firebase"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
+import { useAuth, useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, currentUser as studentUser, teachers } from "@/lib/data"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem } from "@/lib/types"
+import { channels, teachers } from "@/lib/data"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -30,6 +31,8 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
+import { TeacherProfileDialog } from "@/components/teacher-profile-dialog"
+
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -40,29 +43,47 @@ const departments = [
 type TeacherView = 'borrow' | 'requests';
 type RequestSubView = 'pending' | 'history';
 
-// Mock the currently logged-in teacher. In a real app, this would come from an auth context.
-const loggedInTeacher = teachers[0]; 
-const currentUser = {
-    id: loggedInTeacher.id,
-    name: loggedInTeacher.name,
-    role: 'Teacher',
-    avatarUrl: loggedInTeacher.avatarUrl,
-    department: 'College of Computer Studies',
-    employeeId: `EMP-${loggedInTeacher.id}`,
-};
-
-
 export default function TeacherDashboardPage() {
   const router = useRouter()
   const { user, isUserLoading } = useUser()
+  const firestore = useFirestore()
   const { toast } = useToast()
   const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
   
+  const [showProfileDialog, setShowProfileDialog] = React.useState(false);
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
+
   React.useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login?role=teacher")
     }
   }, [user, isUserLoading, router])
+
+  React.useEffect(() => {
+      if (user && !isProfileLoading && userProfile === null) {
+          setShowProfileDialog(true);
+      } else if (userProfile && (!userProfile.department || !userProfile.employeeId)) {
+          setShowProfileDialog(true);
+      }
+  }, [user, userProfile, isProfileLoading]);
+
+  const teacherData = React.useMemo(() => {
+      if (!user) return null;
+      return {
+          id: user.uid,
+          name: userProfile?.displayName || user.displayName || 'Teacher',
+          role: 'Teacher',
+          avatarUrl: user.photoURL || 'https://i.pinimg.com/736x/b8/b5/c7/b8b5c7f8a7e3e9705f4e0499e2a77a94.jpg',
+          department: userProfile?.department,
+          employeeId: userProfile?.employeeId,
+      }
+  }, [user, userProfile]);
 
   // View state
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
@@ -77,8 +98,8 @@ export default function TeacherDashboardPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
   // State for request approvals
-  const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === currentUser.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === currentUser.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     const record = borrowHistory.find(r => r.id === id);
@@ -97,7 +118,9 @@ export default function TeacherDashboardPage() {
       'Approved': 'default',
       'Active': 'destructive',
       'Denied': 'destructive',
-      'Returned': 'secondary'
+      'Returned': 'secondary',
+      'Pending Return': 'secondary',
+      'Cancelled': 'destructive',
     };
     return variants[status];
   }
@@ -289,11 +312,11 @@ export default function TeacherDashboardPage() {
             <UserProfileModal role="Teacher">
               <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                    <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={teacherData?.avatarUrl} alt={teacherData?.name} />
+                    <AvatarFallback>{teacherData?.name.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                  <p className="truncate text-sm font-semibold leading-none">{teacherData?.name}</p>
                   <p className="text-xs text-muted-foreground">Teacher</p>
                 </div>
               </div>
@@ -365,7 +388,7 @@ export default function TeacherDashboardPage() {
     </>
   );
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || isProfileLoading || !teacherData) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -476,11 +499,11 @@ export default function TeacherDashboardPage() {
                   <UserProfileModal role="Teacher">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                          <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                          <AvatarImage src={teacherData.avatarUrl} alt={teacherData.name} />
+                          <AvatarFallback>{teacherData.name.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="overflow-hidden">
-                        <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                        <p className="truncate text-sm font-semibold leading-none">{teacherData.name}</p>
                         <p className="text-xs text-muted-foreground">Teacher</p>
                       </div>
                     </div>
@@ -507,6 +530,8 @@ export default function TeacherDashboardPage() {
                 }}
             />
         )}
+
+        <TeacherProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
         
       </div>
     </TooltipProvider>

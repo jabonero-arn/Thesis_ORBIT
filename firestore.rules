@@ -94,17 +94,16 @@ service cloud.firestore {
     /**
      * @description Manages a user's own profile document.
      * @path        /users/{userId}
-     * @allow       (create, get, update, delete) A user can manage their own profile.
-     * @deny        (get) A user cannot read another user's profile.
-     * @deny        (list) Enumerating all users is forbidden.
+     * @allow       (create, get, update) A user can manage their own profile.
+     * @deny        (list, delete) A user cannot read another user's profile, list all users, or delete their own profile.
      * @principle   Restricts access to a user's own data tree.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && isExistingDoc() && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && isExistingDoc();
+      allow update: if isOwner(userId) && isExistingDoc();
+      allow delete: if false;
     }
 
     // --------------------------------------------------------------------------------

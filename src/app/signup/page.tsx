@@ -17,8 +17,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import { useAuth } from "@/firebase"
+import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase"
 import { createUserWithEmailAndPassword, updateProfile, AuthError } from "firebase/auth"
+import { doc, setDoc } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
 import {
   Select,
@@ -32,6 +33,7 @@ export default function SignUpPage() {
   const router = useRouter()
   const { toast } = useToast()
   const auth = useAuth()
+  const firestore = useFirestore()
 
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -76,6 +78,36 @@ export default function SignUpPage() {
         await updateProfile(userCredential.user, {
             displayName: name
         });
+        
+        const user = userCredential.user;
+        const userProfile = {
+            id: user.uid,
+            displayName: name,
+            email: user.email,
+            role: "Student",
+            idNumber: (event.currentTarget.elements.namedItem('id-number') as HTMLInputElement).value,
+            educationLevel: educationLevel,
+            courseOrStrand: (event.currentTarget.querySelector('[name="course-strand"]') as HTMLInputElement)?.value,
+            yearLevel: (event.currentTarget.querySelector('[name="year-level"]') as HTMLInputElement)?.value,
+        };
+
+        const userDocRef = doc(firestore, "users", user.uid);
+        setDoc(userDocRef, userProfile)
+            .catch(async (serverError) => {
+                const permissionError = new FirestorePermissionError({
+                  path: userDocRef.path,
+                  operation: 'create',
+                  requestResourceData: userProfile,
+                });
+                errorEmitter.emit('permission-error', permissionError);
+                // We might still want to inform the user something went wrong with profile creation
+                toast({
+                    variant: "destructive",
+                    title: "Profile Creation Failed",
+                    description: "Your account was created, but we couldn't save your profile details. Please contact support.",
+                });
+          });
+
 
         toast({
             title: "Account Created!",
@@ -120,7 +152,7 @@ export default function SignUpPage() {
             </div>
             <div className="grid gap-2">
                 <Label htmlFor="id-number">ID Number</Label>
-                <Input id="id-number" placeholder="2021-01234" required />
+                <Input id="id-number" name="id-number" placeholder="2021-01234" required />
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="education-level">Education Level</Label>

@@ -1,8 +1,73 @@
 {
-  "entities": {},
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile in the system.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Auth (same as document ID)."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the system.",
+          "enum": [
+            "Student",
+            "Teacher",
+            "Staff",
+            "Admin",
+            "Primary Custodian"
+          ]
+        },
+        "idNumber": {
+          "type": "string",
+          "description": "Student's ID number."
+        },
+        "educationLevel": {
+          "type": "string",
+          "description": "Student's education level (college or shs)."
+        },
+        "courseOrStrand": {
+          "type": "string",
+          "description": "Student's course or strand."
+        },
+        "yearLevel": {
+          "type": "string",
+          "description": "Student's year level."
+        },
+        "department": {
+          "type": "string",
+          "description": "The department the user belongs to (for non-students)."
+        },
+        "employeeId": {
+          "type": "string",
+          "description": "The employee ID for the user (for non-students)."
+        }
+      },
+      "required": ["id", "displayName", "email", "role"]
+    }
+  },
   "auth": {
     "providers": [
       "password"
     ]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores public user profile information."
+    }
   }
 }

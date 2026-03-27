@@ -9,17 +9,30 @@ import {
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { currentUser } from "@/lib/data"
-import { useUser } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
 import { Edit } from "lucide-react"
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
   const { user } = useUser()
-  const { idNumber, year, course, department, employeeId } = currentUser;
+  const firestore = useFirestore()
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userProfile } = useDoc(userProfileRef);
   
-  const displayName = user?.displayName || "Student";
-  const displayEmail = user?.email || "student@example.com";
-  const avatarUrl = user?.photoURL || currentUser.avatarUrl;
+  const displayName = user?.displayName || "User";
+  const displayEmail = user?.email || "user@example.com";
+  const avatarUrl = user?.photoURL || `https://avatar.vercel.sh/${user?.email}`;
+  
+  const idNumber = userProfile?.idNumber;
+  const year = userProfile?.yearLevel;
+  const course = userProfile?.courseOrStrand;
+  const department = userProfile?.department;
+  const employeeId = userProfile?.employeeId;
 
 
   return (
