@@ -86,7 +86,6 @@ export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialo
       setDoc(userDocRef, userProfile, { merge: true })
         .then(() => {
           toast({ title: "Profile Updated!", description: "Your information has been saved." })
-          onOpenChange(false) // Close dialog on success
         })
         .catch(async (serverError) => {
           const permissionError = new FirestorePermissionError({

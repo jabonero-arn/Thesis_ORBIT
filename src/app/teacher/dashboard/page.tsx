@@ -82,6 +82,8 @@ export default function TeacherDashboardPage() {
 
     if (isProfileIncomplete) {
       setShowProfileDialog(true);
+    } else {
+      setShowProfileDialog(false);
     }
   }, [user, userProfile, isUserLoading, isProfileLoading]);
 
