@@ -55,6 +55,15 @@ export default function LoginPage() {
       return;
     }
 
+    if (email.toLowerCase() === "jaboneroarnie@gmail.com" && role !== "teacher") {
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "This account can only log in as Teacher.",
+      })
+      return;
+    }
+
     setIsLoading(true)
 
     try {

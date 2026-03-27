@@ -1,21 +1,15 @@
 "use client"
 
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
-  User,
-  History,
   Settings,
   HelpCircle,
   LogOut,
-  LayoutGrid,
-  Inbox,
 } from "lucide-react"
 
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -71,21 +65,6 @@ export function UserNav({ role }: { role?: Role }) {
             </p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem className="cursor-pointer">
-            <History className="mr-2 h-4 w-4" />
-            <span>Borrow History</span>
-          </DropdownMenuItem>
-           <DropdownMenuItem className="cursor-pointer">
-            <Inbox className="mr-2 h-4 w-4" />
-            <span>Inbox</span>
-          </DropdownMenuItem>
-           <DropdownMenuItem className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <HelpDialog>
           <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
