@@ -16,8 +16,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
-import { useAuth } from "@/firebase"
-import { signInWithEmailAndPassword, AuthError } from "firebase/auth"
+import { useAuth, useFirestore } from "@/firebase"
+import { signInWithEmailAndPassword, signOut, AuthError } from "firebase/auth"
+import { doc, getDoc } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
 
 export default function LoginPage() {
@@ -25,6 +26,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const auth = useAuth()
+  const firestore = useFirestore()
 
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
@@ -44,35 +46,56 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    
-    // Special check for the specific email and role
-    if (email.toLowerCase() === "christianjayefernan@gmail.com" && role !== "staff") {
-      toast({
-        variant: "destructive",
-        title: "Access Denied",
-        description: "This account can only log in as Staff.",
-      })
-      return;
-    }
-
-    if (email.toLowerCase() === "jaboneroarnie@gmail.com" && role !== "teacher") {
-      toast({
-        variant: "destructive",
-        title: "Access Denied",
-        description: "This account can only log in as Teacher.",
-      })
-      return;
-    }
-
     setIsLoading(true)
 
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      const user = userCredential.user;
+
+      // After successful sign-in, fetch user profile from Firestore
+      if (!firestore) {
+        throw new Error("Firestore is not initialized");
+      }
+      const userDocRef = doc(firestore, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      let userRoleInDb: string | undefined;
+      if (userDocSnap.exists()) {
+          userRoleInDb = userDocSnap.data().role;
+      } else {
+          // This case might happen if signup process failed to create a user doc.
+          await signOut(auth);
+          toast({
+            variant: "destructive",
+            title: "Login Failed",
+            description: "User profile not found. Please contact support or sign up.",
+          });
+          setIsLoading(false);
+          return;
+      }
+
+      // Convert URL role (e.g., 'primary-custodian') to DB role (e.g., 'Primary Custodian')
+      const targetRole = role ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : "";
+
+      // Check if the user's role matches the role they're trying to log in as
+      if (userRoleInDb !== targetRole) {
+          // If roles don't match, sign them out and show an error
+          await signOut(auth);
+          toast({
+            variant: "destructive",
+            title: "Access Denied",
+            description: `This account is for a '${userRoleInDb}' and cannot log in as a '${targetRole}'.`,
+          });
+          setIsLoading(false);
+          return;
+      }
+
+      // Roles match, proceed with redirection
       toast({
         title: "Logged In!",
         description: `Welcome back. Redirecting...`,
       })
-      // Redirect based on role after successful login
+      
       let redirectPath = "/dashboard"; // default to student
       if (role === "teacher") {
           redirectPath = "/teacher/dashboard";
