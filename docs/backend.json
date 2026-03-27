@@ -55,6 +55,37 @@
         }
       },
       "required": ["id", "displayName", "email", "role"]
+    },
+    "InventoryItem": {
+      "title": "Inventory Item",
+      "description": "Represents an item in the laboratory inventory.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "channelId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed"] },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "imageHint": { "type": "string" },
+        "quantity": { "type": "number" }
+      },
+      "required": ["name", "channelId", "status", "quantity", "description", "imageUrl", "imageHint"]
+    },
+    "BorrowHistory": {
+      "title": "Borrow History",
+      "description": "Represents a single borrowing transaction or request.",
+      "type": "object",
+      "properties": {
+        "studentName": { "type": "string" },
+        "itemName": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["Pending", "Approved", "Denied", "Active", "Returned", "Pending Return", "Cancelled"] },
+        "teacherId": { "type": "string" },
+        "checkoutSessionId": { "type": "string" },
+        "startTime": { "type": "string" },
+        "endTime": { "type": "string" }
+      },
+      "required": ["studentName", "itemName", "date", "status"]
     }
   },
   "auth": {
@@ -68,6 +99,18 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public user profile information."
+    },
+    "/inventory_items/{itemId}": {
+      "schema": {
+        "$ref": "#/entities/InventoryItem"
+      },
+      "description": "Stores all inventory items for all labs."
+    },
+    "/borrowing_transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/BorrowHistory"
+      },
+      "description": "Stores all borrowing transactions and requests."
     }
   }
 }

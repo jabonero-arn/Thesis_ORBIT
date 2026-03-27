@@ -2,27 +2,35 @@
 
 import * as React from 'react';
 import type { InventoryItem, BorrowHistory } from '@/lib/types';
-import { items as initialItems, borrowHistory as initialBorrowHistory } from '@/lib/data';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
 
 type AppContextType = {
   items: InventoryItem[];
-  setItems: React.Dispatch<React.SetStateAction<InventoryItem[]>>;
   borrowHistory: BorrowHistory[];
-  setBorrowHistory: React.Dispatch<React.SetStateAction<BorrowHistory[]>>;
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [items, setItems] = React.useState<InventoryItem[]>(initialItems);
-  const [borrowHistory, setBorrowHistory] = React.useState<BorrowHistory[]>(initialBorrowHistory);
+  const firestore = useFirestore();
+
+  const itemsQuery = useMemoFirebase(() => 
+    firestore ? collection(firestore, 'inventory_items') : null
+  , [firestore]);
+  
+  const { data: itemsData } = useCollection<Omit<InventoryItem, 'id'>>(itemsQuery);
+
+  const historyQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'borrowing_transactions'), orderBy('date', 'desc')) : null
+  , [firestore]);
+
+  const { data: historyData } = useCollection<Omit<BorrowHistory, 'id'>>(historyQuery);
 
   const value = React.useMemo(() => ({
-    items,
-    setItems,
-    borrowHistory,
-    setBorrowHistory
-  }), [items, borrowHistory]);
+    items: itemsData || [],
+    borrowHistory: historyData || [],
+  }), [itemsData, historyData]);
 
   return (
     <AppContext.Provider value={value}>

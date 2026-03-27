@@ -3,11 +3,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { collection, query, where, addDoc, doc, updateDoc } from "firebase/firestore"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import { channels, currentUser } from "@/lib/data"
+import { channels } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -36,7 +36,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
+  const { items: allItems, borrowHistory } = useAppContext();
 
   const teachersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -149,32 +149,43 @@ export default function Home() {
     }
   }
 
-  const handleConfirmRequest = (teacherId: string) => {
-    if (!itemToRequest || !user?.displayName) return;
+  const handleConfirmRequest = async (teacherId: string) => {
+    if (!itemToRequest || !user?.displayName || !firestore) return;
     
-    const newRequest: BorrowHistory = {
-        id: `bh-${Date.now()}`,
+    const newRequest: Omit<BorrowHistory, 'id'> = {
         studentName: user.displayName,
         itemName: itemToRequest.name,
         date: new Date().toISOString().split('T')[0],
         status: 'Pending',
         teacherId: teacherId,
     };
-    setBorrowHistory(prev => [newRequest, ...prev]);
-    setIsApprovalDialogOpen(false);
-    setItemToRequest(null);
-    toast({
-        title: "Approval Request Sent",
-        description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
-    });
+
+    try {
+      await addDoc(collection(firestore, 'borrowing_transactions'), newRequest);
+      setIsApprovalDialogOpen(false);
+      setItemToRequest(null);
+      toast({
+          title: "Approval Request Sent",
+          description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
+      });
+    } catch (error) {
+      console.error("Error sending request:", error);
+      toast({ variant: 'destructive', title: 'Failed to send request' });
+    }
   }
   
-  const handleInitiateReturn = (historyId: string) => {
+  const handleInitiateReturn = async (historyId: string) => {
     const record = borrowHistory.find(h => h.id === historyId);
-    if (!record) return;
+    if (!record || !firestore) return;
 
-    setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Pending Return' } : h));
-    setItemToReturn(record);
+    try {
+      const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
+      await updateDoc(historyDocRef, { status: 'Pending Return' });
+      setItemToReturn(record);
+    } catch (error) {
+      console.error("Error initiating return:", error);
+      toast({ variant: 'destructive', title: 'Failed to initiate return' });
+    }
   }
 
 
@@ -311,7 +322,7 @@ export default function Home() {
                   <UserProfileModal role="Student">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                         <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={user?.photoURL || currentUser.avatarUrl} alt={user?.displayName || ""} />
+                            <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
                             <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
@@ -374,7 +385,7 @@ export default function Home() {
                               <UserProfileModal role="Student">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage src={user?.photoURL || currentUser.avatarUrl} alt={user?.displayName || ""} />
+                                        <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
                                         <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                     <div className="overflow-hidden">
