@@ -4,7 +4,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
 import { collection, query, where, addDoc, doc, updateDoc } from "firebase/firestore"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2 } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { channels } from "@/lib/data"
@@ -57,7 +57,7 @@ export default function Home() {
   }, [user, isUserLoading, router])
 
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
-  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests'>('borrowed');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history'>('borrowed');
 
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
@@ -69,11 +69,11 @@ export default function Home() {
 
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
-  const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory | null>(null);
+  const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory[]>([]);
 
   const studentBorrowHistory = React.useMemo(() => {
-    if (!user?.displayName) return [];
-    return borrowHistory.filter(h => h.studentName === user.displayName);
+    if (!user?.uid) return [];
+    return borrowHistory.filter(h => h.borrowerUserId === user.uid);
   }, [borrowHistory, user]);
 
 
@@ -117,7 +117,7 @@ export default function Home() {
   const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
 
   const handleItemSelect = (item: InventoryItem) => {
-    if (item.status === "Borrowed") return;
+    if (item.status === "Borrowed" && item.quantity === 0) return;
     
     if (pendingRequestedItemNames.has(item.name)) {
         toast({
@@ -135,7 +135,7 @@ export default function Home() {
     
     const isApproved = approvedForBorrowItemNames.has(item.name);
     
-    if (item.status === "Available" || isApproved) {
+    if (item.status === "Available" || isApproved || item.quantity > 0) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
         if(isApproved){
              toast({
@@ -150,14 +150,15 @@ export default function Home() {
   }
 
   const handleConfirmRequest = async (teacherId: string) => {
-    if (!itemToRequest || !user?.displayName || !firestore) return;
+    if (!itemToRequest || !user?.displayName || !firestore || !user.uid) return;
     
     const newRequest: Omit<BorrowHistory, 'id'> = {
         studentName: user.displayName,
         itemName: itemToRequest.name,
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString(),
         status: 'Pending',
         teacherId: teacherId,
+        borrowerUserId: user.uid,
     };
 
     try {
@@ -174,17 +175,35 @@ export default function Home() {
     }
   }
   
-  const handleInitiateReturn = async (historyId: string) => {
-    const record = borrowHistory.find(h => h.id === historyId);
-    if (!record || !firestore) return;
+  const handleInitiateReturn = async (records: BorrowHistory[]) => {
+    if (!records.length || !firestore) return;
 
     try {
-      const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-      await updateDoc(historyDocRef, { status: 'Pending Return' });
-      setItemToReturn(record);
+        const batch = doc(firestore, 'batch');
+        const updates = records.map(record => {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            return updateDoc(historyDocRef, { status: 'Pending Return' });
+        });
+        await Promise.all(updates);
+        setItemToReturn(records);
     } catch (error) {
-      console.error("Error initiating return:", error);
-      toast({ variant: 'destructive', title: 'Failed to initiate return' });
+        console.error("Error initiating return:", error);
+        toast({ variant: 'destructive', title: 'Failed to initiate return' });
+    }
+  }
+
+  const handleCancelReservation = async (historyId: string) => {
+    if (!firestore) return;
+    try {
+      const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
+      await updateDoc(historyDocRef, { status: 'Cancelled' });
+      toast({
+        title: "Reservation Cancelled",
+        description: "Your reservation has been cancelled.",
+      });
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      toast({ variant: 'destructive', title: 'Failed to cancel reservation' });
     }
   }
 
@@ -222,6 +241,13 @@ export default function Home() {
       </div>
     );
   }
+
+  const activityNavItems = [
+    { id: 'borrowed', label: 'My Borrowed Items', icon: <PackageCheck /> },
+    { id: 'requests', label: 'My Requests', icon: <Hourglass /> },
+    { id: 'reservations', label: 'My Reservations', icon: <CalendarDays /> },
+    { id: 'history', label: 'History Log', icon: <History /> },
+  ] as const;
 
   return (
     <TooltipProvider>
@@ -290,28 +316,19 @@ export default function Home() {
                                 CATEGORIES
                             </h2>
                             <ul className="flex flex-col gap-1">
-                                <li>
-                                    <button
-                                        onClick={() => setActivitySubView('borrowed')}
-                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                            activitySubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <PackageCheck className="h-5 w-5" />
-                                        <span className="truncate">My Borrowed Items</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button
-                                        onClick={() => setActivitySubView('requests')}
-                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                            activitySubView === 'requests' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <Hourglass className="h-5 w-5" />
-                                        <span className="truncate">My Requests</span>
-                                    </button>
-                                </li>
+                                {activityNavItems.map(navItem => (
+                                    <li key={navItem.id}>
+                                        <button
+                                            onClick={() => setActivitySubView(navItem.id)}
+                                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                                activitySubView === navItem.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                            }`}
+                                        >
+                                            {React.cloneElement(navItem.icon, { className: 'h-5 w-5' })}
+                                            <span className="truncate">{navItem.label}</span>
+                                        </button>
+                                    </li>
+                                ))}
                             </ul>
                         </div>
                     </div>
@@ -370,14 +387,12 @@ export default function Home() {
                             )}
                             <Separator className="my-2" />
                             <div className="p-2 space-y-1">
-                                <Button variant={activeView === 'activity' && activitySubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('borrowed'); setIsMobileMenuOpen(false); }}>
-                                    <PackageCheck />
-                                    My Borrowed Items
-                                </Button>
-                                <Button variant={activeView === 'activity' && activitySubView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('requests'); setIsMobileMenuOpen(false); }}>
-                                    <Hourglass />
-                                    My Requests
-                                </Button>
+                                {activityNavItems.map(navItem => (
+                                     <Button key={navItem.id} variant={activeView === 'activity' && activitySubView === navItem.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView(navItem.id); setIsMobileMenuOpen(false); }}>
+                                        {navItem.icon}
+                                        {navItem.label}
+                                    </Button>
+                                ))}
                             </div>
                         </div>
                         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
@@ -407,9 +422,9 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                    {activitySubView === 'borrowed' ? <PackageCheck className="text-muted-foreground" /> : <Hourglass className="text-muted-foreground" />}
+                    {React.cloneElement(activityNavItems.find(i => i.id === activitySubView)?.icon || <Inbox/>, { className: "text-muted-foreground" })}
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
-                       {activitySubView === 'borrowed' ? 'My Borrowed Items' : 'My Requests'}
+                       {activityNavItems.find(i => i.id === activitySubView)?.label}
                     </h1>
                 </div>
               )}
@@ -425,7 +440,12 @@ export default function Home() {
                 approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
                 />
             ) : (
-                <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} view={activitySubView} />
+                <StudentActivity 
+                    borrowHistory={studentBorrowHistory} 
+                    onReturn={handleInitiateReturn} 
+                    view={activitySubView}
+                    onCancelReservation={handleCancelReservation}
+                />
             )}
           </div>
         </main>
@@ -451,15 +471,15 @@ export default function Home() {
           onConfirm={handleConfirmRequest}
         />
         
-        <Dialog open={!!itemToReturn} onOpenChange={(open) => !open && setItemToReturn(null)}>
+        <Dialog open={itemToReturn.length > 0} onOpenChange={(open) => !open && setItemToReturn([])}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for "{itemToReturn?.itemName}"</DialogTitle>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemToReturn.length} item(s)</DialogTitle>
                     <DialogDescription>Present this QR code to lab staff to process your return.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
-                    {itemToReturn && <Image
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${JSON.stringify({ returnId: itemToReturn.id })}`}
+                    {itemToReturn.length > 0 && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${JSON.stringify({ returnIds: itemToReturn.map(i => i.id) })}`}
                         alt="Return QR Code"
                         width={256}
                         height={256}
@@ -468,7 +488,7 @@ export default function Home() {
                     />}
                 </div>
                 <DialogFooter>
-                    <Button onClick={() => setItemToReturn(null)}>Done</Button>
+                    <Button onClick={() => setItemToReturn([])}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

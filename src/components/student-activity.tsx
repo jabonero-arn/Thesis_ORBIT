@@ -4,12 +4,16 @@ import type { BorrowHistory } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { PackageCheck, CornerDownLeft, Hourglass } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle } from "lucide-react"
+import * as React from "react"
+
 
 type StudentActivityProps = {
     borrowHistory: BorrowHistory[]
-    onReturn: (historyId: string) => void
-    view: 'borrowed' | 'requests'
+    onReturn: (records: BorrowHistory[]) => void
+    view: 'borrowed' | 'requests' | 'reservations' | 'history'
+    onCancelReservation: (historyId: string) => void
 }
 
 const getStatusBadge = (record: BorrowHistory) => {
@@ -17,7 +21,6 @@ const getStatusBadge = (record: BorrowHistory) => {
         case 'Active':
             return <Badge variant="destructive">Borrowed</Badge>
         case 'Approved':
-            // This is for a reservation or a teacher-approved locked item
             if (record.startTime) {
                 return <Badge variant="default">Reservation Confirmed</Badge>;
             }
@@ -43,44 +46,72 @@ const getStatusBadge = (record: BorrowHistory) => {
     }
 }
 
-export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivityProps) {
+export function StudentActivity({ borrowHistory, onReturn, view, onCancelReservation }: StudentActivityProps) {
+    const [selectedToReturn, setSelectedToReturn] = React.useState<string[]>([]);
+    
     const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
     
     const requestHistory = borrowHistory
-        // Exclude active borrows and immediate borrows awaiting scan
-        .filter(h => 
-            h.status !== 'Active' && 
-            h.status !== 'Pending Return' &&
-            !(h.status === 'Approved' && h.checkoutSessionId)
-        )
+        .filter(h => h.teacherId && (h.status === 'Pending' || h.status === 'Approved' || h.status === 'Denied'))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const reservations = borrowHistory
+        .filter(h => h.startTime && (h.status === 'Pending' || h.status === 'Approved' || h.status === 'Denied'))
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const historyLog = borrowHistory
+        .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const handleSelectReturn = (historyId: string) => {
+        setSelectedToReturn(prev => 
+            prev.includes(historyId) 
+                ? prev.filter(id => id !== historyId) 
+                : [...prev, historyId]
+        );
+    }
+    
+    const handleReturnSelected = () => {
+        const recordsToReturn = borrowHistory.filter(h => selectedToReturn.includes(h.id));
+        onReturn(recordsToReturn);
+        setSelectedToReturn([]);
+    }
 
 
     if (view === 'borrowed') {
         return (
             <Card id="borrowed-items" className="bg-card/80 scroll-mt-20">
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2 font-headline">
-                        <PackageCheck className="h-6 w-6" /> My Borrowed Items
+                    <CardTitle className="flex items-center justify-between font-headline">
+                        <div className="flex items-center gap-2">
+                           <PackageCheck className="h-6 w-6" /> My Borrowed Items
+                        </div>
+                         <Button size="sm" onClick={handleReturnSelected} disabled={selectedToReturn.length === 0}>
+                            <CornerDownLeft className="mr-2 h-4 w-4"/> Return Selected ({selectedToReturn.length})
+                        </Button>
                     </CardTitle>
-                    <CardDescription>Items you currently have checked out.</CardDescription>
+                    <CardDescription>Items you currently have checked out. Select items to return them.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {activeBorrows.length > 0 ? (
                         <div className="space-y-4">
                             {activeBorrows.map(record => (
                                 <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                    <div>
-                                        <p className="font-semibold">{record.itemName}</p>
-                                        <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
+                                    <div className="flex items-center gap-4">
+                                        <Checkbox
+                                            id={`return-${record.id}`}
+                                            checked={selectedToReturn.includes(record.id)}
+                                            onCheckedChange={() => handleSelectReturn(record.id)}
+                                            disabled={record.status === 'Pending Return'}
+                                            aria-label={`Select ${record.itemName} for return`}
+                                        />
+                                        <div>
+                                            <p className="font-semibold">{record.itemName}</p>
+                                            <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
+                                        </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {getStatusBadge(record)}
-                                        {record.status === 'Active' && (
-                                            <Button size="sm" variant="outline" onClick={() => onReturn(record.id)}>
-                                                <CornerDownLeft className="mr-2 h-4 w-4"/> Return
-                                            </Button>
-                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -100,7 +131,7 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
                     <CardTitle className="flex items-center gap-2 font-headline">
                         <Hourglass className="h-6 w-6" /> My Requests
                     </CardTitle>
-                    <CardDescription>A history of your item requests and their status.</CardDescription>
+                    <CardDescription>A history of your item requests for locked items and their status.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {requestHistory.length > 0 ? (
@@ -124,6 +155,77 @@ export function StudentActivity({ borrowHistory, onReturn, view }: StudentActivi
             </Card>
         )
     }
+
+    if (view === 'reservations') {
+      return (
+        <Card id="reservations" className="bg-card/80 scroll-mt-20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-headline">
+              <CalendarDays className="h-6 w-6" /> My Reservations
+            </CardTitle>
+            <CardDescription>Your pending and confirmed reservations.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {reservations.length > 0 ? (
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                {reservations.map(record => (
+                  <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
+                    <div>
+                      <p className="font-semibold">{record.itemName}</p>
+                      <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
+                      {record.startTime && record.endTime && <p className="text-sm text-muted-foreground">Time: {record.startTime} - {record.endTime}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(record)}
+                      {record.status === 'Pending' && (
+                          <Button size="sm" variant="destructive" onClick={() => onCancelReservation(record.id)}>
+                              <XCircle className="mr-2 h-4 w-4"/> Cancel
+                          </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center p-4">You have no reservations.</p>
+            )}
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (view === 'history') {
+      return (
+        <Card id="history-log" className="bg-card/80 scroll-mt-20">
+            <CardHeader>
+            <CardTitle className="flex items-center gap-2 font-headline">
+                <History className="h-6 w-6" /> History Log
+            </CardTitle>
+            <CardDescription>Your past borrowing history.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            {historyLog.length > 0 ? (
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                    {historyLog.map(record => (
+                        <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
+                            <div>
+                                <p className="font-semibold">{record.itemName}</p>
+                                <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {getStatusBadge(record)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="text-muted-foreground text-center p-4">You have no past transactions.</p>
+            )}
+        </CardContent>
+        </Card>
+      )
+    }
+
 
     return null;
 }
