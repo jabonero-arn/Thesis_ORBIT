@@ -29,7 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Logo } from "@/components/ui/logo"
+import { Logo } from "@/components/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
