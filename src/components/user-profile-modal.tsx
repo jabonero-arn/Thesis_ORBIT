@@ -24,7 +24,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
 
   const { data: userProfile } = useDoc(userProfileRef);
   
-  const displayName = user?.displayName || "User";
+  const displayName = userProfile?.displayName || user?.displayName || "User";
   const displayEmail = user?.email || "user@example.com";
   const avatarUrl = user?.photoURL || `https://avatar.vercel.sh/${user?.email}`;
   
