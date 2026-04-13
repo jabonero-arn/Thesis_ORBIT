@@ -1,11 +1,10 @@
-"use client"
+'use client'
 
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle } from "lucide-react"
+import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle, Minus, Plus } from "lucide-react"
 import * as React from "react"
 
 
@@ -47,7 +46,7 @@ const getStatusBadge = (record: BorrowHistory) => {
 }
 
 export function StudentActivity({ borrowHistory, onReturn, view, onCancelReservation }: StudentActivityProps) {
-    const [selectedToReturn, setSelectedToReturn] = React.useState<string[]>([]);
+    const [selectedToReturn, setSelectedToReturn] = React.useState<Map<string, number>>(new Map());
     
     const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
     
@@ -73,12 +72,30 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
     const historyLog = borrowHistory
         .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+    const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
+
+    const handleQuantityChange = (itemName: string, newQuantity: number, maxQuantity: number) => {
+        const boundedQuantity = Math.max(0, Math.min(newQuantity, maxQuantity));
+        setSelectedToReturn(prev => new Map(prev).set(itemName, boundedQuantity));
+    };
 
     const handleReturnSelected = () => {
-        const recordsToReturn = borrowHistory.filter(h => selectedToReturn.includes(h.id));
-        onReturn(recordsToReturn);
-        setSelectedToReturn([]);
-    }
+        const recordsToReturn: BorrowHistory[] = [];
+        selectedToReturn.forEach((quantity, itemName) => {
+            if (quantity > 0) {
+                const availableRecords = borrowHistory.filter(h => 
+                    h.itemName === itemName && h.status === 'Active'
+                );
+                recordsToReturn.push(...availableRecords.slice(0, quantity));
+            }
+        });
+        
+        if (recordsToReturn.length > 0) {
+            onReturn(recordsToReturn);
+        }
+        setSelectedToReturn(new Map());
+    };
 
 
     if (view === 'borrowed') {
@@ -89,11 +106,11 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                         <div className="flex items-center gap-2">
                            <PackageCheck className="h-6 w-6" /> My Borrowed Items
                         </div>
-                         <Button size="sm" onClick={handleReturnSelected} disabled={selectedToReturn.length === 0}>
-                            <CornerDownLeft className="mr-2 h-4 w-4"/> Return Selected ({selectedToReturn.length})
+                         <Button size="sm" onClick={handleReturnSelected} disabled={totalToReturn === 0}>
+                            <CornerDownLeft className="mr-2 h-4 w-4"/> Return Selected ({totalToReturn})
                         </Button>
                     </CardTitle>
-                    <CardDescription>Items you currently have checked out. Select items to return them.</CardDescription>
+                    <CardDescription>Items you currently have checked out. Select a quantity to generate a return QR code.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {groupedActiveBorrows.length > 0 ? (
@@ -102,38 +119,42 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                 const firstRecord = group[0];
                                 if (!firstRecord) return null;
 
-                                const selectableItems = group.filter(r => r.status !== 'Pending Return');
-                                const isChecked = selectableItems.length > 0 && selectableItems.every(r => selectedToReturn.includes(r.id));
-                                const isDisabled = selectableItems.length === 0;
-
-                                const handleToggle = () => {
-                                    const selectableIds = selectableItems.map(r => r.id);
-                                    if (isChecked) {
-                                        setSelectedToReturn(prev => prev.filter(id => !selectableIds.includes(id)));
-                                    } else {
-                                        setSelectedToReturn(prev => [...new Set([...prev, ...selectableIds])]);
-                                    }
-                                };
+                                const selectableItems = group.filter(r => r.status === 'Active');
+                                const pendingReturnItems = group.filter(r => r.status === 'Pending Return');
                                 
-                                const hasPending = group.some(r => r.status === 'Pending Return');
+                                const returnQuantity = selectedToReturn.get(firstRecord.itemName) || 0;
 
                                 return (
                                     <div key={firstRecord.itemName} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
                                         <div className="flex items-center gap-4">
-                                            <Checkbox
-                                                id={`return-group-${firstRecord.itemName.replace(/\s/g, '-')}`}
-                                                checked={isChecked}
-                                                onCheckedChange={handleToggle}
-                                                disabled={isDisabled}
-                                                aria-label={`Select all available ${firstRecord.itemName} for return`}
-                                            />
                                             <div>
-                                                <p className="font-semibold">{firstRecord.itemName} {group.length > 1 && <span className="text-muted-foreground font-normal">x{group.length}</span>}</p>
-                                                <p className="text-sm text-muted-foreground">Borrowed on: {new Date(firstRecord.date).toLocaleDateString()}</p>
+                                                <p className="font-semibold">{firstRecord.itemName}</p>
+                                                <p className="text-sm text-muted-foreground">Borrowed: {group.length} | Available to return: {selectableItems.length}</p>
+                                                {pendingReturnItems.length > 0 && <p className="text-xs text-amber-400">Pending return: {pendingReturnItems.length}</p>}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {getStatusBadge({ ...firstRecord, status: hasPending ? 'Pending Return' : 'Active' })}
+                                            <div className="flex items-center gap-1 flex-shrink-0">
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="outline" 
+                                                    className="h-7 w-7" 
+                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, selectableItems.length)}
+                                                    disabled={selectableItems.length === 0}
+                                                >
+                                                    <Minus className="h-4 w-4" />
+                                                </Button>
+                                                <span className="w-8 text-center font-bold text-lg">{returnQuantity}</span>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="outline" 
+                                                    className="h-7 w-7" 
+                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, selectableItems.length)}
+                                                    disabled={selectableItems.length === 0}
+                                                >
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
