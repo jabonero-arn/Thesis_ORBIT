@@ -88,7 +88,7 @@ export function ItemCard({
         
         {showApproved && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-green-600/20 border-green-600 text-green-300 flex items-center">
-                <CheckCircle className="mr-1 h-3 w-3"/>Approved
+                <CheckCircle className="mr-1 h-3 w-3"/>Pending
             </Badge>
         )}
 
