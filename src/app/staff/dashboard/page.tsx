@@ -455,7 +455,7 @@ export default function StaffDashboardPage() {
                     </Card>
                 );
             case 'scanner':
-                return <QrScannerView onReturn={handleReturnItem}/>;
+                return <QrScannerView />;
             default: return null;
         }
     };
