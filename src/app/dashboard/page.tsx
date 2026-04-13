@@ -3,13 +3,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { channels } from "@/lib/data"
-import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, CartItem, User as UserType } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -38,6 +38,12 @@ export default function Home() {
   const firestore = useFirestore()
   const { toast } = useToast()
   const { items: allItems, borrowHistory } = useAppContext();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
 
   const teachersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -87,7 +93,7 @@ export default function Home() {
   
   const approvedForBorrowItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
-        .filter(h => h.status === 'Approved')
+        .filter(h => h.status === 'Approved' && !h.checkoutSessionId)
         .map(h => h.itemName)),
     [studentBorrowHistory]
   );
@@ -249,7 +255,7 @@ export default function Home() {
     }
   };
 
-  if (isUserLoading || !user) {
+  if (isUserLoading || isProfileLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -354,11 +360,11 @@ export default function Home() {
                   <UserProfileModal role="Student">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                         <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
-                            <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Student"}</p>
+                          <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
                           <p className="text-xs text-muted-foreground">Student</p>
                         </div>
                     </div>
@@ -415,11 +421,11 @@ export default function Home() {
                               <UserProfileModal role="Student">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                     <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
-                                        <AvatarFallback>{user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                        <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                        <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                     <div className="overflow-hidden">
-                                      <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Student"}</p>
+                                      <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
                                       <p className="text-xs text-muted-foreground">Student</p>
                                     </div>
                                 </div>
@@ -511,5 +517,3 @@ export default function Home() {
     </TooltipProvider>
   )
 }
-
-    

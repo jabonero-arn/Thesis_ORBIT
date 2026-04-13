@@ -435,11 +435,11 @@ export default function AdminDashboardPage() {
                   <UserProfileModal role="Admin">
                       <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                            <Avatar className="h-8 w-8 flex-shrink-0">
-                              <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
-                              <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                              <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
                           </Avatar>
                           <div className="overflow-hidden">
-                              <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Admin"}</p>
+                              <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Admin"}</p>
                               <p className="text-xs text-muted-foreground">Admin</p>
                           </div>
                       </div>
@@ -552,11 +552,11 @@ export default function AdminDashboardPage() {
                              <UserProfileModal role="Admin">
                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                      <Avatar className="h-8 w-8 flex-shrink-0">
-                                         <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ""} />
-                                         <AvatarFallback>{user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                                         <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
                                      </Avatar>
                                      <div className="overflow-hidden">
-                                         <p className="truncate text-sm font-semibold leading-none">{user?.displayName || "Admin"}</p>
+                                         <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Admin"}</p>
                                          <p className="text-xs text-muted-foreground">Admin</p>
                                      </div>
                                  </div>

@@ -8,7 +8,7 @@ import { doc, updateDoc } from "firebase/firestore"
 import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { channels, teachers } from "@/lib/data"
+import { channels } from "@/lib/data"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -341,11 +341,11 @@ export default function TeacherDashboardPage() {
             <UserProfileModal role="Teacher">
               <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={teacherData?.avatarUrl || undefined} alt={teacherData?.name || ""} />
-                    <AvatarFallback>{teacherData?.name?.charAt(0) || 'T'}</AvatarFallback>
+                    <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                    <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'T'}</AvatarFallback>
                 </Avatar>
                 <div className="overflow-hidden">
-                  <p className="truncate text-sm font-semibold leading-none">{teacherData?.name || "Teacher"}</p>
+                  <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Teacher"}</p>
                   <p className="text-xs text-muted-foreground">Teacher</p>
                 </div>
               </div>
@@ -533,11 +533,11 @@ export default function TeacherDashboardPage() {
                   <UserProfileModal role="Teacher">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                       <Avatar className="h-8 w-8 flex-shrink-0">
-                          <AvatarImage src={teacherData?.avatarUrl || undefined} alt={teacherData?.name || ""} />
-                          <AvatarFallback>{teacherData?.name?.charAt(0) || 'T'}</AvatarFallback>
+                          <AvatarImage src={userProfile?.avatarUrl || user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                          <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'T'}</AvatarFallback>
                       </Avatar>
                       <div className="overflow-hidden">
-                        <p className="truncate text-sm font-semibold leading-none">{teacherData?.name || "Teacher"}</p>
+                        <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Teacher"}</p>
                         <p className="text-xs text-muted-foreground">Teacher</p>
                       </div>
                     </div>
