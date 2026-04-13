@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -582,7 +582,11 @@ export default function AdminDashboardPage() {
                     </DialogContent>
                 </Dialog>
 
-                <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} />
+                <CreateUserForm 
+                    open={isCreateUserOpen} 
+                    onOpenChange={setIsCreateUserOpen} 
+                    roleToCreate={usersSubView as Exclude<Role, "Student">}
+                />
 
             </div>
         </TooltipProvider>
