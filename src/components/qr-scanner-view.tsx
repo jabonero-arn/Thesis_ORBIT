@@ -12,14 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
 import { doc, writeBatch, collection } from "firebase/firestore"
-
-// This declaration helps TypeScript understand the browser's BarcodeDetector API.
-declare global {
-  class BarcodeDetector {
-    constructor(options?: { formats: string[] });
-    detect(image: ImageBitmapSource): Promise<{ rawValue: string }[]>;
-  }
-}
+import { Html5Qrcode } from "html5-qrcode"
 
 
 type ScannedCompactCheckoutData = {
@@ -42,6 +35,8 @@ type PendingReturnGroup = {
     records: BorrowHistory[];
 };
 
+const qrCodeReaderId = "qr-reader";
+
 export function QrScannerView() {
   const { items, borrowHistory, allUsers } = useAppContext();
   const firestore = useFirestore();
@@ -52,7 +47,6 @@ export function QrScannerView() {
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
   
-  const videoRef = React.useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isScanning, setIsScanning] = React.useState(true);
 
@@ -83,56 +77,56 @@ export function QrScannerView() {
   };
   
   React.useEffect(() => {
-    const getCameraPermission = async () => {
-      if (!('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices)) {
-        toast({ variant: 'destructive', title: 'Camera Not Supported', description: 'Your browser does not support camera access.' });
-        setHasCameraPermission(false);
-        return;
-      }
+    if (!isScanning) {
+      return;
+    }
+
+    const html5QrCode = new Html5Qrcode(qrCodeReaderId);
+    let scannerRunning = false;
+
+    const startScanner = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            supportedScanTypes: [], // Use all supported scan types
+          },
+          (decodedText, decodedResult) => {
+            if (scannerRunning) {
+              setScannedData(decodedText);
+              setIsScanning(false);
+            }
+          },
+          (errorMessage) => {
+            // This is called when a QR code is not found. We can ignore it.
+          }
+        );
+        scannerRunning = true;
+        if (hasCameraPermission === null || hasCameraPermission === false) {
+           setHasCameraPermission(true);
         }
-        setHasCameraPermission(true);
-      } catch (error) {
-        console.error('Error accessing camera:', error);
+      } catch (err) {
         setHasCameraPermission(false);
-        toast({
-          variant: 'destructive',
-          title: 'Camera Access Denied',
-          description: 'Please enable camera permissions in your browser settings.',
+        console.error("Failed to start QR scanner", err);
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      if (scannerRunning && html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => {
+            // This can fail if the scanner is already stopped. Safe to ignore.
+        }).finally(() => {
+            scannerRunning = false;
         });
       }
     };
-    getCameraPermission();
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScanning]);
 
-  React.useEffect(() => {
-    let intervalId: number;
-    if (isScanning && hasCameraPermission && videoRef.current && 'BarcodeDetector' in window) {
-      const barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
-      intervalId = window.setInterval(async () => {
-        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
-        try {
-          const barcodes = await barcodeDetector.detect(videoRef.current);
-          if (barcodes.length > 0 && barcodes[0]?.rawValue) {
-            setScannedData(barcodes[0].rawValue);
-            setIsScanning(false);
-          }
-        } catch (error) {
-          // This can happen if the frame is not ready, we can ignore it and let it retry.
-        }
-      }, 500); // Scan every 500ms
-    } else if (isScanning && hasCameraPermission && !('BarcodeDetector' in window)) {
-        toast({ variant: 'destructive', title: 'Scanner Not Supported', description: 'Your browser does not support the Barcode Detection API.' });
-        setIsScanning(false);
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [isScanning, hasCameraPermission, toast]);
 
   const isJsonString = (str: string) => {
     try { JSON.parse(str); } catch (e) { return false; }
@@ -287,24 +281,24 @@ export function QrScannerView() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode /> Live QR Code Scanner</CardTitle>
           <CardDescription>
-            Point the camera at a student's QR code to begin a checkout or return process.
+            Hold a student's QR code in front of the camera to begin a checkout or return process.
           </CardDescription>
         </CardHeader>
         <CardContent>
             <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                {hasCameraPermission === false ? (
+                 <div id={qrCodeReaderId} className="w-full h-full" />
+                {hasCameraPermission === false && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
                         <p className="text-destructive font-semibold">Camera Access Denied</p>
                         <p className="text-xs text-muted-foreground">Please enable camera permissions in your browser settings to use the scanner.</p>
                     </div>
-                ) : hasCameraPermission === null ? (
+                )}
+                {isScanning && hasCameraPermission === null && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
                         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/>
-                        <p className="text-sm text-muted-foreground mt-2">Requesting camera access...</p>
+                        <p className="text-sm text-muted-foreground mt-2">Initializing camera...</p>
                     </div>
-                ): null}
-                {isScanning && hasCameraPermission && <div className="absolute w-1/2 h-1/2 border-4 border-primary/50 rounded-lg animate-pulse" />}
+                )}
             </div>
             {scannedData && !sessionInView && (
                 <div className="mt-4 p-3 rounded-md bg-secondary text-secondary-foreground text-center">
