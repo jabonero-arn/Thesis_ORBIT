@@ -87,6 +87,24 @@
         "borrowerUserId": { "type": "string" }
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
+    },
+    "RoleFlag": {
+      "title": "Role Flag",
+      "description": "A document whose existence grants a user a specific role.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string"
+        },
+        "assignedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "role",
+        "assignedAt"
+      ]
     }
   },
   "auth": {
@@ -112,6 +130,30 @@
         "$ref": "#/entities/BorrowHistory"
       },
       "description": "Stores all borrowing transactions and requests."
+    },
+    "/roles_teachers/{userId}": {
+      "schema": {
+        "$ref": "#/entities/RoleFlag"
+      },
+      "description": "Grants a user the 'Teacher' role."
+    },
+    "/roles_staff/{userId}": {
+      "schema": {
+        "$ref": "#/entities/RoleFlag"
+      },
+      "description": "Grants a user the 'Staff' role."
+    },
+    "/roles_admin/{userId}": {
+      "schema": {
+        "$ref": "#/entities/RoleFlag"
+      },
+      "description": "Grants a user the 'Admin' role."
+    },
+    "/roles_primary_custodian/{userId}": {
+      "schema": {
+        "$ref": "#/entities/RoleFlag"
+      },
+      "description": "Grants a user the 'Primary Custodian' role."
     }
   }
 }

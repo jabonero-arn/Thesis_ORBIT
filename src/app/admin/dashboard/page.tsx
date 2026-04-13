@@ -7,7 +7,7 @@ import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestor
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity, Loader2
+    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity, Loader2, UserPlus
 } from "lucide-react"
 import {
   Card,
@@ -42,6 +42,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
+import { CreateUserForm } from "@/components/admin/create-user-form"
 
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
@@ -88,6 +89,8 @@ export default function AdminDashboardPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+    const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
+
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
@@ -327,7 +330,16 @@ export default function AdminDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80">
-                            <CardHeader><CardTitle>User Management</CardTitle><CardDescription>Oversee all users in the system.</CardDescription></CardHeader>
+                           <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>User Management</CardTitle>
+                                    <CardDescription>Oversee all users in the system.</CardDescription>
+                                </div>
+                                <Button onClick={() => setIsCreateUserOpen(true)}>
+                                    <UserPlus className="mr-2 h-4 w-4" />
+                                    Create User
+                                </Button>
+                            </CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
@@ -567,6 +579,9 @@ export default function AdminDashboardPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} />
+
             </div>
         </TooltipProvider>
     )
