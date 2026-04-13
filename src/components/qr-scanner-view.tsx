@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2, X } from "lucide-react"
+import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2, X, Search } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -11,14 +11,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
-import { doc, writeBatch } from "firebase/firestore"
+import { doc, writeBatch, collection } from "firebase/firestore"
+import { Textarea } from "./ui/textarea"
+import { Label } from "./ui/label"
+
+type ScannedCheckoutData = {
+    type: 'checkout';
+    borrowerUserId: string;
+    studentName: string;
+    items: { id: string; name: string; quantity: number }[];
+    approvalsToConsume: string[];
+}
 
 type CheckoutSession = {
   studentName: string;
-  items: BorrowHistory[];
-  date: string;
-  checkoutSessionId: string;
+  items: { name: string; quantity: number}[];
   borrowerUserId: string;
+  originalPayload: ScannedCheckoutData;
 }
 
 type PendingReturnGroup = {
@@ -32,31 +41,10 @@ export function QrScannerView() {
   const firestore = useFirestore();
   const { toast } = useToast();
   
+  const [scannedData, setScannedData] = React.useState("");
   const [sessionInView, setSessionInView] = React.useState<CheckoutSession | null>(null);
-  const [itemsInDialog, setItemsInDialog] = React.useState<BorrowHistory[]>([]);
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
-
-  const incomingRequests = React.useMemo(() => {
-    const sessions = new Map<string, CheckoutSession>();
-
-    borrowHistory.forEach(record => {
-      if (record.status === 'Approved' && record.checkoutSessionId && record.borrowerUserId) {
-        if (!sessions.has(record.checkoutSessionId)) {
-          sessions.set(record.checkoutSessionId, {
-            checkoutSessionId: record.checkoutSessionId,
-            studentName: record.studentName,
-            items: [],
-            date: record.date,
-            borrowerUserId: record.borrowerUserId
-          });
-        }
-        sessions.get(record.checkoutSessionId)!.items.push(record);
-      }
-    });
-
-    return Array.from(sessions.values());
-  }, [borrowHistory]);
 
 
   const groupedPendingReturns = React.useMemo(() => {
@@ -79,40 +67,62 @@ export function QrScannerView() {
     return Object.values(groups);
   }, [borrowHistory]);
 
-  
-  const handleSelectRequestForCheckout = (session: CheckoutSession) => {
-    setSessionInView(session);
-    setItemsInDialog([...session.items]);
+  const handleLookupQr = () => {
+    if (!scannedData.trim()) {
+        toast({ variant: 'destructive', title: 'QR Data is empty' });
+        return;
+    }
+    try {
+        const payload = JSON.parse(scannedData) as ScannedCheckoutData;
+        if (payload.type !== 'checkout' || !payload.borrowerUserId || !payload.items) {
+            throw new Error("Invalid QR code data format.");
+        }
+        
+        // Group items by name for display
+        const itemMap = new Map<string, number>();
+        payload.items.forEach(item => {
+            itemMap.set(item.name, (itemMap.get(item.name) || 0) + item.quantity);
+        });
+
+        const displayItems = Array.from(itemMap.entries()).map(([name, quantity]) => ({ name, quantity }));
+
+        setSessionInView({
+            borrowerUserId: payload.borrowerUserId,
+            studentName: payload.studentName,
+            items: displayItems,
+            originalPayload: payload,
+        });
+
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Invalid QR Code', description: 'The scanned data is not a valid checkout request.' });
+    }
   }
 
   const handleSelectReturnGroup = (group: PendingReturnGroup) => {
     setSelectedReturnGroup(group);
-  }
-
-  const handleRemoveItemFromDialog = (historyId: string) => {
-    setItemsInDialog(prev => prev.filter(item => item.id !== historyId));
   }
   
   const handleConfirmCheckout = async () => {
     if (!sessionInView || !firestore) return;
     setIsProcessing(true);
 
+    const { originalPayload } = sessionInView;
+
     try {
         const batch = writeBatch(firestore);
 
-        const itemsToCheckout = itemsInDialog;
-        const itemsToCancel = sessionInView.items.filter(item => !itemsInDialog.some(i => i.id === item.id));
-
         const itemQuantityUpdates = new Map<string, number>();
-        itemsToCheckout.forEach(item => {
-            itemQuantityUpdates.set(item.itemName, (itemQuantityUpdates.get(item.itemName) || 0) + 1);
+        originalPayload.items.forEach(item => {
+            itemQuantityUpdates.set(item.id, (itemQuantityUpdates.get(item.id) || 0) + item.quantity);
         });
 
-        itemQuantityUpdates.forEach((quantityToDecrement, itemName) => {
-            const itemToUpdate = items.find(i => i.name === itemName);
-            if (itemToUpdate) {
+        // 1. Decrement inventory quantities
+        for (const [itemId, quantityToDecrement] of itemQuantityUpdates.entries()) {
+            const itemToUpdate = items.find(i => i.id === itemId);
+             if (itemToUpdate) {
                 if (itemToUpdate.quantity < quantityToDecrement) {
-                    throw new Error(`Not enough stock for ${itemName}.`);
+                    throw new Error(`Not enough stock for ${itemToUpdate.name}.`);
                 }
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
@@ -120,24 +130,38 @@ export function QrScannerView() {
                     quantity: newQuantity,
                     status: newQuantity === 0 ? 'Borrowed' : itemToUpdate.status 
                 });
+            } else {
+                throw new Error(`Item with ID ${itemId} not found in inventory.`);
+            }
+        }
+
+        // 2. Create 'Active' borrow history records for all borrowed items
+        const historyCollectionRef = collection(firestore, 'borrowing_transactions');
+        originalPayload.items.forEach(({ name, quantity }) => {
+            for (let i=0; i < quantity; i++) {
+                const newDocRef = doc(historyCollectionRef);
+                const newRecord: Omit<BorrowHistory, 'id'> = {
+                    borrowerUserId: originalPayload.borrowerUserId,
+                    studentName: originalPayload.studentName,
+                    itemName: name,
+                    date: new Date().toISOString(),
+                    status: 'Active',
+                };
+                batch.set(newDocRef, newRecord);
             }
         });
 
-        itemsToCheckout.forEach(record => {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Active' });
-        });
-
-        itemsToCancel.forEach(record => {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Cancelled' });
+        // 3. Mark the consumed teacher approvals as 'Active'
+        originalPayload.approvalsToConsume.forEach(approvalId => {
+            const approvalDocRef = doc(firestore, 'borrowing_transactions', approvalId);
+            batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString() });
         });
         
         await batch.commit();
       
         toast({
             title: "Checkout Confirmed",
-            description: `${itemsToCheckout.length} item(s) checked out to ${sessionInView.studentName}. ${itemsToCancel.length > 0 ? `${itemsToCancel.length} item(s) cancelled.` : ''}`
+            description: `${originalPayload.items.length} item(s) checked out to ${sessionInView.studentName}.`
         });
 
     } catch (e: any) {
@@ -146,38 +170,20 @@ export function QrScannerView() {
     } finally {
         setIsProcessing(false);
         setSessionInView(null);
-        setItemsInDialog([]);
+        setScannedData("");
     }
   }
 
   const handleDenyCheckout = async () => {
-    if (!sessionInView || !firestore) return;
-    setIsProcessing(true);
-
-    try {
-        const batch = writeBatch(firestore);
-
-        sessionInView.items.forEach(record => {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Cancelled' });
-        });
-        
-        await batch.commit();
-      
-        toast({
-            variant: "destructive",
-            title: "Checkout Denied",
-            description: `The checkout for ${sessionInView.studentName} has been cancelled.`
-        });
-
-    } catch (e: any) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not deny checkout.' });
-    } finally {
-        setIsProcessing(false);
-        setSessionInView(null);
-        setItemsInDialog([]);
-    }
+    if (!sessionInView) return;
+    
+    toast({
+        variant: "destructive",
+        title: "Checkout Denied",
+        description: `The checkout for ${sessionInView.studentName} has been cancelled.`
+    });
+    setSessionInView(null);
+    setScannedData("");
   }
 
 
@@ -225,38 +231,27 @@ export function QrScannerView() {
 
   return (
     <div className="space-y-8">
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ShoppingBag /> Incoming Requests: Awaiting Checkout</CardTitle>
+          <CardTitle className="flex items-center gap-2"><QrCode /> Scan Checkout QR Code</CardTitle>
           <CardDescription>
-            These are self-service borrow requests. Staff can prepare items and remove them if needed before the student scans to finalize.
+            Paste the student's QR code data here to look up and confirm a checkout request.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {incomingRequests.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {incomingRequests.map(session => (
-                <button 
-                  key={session.checkoutSessionId}
-                  onClick={() => handleSelectRequestForCheckout(session)}
-                  className="p-4 rounded-lg bg-secondary hover:bg-accent text-left transition-colors flex items-start gap-4"
-                >
-                    <User className="h-8 w-8 text-primary flex-shrink-0 mt-1"/>
-                    <div>
-                        <p className="font-semibold">{session.studentName}</p>
-                        <p className="text-sm text-muted-foreground">{session.items.length} item(s)</p>
-                        <p className="text-xs text-muted-foreground mt-1">{new Date(session.date).toLocaleDateString()}</p>
-                    </div>
-                </button>
-              ))}
+        <CardContent className="space-y-4">
+           <div className="grid w-full gap-1.5">
+                <Label htmlFor="qr-data">QR Code Data</Label>
+                <Textarea 
+                    placeholder="Paste the data from the QR code here..." 
+                    id="qr-data" 
+                    value={scannedData}
+                    onChange={(e) => setScannedData(e.target.value)}
+                    rows={4}
+                />
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-48 border-2 border-dashed border-border/50 rounded-lg">
-              <QrCode className="h-12 w-12 mb-4" />
-              <p className="font-semibold">No pending checkouts</p>
-              <p className="text-sm">Wait for a student to generate a borrow QR code.</p>
-            </div>
-          )}
+            <Button onClick={handleLookupQr} disabled={!scannedData.trim()}>
+                <Search className="mr-2 h-4 w-4"/> Look Up Request
+            </Button>
         </CardContent>
       </Card>
 
@@ -298,7 +293,7 @@ export function QrScannerView() {
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle className="font-headline">Confirm Checkout</DialogTitle>
-                <DialogDescription>Simulating QR Scan. Review items, remove if necessary, and confirm to finalize the checkout.</DialogDescription>
+                <DialogDescription>Review items and confirm to finalize the checkout for {sessionInView?.studentName}.</DialogDescription>
             </DialogHeader>
             {sessionInView && (
                 <div className="py-4 space-y-4">
@@ -312,20 +307,17 @@ export function QrScannerView() {
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2">Items to Check Out ({itemsInDialog.length}):</h4>
-                         {itemsInDialog.length > 0 ? (
-                             <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                               {itemsInDialog.map((item, index) => (
-                                   <li key={item.id} className="flex items-center justify-between p-2 rounded-md bg-black/20">
-                                       <span>{item.itemName}</span>
-                                       <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => handleRemoveItemFromDialog(item.id)}>
-                                            <Trash2 className="h-4 w-4"/>
-                                       </Button>
+                        <h4 className="font-semibold mb-2">Items to Check Out ({sessionInView.items.length}):</h4>
+                         {sessionInView.items.length > 0 ? (
+                             <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 list-disc list-inside bg-black/20 p-3 rounded-md">
+                               {sessionInView.items.map((item, index) => (
+                                   <li key={index} className="flex items-center justify-between">
+                                       <span>{item.name} (x{item.quantity})</span>
                                    </li>
                                ))}
                             </ul>
                          ) : (
-                            <p className="text-muted-foreground text-center p-4">All items have been removed.</p>
+                            <p className="text-muted-foreground text-center p-4">No items in this request.</p>
                          )}
                     </div>
                 </div>
@@ -335,7 +327,7 @@ export function QrScannerView() {
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
                     Deny
                 </Button>
-                <Button onClick={handleConfirmCheckout} disabled={isProcessing || itemsInDialog.length === 0}>
+                <Button onClick={handleConfirmCheckout} disabled={isProcessing || !sessionInView || sessionInView.items.length === 0}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                     Confirm
                 </Button>

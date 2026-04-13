@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -7,7 +8,7 @@ import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from 
 import { useUser, useFirestore } from "@/firebase"
 import { collection, writeBatch, doc } from "firebase/firestore"
 
-import type { BorrowHistory, CartItem, InventoryItem } from "@/lib/types"
+import type { BorrowHistory, CartItem } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -58,7 +59,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
   }
 
-  const handleBorrow = async () => {
+  const handleBorrow = () => {
      if (!user || !user.uid || !user.displayName) {
       toast({
         variant: "destructive",
@@ -67,79 +68,42 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       })
       return;
     }
-    setIsLoading(true);
-
-    const checkoutSessionId = `cs-${Date.now()}`;
     
-    try {
-        if (!firestore) throw new Error("Firestore not available");
-        const batch = writeBatch(firestore);
-
-        for (const { item, quantity } of cartItems) {
-            // Find the master inventory item to check its original status
-            const masterItem = allItems.find(i => i.id === item.id);
-            const wasLocked = masterItem?.status === 'Locked';
-            
-            // This item was originally 'Locked' and required teacher approval
-            if (wasLocked) {
-                const approvalRecords = borrowHistory.filter(h => 
-                    h.borrowerUserId === user.uid &&
-                    h.itemName === item.name &&
-                    h.status === 'Approved' &&
-                    !h.checkoutSessionId // It's a teacher approval, not a checkout record
-                );
-
-                if (approvalRecords.length < quantity) {
-                    throw new Error(`Not enough approvals for "${item.name}". You need ${quantity} but have ${approvalRecords.length}.`);
-                }
-
-                // Consume the required number of approvals by updating them
-                for (let i = 0; i < quantity; i++) {
-                    const recordToUpdate = approvalRecords[i];
-                    const historyDocRef = doc(firestore, 'borrowing_transactions', recordToUpdate.id);
-                    batch.update(historyDocRef, { 
-                        checkoutSessionId: checkoutSessionId,
-                        date: new Date().toISOString() // Update date to actual checkout request date
-                    });
-                }
-            } else { 
-                // This item was 'Available' and can be borrowed directly
-                for (let i = 0; i < quantity; i++) {
-                    const historyCollectionRef = collection(firestore, 'borrowing_transactions');
-                    const newDocRef = doc(historyCollectionRef);
-                    
-                    const newHistoryRecord: Omit<BorrowHistory, 'id'> = {
-                        studentName: user.displayName!,
-                        itemName: item.name,
-                        date: new Date().toISOString(),
-                        status: 'Approved', // 'Approved' here means "ready for staff QR scan"
-                        checkoutSessionId: checkoutSessionId,
-                        borrowerUserId: user.uid,
-                    };
-                    batch.set(newDocRef, newHistoryRecord);
-                }
-            }
-        }
-
-        await batch.commit();
-        
-        setQrCodeData(JSON.stringify({ checkoutSessionId }));
-        setIsLoading(false)
-        setIsQrCodeOpen(true)
-        toast({
-            title: "Ready for Pickup",
-            description: "Present the generated QR code to the lab staff."
-        })
-
-    } catch (e: any) {
-        console.error(e);
-        setIsLoading(false);
-        toast({
+    // Find approval records for any locked items in the cart
+    const approvalsToConsume: string[] = [];
+    for (const { item, quantity } of cartItems) {
+      const masterItem = allItems.find(i => i.id === item.id);
+      if (masterItem?.status === 'Locked') {
+        const availableApprovals = borrowHistory.filter(h => 
+          h.borrowerUserId === user.uid &&
+          h.itemName === item.name &&
+          h.status === 'Approved' &&
+          !h.checkoutSessionId
+        );
+        if (availableApprovals.length < quantity) {
+           toast({
             variant: "destructive",
-            title: "Checkout Failed",
-            description: e.message || "Could not create borrowing request. Please try again.",
-        })
+            title: "Approval Missing",
+            description: `Not enough approvals for "${item.name}". You need ${quantity} but have ${availableApprovals.length}.`,
+          });
+          return;
+        }
+        // Add the IDs of the approval records we will consume
+        approvalsToConsume.push(...availableApprovals.slice(0, quantity).map(a => a.id));
+      }
     }
+    
+    // Construct the payload for the QR code
+    const checkoutPayload = {
+      type: 'checkout',
+      borrowerUserId: user.uid,
+      studentName: user.displayName,
+      items: cartItems.map(({ item, quantity }) => ({ id: item.id, name: item.name, quantity })),
+      approvalsToConsume: approvalsToConsume,
+    };
+    
+    setQrCodeData(JSON.stringify(checkoutPayload));
+    setIsQrCodeOpen(true);
   }
   
   const handleReserve = async () => {
@@ -352,7 +316,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             </Button>
         </div>
 
-        <Dialog open={isQrCodeOpen} onOpenChange={handleQrDialogClose}>
+        <Dialog open={isQrCodeOpen} onOpenChange={setIsQrCodeOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="font-headline">Your QR Code</DialogTitle>
