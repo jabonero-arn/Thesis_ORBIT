@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -110,7 +111,6 @@ export default function LoginPage() {
       router.push(redirectPath)
     } catch (e) {
       const error = e as AuthError;
-      console.error(error.code, error.message);
       if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found') {
         toast({
           variant: "destructive",
