@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2, X, Search } from "lucide-react"
+import { QrCode, CornerDownLeft, CheckCircle, Loader2, X } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
-import type { BorrowHistory, User as UserType } from "@/lib/types"
+import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
@@ -12,8 +12,15 @@ import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
 import { doc, writeBatch, collection } from "firebase/firestore"
-import { Textarea } from "./ui/textarea"
-import { Label } from "./ui/label"
+
+// This declaration helps TypeScript understand the browser's BarcodeDetector API.
+declare global {
+  class BarcodeDetector {
+    constructor(options?: { formats: string[] });
+    detect(image: ImageBitmapSource): Promise<{ rawValue: string }[]>;
+  }
+}
+
 
 type ScannedCompactCheckoutData = {
     t: 'c'; // type: 'checkout'
@@ -44,7 +51,10 @@ export function QrScannerView() {
   const [sessionInView, setSessionInView] = React.useState<CheckoutSession | null>(null);
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
-
+  
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
+  const [isScanning, setIsScanning] = React.useState(true);
 
   const groupedPendingReturns = React.useMemo(() => {
     const groups: { [userId: string]: PendingReturnGroup } = {};
@@ -66,60 +76,109 @@ export function QrScannerView() {
     return Object.values(groups);
   }, [borrowHistory]);
 
-  const handleLookupQr = React.useCallback(() => {
-    if (!scannedData.trim()) {
+  const handleResetScanner = () => {
+    setScannedData("");
+    setSessionInView(null);
+    setIsScanning(true);
+  };
+  
+  React.useEffect(() => {
+    const getCameraPermission = async () => {
+      if (!('mediaDevices' in navigator && 'getUserMedia' in navigator.mediaDevices)) {
+        toast({ variant: 'destructive', title: 'Camera Not Supported', description: 'Your browser does not support camera access.' });
+        setHasCameraPermission(false);
         return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setHasCameraPermission(true);
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions in your browser settings.',
+        });
+      }
+    };
+    getCameraPermission();
+  }, [toast]);
+
+  React.useEffect(() => {
+    let intervalId: number;
+    if (isScanning && hasCameraPermission && videoRef.current && 'BarcodeDetector' in window) {
+      const barcodeDetector = new BarcodeDetector({ formats: ["qr_code"] });
+      intervalId = window.setInterval(async () => {
+        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+        try {
+          const barcodes = await barcodeDetector.detect(videoRef.current);
+          if (barcodes.length > 0 && barcodes[0]?.rawValue) {
+            setScannedData(barcodes[0].rawValue);
+            setIsScanning(false);
+          }
+        } catch (error) {
+          // This can happen if the frame is not ready, we can ignore it and let it retry.
+        }
+      }, 500); // Scan every 500ms
+    } else if (isScanning && hasCameraPermission && !('BarcodeDetector' in window)) {
+        toast({ variant: 'destructive', title: 'Scanner Not Supported', description: 'Your browser does not support the Barcode Detection API.' });
+        setIsScanning(false);
     }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isScanning, hasCameraPermission, toast]);
+
+  const isJsonString = (str: string) => {
+    try { JSON.parse(str); } catch (e) { return false; }
+    return true;
+  };
+
+  const handleLookupQr = React.useCallback(() => {
     try {
         const payload = JSON.parse(scannedData) as ScannedCompactCheckoutData;
-        if (payload.t !== 'c' || !payload.u || !payload.i) {
-            throw new Error("Invalid QR code data format.");
-        }
         
-        const student = allUsers.find(u => u.id === payload.u);
-        if (!student) {
-            throw new Error(`Student with ID ${payload.u} not found.`);
+        // Handle both checkout and return QR codes
+        if (payload.t === 'c' && payload.u && payload.i) { // Checkout
+            const student = allUsers.find(u => u.id === payload.u);
+            if (!student) throw new Error(`Student with ID ${payload.u} not found.`);
+
+            const itemMap = new Map<string, number>();
+            payload.i.forEach(scannedItem => {
+                const dbItem = items.find(i => i.id === scannedItem.id);
+                const itemName = dbItem ? dbItem.name : 'Unknown Item';
+                itemMap.set(itemName, (itemMap.get(itemName) || 0) + scannedItem.q);
+            });
+
+            const displayItems = Array.from(itemMap.entries()).map(([name, quantity]) => ({ name, quantity }));
+
+            setSessionInView({
+                borrowerUserId: payload.u,
+                studentName: student.displayName,
+                items: displayItems,
+                originalPayload: payload,
+            });
+        } else {
+             throw new Error("Invalid QR code data format.");
         }
-
-        const itemMap = new Map<string, number>();
-        payload.i.forEach(scannedItem => {
-            const dbItem = items.find(i => i.id === scannedItem.id);
-            const itemName = dbItem ? dbItem.name : 'Unknown Item';
-            itemMap.set(itemName, (itemMap.get(itemName) || 0) + scannedItem.q);
-        });
-
-        const displayItems = Array.from(itemMap.entries()).map(([name, quantity]) => ({ name, quantity }));
-
-        setSessionInView({
-            borrowerUserId: payload.u,
-            studentName: student.displayName,
-            items: displayItems,
-            originalPayload: payload,
-        });
-
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid checkout request.' });
-        // Clear the invalid data
-        setScannedData("");
+        toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid request.' });
+        handleResetScanner();
     }
   }, [scannedData, allUsers, items, toast]);
 
   React.useEffect(() => {
-    if (!scannedData.trim()) {
-        return;
+    if (scannedData && isJsonString(scannedData)) {
+        handleLookupQr();
     }
-
-    const handler = setTimeout(() => {
-        if (scannedData.trim().startsWith('{') && scannedData.trim().endsWith('}')) {
-             handleLookupQr();
-        }
-    }, 300); // Debounce lookup by 300ms
-
-    return () => {
-        clearTimeout(handler);
-    };
   }, [scannedData, handleLookupQr]);
+
 
   const handleSelectReturnGroup = (group: PendingReturnGroup) => {
     setSelectedReturnGroup(group);
@@ -128,24 +187,17 @@ export function QrScannerView() {
   const handleConfirmCheckout = async () => {
     if (!sessionInView || !firestore) return;
     setIsProcessing(true);
-
     const { originalPayload, studentName } = sessionInView;
-
     try {
         const batch = writeBatch(firestore);
-
         const itemQuantityUpdates = new Map<string, number>();
         originalPayload.i.forEach(item => {
             itemQuantityUpdates.set(item.id, (itemQuantityUpdates.get(item.id) || 0) + item.q);
         });
-
-        // 1. Decrement inventory quantities
         for (const [itemId, quantityToDecrement] of itemQuantityUpdates.entries()) {
             const itemToUpdate = items.find(i => i.id === itemId);
              if (itemToUpdate) {
-                if (itemToUpdate.quantity < quantityToDecrement) {
-                    throw new Error(`Not enough stock for ${itemToUpdate.name}.`);
-                }
+                if (itemToUpdate.quantity < quantityToDecrement) throw new Error(`Not enough stock for ${itemToUpdate.name}.`);
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
                  batch.update(itemDocRef, { 
@@ -156,13 +208,10 @@ export function QrScannerView() {
                 throw new Error(`Item with ID ${itemId} not found in inventory.`);
             }
         }
-
-        // 2. Create 'Active' borrow history records for all borrowed items
         const historyCollectionRef = collection(firestore, 'borrowing_transactions');
         originalPayload.i.forEach(({ id, q }) => {
             const dbItem = items.find(item => item.id === id);
             if (!dbItem) return;
-
             for (let i=0; i < q; i++) {
                 const newDocRef = doc(historyCollectionRef);
                 const newRecord: Omit<BorrowHistory, 'id'> = {
@@ -175,59 +224,40 @@ export function QrScannerView() {
                 batch.set(newDocRef, newRecord);
             }
         });
-
-        // 3. Mark the consumed teacher approvals as 'Active'
         originalPayload.a.forEach(approvalId => {
             const approvalDocRef = doc(firestore, 'borrowing_transactions', approvalId);
             batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString() });
         });
-        
         await batch.commit();
-
         const totalItemsCheckedOut = originalPayload.i.reduce((sum, item) => sum + item.q, 0);
-      
-        toast({
-            title: "Checkout Confirmed",
-            description: `${totalItemsCheckedOut} item(s) checked out to ${studentName}.`
-        });
-
+        toast({ title: "Checkout Confirmed", description: `${totalItemsCheckedOut} item(s) checked out to ${studentName}.` });
     } catch (e: any) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not complete checkout.' });
     } finally {
         setIsProcessing(false);
-        setSessionInView(null);
-        setScannedData("");
+        handleResetScanner();
     }
   }
 
   const handleDenyCheckout = async () => {
     if (!sessionInView) return;
-    
-    toast({
-        variant: "destructive",
-        title: "Checkout Denied",
-        description: `The checkout for ${sessionInView.studentName} has been cancelled.`
-    });
-    setSessionInView(null);
-    setScannedData("");
+    toast({ variant: "destructive", title: "Checkout Denied", description: `The checkout for ${sessionInView.studentName} has been cancelled.` });
+    handleResetScanner();
   }
 
 
   const handleConfirmAllReturns = async () => {
     if (!selectedReturnGroup || !firestore) return;
     setIsProcessing(true);
-
     try {
         const batch = writeBatch(firestore);
         const itemQuantityIncrements = new Map<string, number>();
-        
         selectedReturnGroup.records.forEach(record => {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
             batch.update(historyDocRef, { status: 'Returned' });
             itemQuantityIncrements.set(record.itemName, (itemQuantityIncrements.get(record.itemName) || 0) + 1);
         });
-
         itemQuantityIncrements.forEach((quantityToIncrement, itemName) => {
             const itemToUpdate = items.find(i => i.name === itemName);
             if (itemToUpdate) {
@@ -239,20 +269,15 @@ export function QrScannerView() {
                 });
             }
         });
-
         await batch.commit();
-
-        toast({
-            title: "Items Returned",
-            description: `${selectedReturnGroup.records.length} item(s) from ${selectedReturnGroup.studentName} have been successfully returned.`
-        });
-
+        toast({ title: "Items Returned", description: `${selectedReturnGroup.records.length} item(s) from ${selectedReturnGroup.studentName} have been successfully returned.` });
     } catch (e: any) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process returns. Please try again.' });
     } finally {
         setIsProcessing(false);
         setSelectedReturnGroup(null);
+        handleResetScanner();
     }
   };
 
@@ -260,22 +285,32 @@ export function QrScannerView() {
     <div className="space-y-8">
        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2"><QrCode /> Scan Checkout QR Code</CardTitle>
+          <CardTitle className="flex items-center gap-2"><QrCode /> Live QR Code Scanner</CardTitle>
           <CardDescription>
-            Paste the student's QR code data here to automatically look up a checkout request.
+            Point the camera at a student's QR code to begin a checkout or return process.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-           <div className="grid w-full gap-1.5">
-                <Label htmlFor="qr-data">QR Code Data</Label>
-                <Textarea 
-                    placeholder="Paste the data from the QR code here..." 
-                    id="qr-data" 
-                    value={scannedData}
-                    onChange={(e) => setScannedData(e.target.value)}
-                    rows={4}
-                />
+        <CardContent>
+            <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
+                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                {hasCameraPermission === false ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
+                        <p className="text-destructive font-semibold">Camera Access Denied</p>
+                        <p className="text-xs text-muted-foreground">Please enable camera permissions in your browser settings to use the scanner.</p>
+                    </div>
+                ) : hasCameraPermission === null ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/>
+                        <p className="text-sm text-muted-foreground mt-2">Requesting camera access...</p>
+                    </div>
+                ): null}
+                {isScanning && hasCameraPermission && <div className="absolute w-1/2 h-1/2 border-4 border-primary/50 rounded-lg animate-pulse" />}
             </div>
+            {scannedData && !sessionInView && (
+                <div className="mt-4 p-3 rounded-md bg-secondary text-secondary-foreground text-center">
+                    <p className="text-sm font-semibold">QR Code Detected! Processing...</p>
+                </div>
+            )}
         </CardContent>
       </Card>
 
@@ -313,7 +348,7 @@ export function QrScannerView() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!sessionInView} onOpenChange={(open) => !open && setSessionInView(null)}>
+      <Dialog open={!!sessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
         <DialogContent className="max-w-lg">
             <DialogHeader>
                 <DialogTitle className="font-headline">Confirm Checkout</DialogTitle>
