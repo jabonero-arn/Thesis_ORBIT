@@ -1,8 +1,9 @@
+
 "use client"
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useFirestore } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
@@ -11,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, channels } from "@/lib/data"
+import { channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -40,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { QrScannerView } from "@/components/qr-scanner-view"
 import { format } from "date-fns"
+import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
 
 const departments = [
@@ -57,6 +59,20 @@ export default function StaffDashboardPage() {
     const { toast } = useToast()
     const { items, borrowHistory } = useAppContext();
     const firestore = useFirestore();
+
+    const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [firestore, user]);
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
+
+    React.useEffect(() => {
+        if (isUserLoading || isProfileLoading || !user) return;
+        if (userProfile?.passwordChangeRequired) {
+            setShowPasswordChangeDialog(true);
+        }
+    }, [user, userProfile, isUserLoading, isProfileLoading]);
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
@@ -559,6 +575,10 @@ export default function StaffDashboardPage() {
 
     return (
         <TooltipProvider>
+            <ForcePasswordChangeDialog
+                open={showPasswordChangeDialog}
+                onSuccess={() => setShowPasswordChangeDialog(false)}
+            />
             <div className="flex h-screen bg-[#1e2430]">
                  {/* Combined Sidebar */}
                  <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">

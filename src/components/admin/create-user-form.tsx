@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -89,6 +90,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
         displayName: displayName,
         email: email,
         role: roleToCreate,
+        passwordChangeRequired: true,
       });
 
       let roleCollectionName = "";

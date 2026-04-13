@@ -67,6 +67,14 @@ export default function SignUpPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (password.length > 20) {
+        toast({
+            variant: "destructive",
+            title: "Password is too long",
+            description: "Your password cannot exceed 20 characters.",
+        })
+        return;
+    }
     if (password !== confirmPassword) {
         toast({
             variant: "destructive",
@@ -212,11 +220,11 @@ export default function SignUpPage() {
             <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required maxLength={20} />
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required />
+                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required maxLength={20} />
                 </div>
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>

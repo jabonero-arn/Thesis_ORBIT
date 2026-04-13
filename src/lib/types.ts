@@ -1,3 +1,4 @@
+
 export type Role = "Student" | "Teacher" | "Admin" | "Staff" | "Primary Custodian";
 
 export type User = {
@@ -15,6 +16,7 @@ export type User = {
   // Teacher/Staff/Admin specific
   department?: string;
   employeeId?: string;
+  passwordChangeRequired?: boolean;
 
   // This is not in Firestore, can be added from auth user if needed for display
   avatarUrl?: string;

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -52,6 +53,10 @@
         "employeeId": {
           "type": "string",
           "description": "The employee ID for the user (for non-students)."
+        },
+        "passwordChangeRequired": {
+          "type": "boolean",
+          "description": "If true, the user must change their password on next login."
         }
       },
       "required": ["id", "displayName", "email", "role"]

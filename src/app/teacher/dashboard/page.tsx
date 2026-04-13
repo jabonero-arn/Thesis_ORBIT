@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { TeacherProfileDialog } from "@/components/teacher-profile-dialog"
+import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
 
 const departments = [
@@ -50,6 +52,7 @@ export default function TeacherDashboardPage() {
   const { toast } = useToast()
   const { items: allItems, borrowHistory } = useAppContext();
   
+  const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
   const [showProfileDialog, setShowProfileDialog] = React.useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
@@ -66,20 +69,21 @@ export default function TeacherDashboardPage() {
   }, [user, isUserLoading, router])
 
   React.useEffect(() => {
-    // Wait until user and profile loading is complete
-    if (isUserLoading || isProfileLoading) {
+    if (isUserLoading || isProfileLoading || !user) {
       return;
     }
-    // If there's no user, we'll be redirected anyway by the other effect
     if (!user) {
         return;
     }
 
-    // Check if the profile is incomplete.
-    // This is true if the profile document doesn't exist (`!userProfile`)
-    // or if it's missing the required fields.
-    const isProfileIncomplete = !userProfile || !userProfile.department || !userProfile.employeeId;
+    if (userProfile?.passwordChangeRequired) {
+      setShowPasswordChangeDialog(true);
+      setShowProfileDialog(false);
+      return; 
+    }
+    setShowPasswordChangeDialog(false);
 
+    const isProfileIncomplete = !userProfile || !userProfile.department || !userProfile.employeeId;
     if (isProfileIncomplete) {
       setShowProfileDialog(true);
     } else {
@@ -423,6 +427,11 @@ export default function TeacherDashboardPage() {
 
   return (
     <TooltipProvider>
+      <ForcePasswordChangeDialog
+        open={showPasswordChangeDialog}
+        onSuccess={() => setShowPasswordChangeDialog(false)}
+      />
+      <TeacherProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
       <div className="flex h-screen bg-[#1e2430]">
         {/* Combined Sidebar */}
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
@@ -555,8 +564,6 @@ export default function TeacherDashboardPage() {
                 }}
             />
         )}
-
-        <TeacherProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
         
       </div>
     </TooltipProvider>
