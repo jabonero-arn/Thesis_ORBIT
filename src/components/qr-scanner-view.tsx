@@ -66,9 +66,8 @@ export function QrScannerView() {
     return Object.values(groups);
   }, [borrowHistory]);
 
-  const handleLookupQr = () => {
+  const handleLookupQr = React.useCallback(() => {
     if (!scannedData.trim()) {
-        toast({ variant: 'destructive', title: 'QR Data is empty' });
         return;
     }
     try {
@@ -101,8 +100,26 @@ export function QrScannerView() {
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid checkout request.' });
+        // Clear the invalid data
+        setScannedData("");
     }
-  }
+  }, [scannedData, allUsers, items, toast]);
+
+  React.useEffect(() => {
+    if (!scannedData.trim()) {
+        return;
+    }
+
+    const handler = setTimeout(() => {
+        if (scannedData.trim().startsWith('{') && scannedData.trim().endsWith('}')) {
+             handleLookupQr();
+        }
+    }, 300); // Debounce lookup by 300ms
+
+    return () => {
+        clearTimeout(handler);
+    };
+  }, [scannedData, handleLookupQr]);
 
   const handleSelectReturnGroup = (group: PendingReturnGroup) => {
     setSelectedReturnGroup(group);
@@ -245,7 +262,7 @@ export function QrScannerView() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode /> Scan Checkout QR Code</CardTitle>
           <CardDescription>
-            Paste the student's QR code data here to look up and confirm a checkout request.
+            Paste the student's QR code data here to automatically look up a checkout request.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -259,9 +276,6 @@ export function QrScannerView() {
                     rows={4}
                 />
             </div>
-            <Button onClick={handleLookupQr} disabled={!scannedData.trim()}>
-                <Search className="mr-2 h-4 w-4"/> Look Up Request
-            </Button>
         </CardContent>
       </Card>
 
