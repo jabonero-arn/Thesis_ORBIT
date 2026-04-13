@@ -1,13 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import type { InventoryItem, BorrowHistory } from '@/lib/types';
+import type { InventoryItem, BorrowHistory, User } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy } from 'firebase/firestore';
 
 type AppContextType = {
   items: InventoryItem[];
   borrowHistory: BorrowHistory[];
+  allUsers: User[];
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -27,10 +28,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const { data: historyData } = useCollection<Omit<BorrowHistory, 'id'>>(historyQuery);
 
+  const usersQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'users'), orderBy('displayName', 'asc')) : null
+  , [firestore]);
+  
+  const { data: usersData } = useCollection<Omit<User, 'id'>>(usersQuery);
+
   const value = React.useMemo(() => ({
     items: itemsData || [],
     borrowHistory: historyData || [],
-  }), [itemsData, historyData]);
+    allUsers: usersData || [],
+  }), [itemsData, historyData, usersData]);
 
   return (
     <AppContext.Provider value={value}>

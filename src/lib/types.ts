@@ -2,16 +2,22 @@ export type Role = "Student" | "Teacher" | "Admin" | "Staff" | "Primary Custodia
 
 export type User = {
   id: string;
-  name: string;
+  displayName: string;
+  email: string;
   role: Role;
-  avatarUrl: string;
+  
   // Student specific
   idNumber?: string;
-  year?: string;
-  course?: string;
+  educationLevel?: string;
+  courseOrStrand?: string;
+  yearLevel?: string;
+  
   // Teacher/Staff/Admin specific
   department?: string;
   employeeId?: string;
+
+  // This is not in Firestore, can be added from auth user if needed for display
+  avatarUrl?: string;
 };
 
 export type Channel = {

@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { currentUser, channels, allUsers } from "@/lib/data"
+import { channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -68,7 +68,7 @@ export default function PrimaryCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory } = useAppContext();
+    const { items, borrowHistory, allUsers } = useAppContext();
     const firestore = useFirestore();
     
     React.useEffect(() => {
@@ -121,7 +121,7 @@ export default function PrimaryCustodianDashboardPage() {
     const usersToDisplay = React.useMemo(() => {
         if (usersSubView === 'all') return allUsers;
         return allUsers.filter(user => user.role === usersSubView);
-    }, [usersSubView]);
+    }, [usersSubView, allUsers]);
 
 
     // Handlers
@@ -328,7 +328,7 @@ export default function PrimaryCustodianDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80">
                             <CardHeader><CardTitle>User Management</CardTitle><CardDescription>Oversee all users in the system.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.name}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
                 );
