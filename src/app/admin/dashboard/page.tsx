@@ -335,10 +335,12 @@ export default function AdminDashboardPage() {
                                     <CardTitle>User Management</CardTitle>
                                     <CardDescription>Oversee all users in the system.</CardDescription>
                                 </div>
-                                <Button onClick={() => setIsCreateUserOpen(true)}>
-                                    <UserPlus className="mr-2 h-4 w-4" />
-                                    Create User
-                                </Button>
+                                {usersSubView !== 'all' && usersSubView !== 'Student' && (
+                                    <Button onClick={() => setIsCreateUserOpen(true)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Create User
+                                    </Button>
+                                )}
                             </CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
