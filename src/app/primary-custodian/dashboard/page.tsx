@@ -291,7 +291,6 @@ export default function PrimaryCustodianDashboardPage() {
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
-                                <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
                             </CardHeader>
                             <CardContent>
                                 <InventoryTable items={inventoryItemsToDisplay} />
