@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2 } from "lucide-react"
+import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2, X } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -143,6 +143,36 @@ export function QrScannerView() {
     } catch (e: any) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not complete checkout.' });
+    } finally {
+        setIsProcessing(false);
+        setSessionInView(null);
+        setItemsInDialog([]);
+    }
+  }
+
+  const handleDenyCheckout = async () => {
+    if (!sessionInView || !firestore) return;
+    setIsProcessing(true);
+
+    try {
+        const batch = writeBatch(firestore);
+
+        sessionInView.items.forEach(record => {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(historyDocRef, { status: 'Cancelled' });
+        });
+        
+        await batch.commit();
+      
+        toast({
+            variant: "destructive",
+            title: "Checkout Denied",
+            description: `The checkout for ${sessionInView.studentName} has been cancelled.`
+        });
+
+    } catch (e: any) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not deny checkout.' });
     } finally {
         setIsProcessing(false);
         setSessionInView(null);
@@ -301,10 +331,13 @@ export function QrScannerView() {
                 </div>
             )}
             <DialogFooter>
-                <Button variant="outline" onClick={() => setSessionInView(null)} disabled={isProcessing}>Cancel</Button>
+                <Button variant="destructive" onClick={handleDenyCheckout} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
+                    Deny
+                </Button>
                 <Button onClick={handleConfirmCheckout} disabled={isProcessing || itemsInDialog.length === 0}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm Checkout
+                    Confirm
                 </Button>
             </DialogFooter>
         </DialogContent>
