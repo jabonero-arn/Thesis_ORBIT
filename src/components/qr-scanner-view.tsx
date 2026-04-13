@@ -4,7 +4,7 @@
 import * as React from "react"
 import { QrCode, CornerDownLeft, User, CheckCircle, Loader2, ShoppingBag, Trash2, X, Search } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
-import type { BorrowHistory } from "@/lib/types"
+import type { BorrowHistory, User as UserType } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
@@ -15,19 +15,18 @@ import { doc, writeBatch, collection } from "firebase/firestore"
 import { Textarea } from "./ui/textarea"
 import { Label } from "./ui/label"
 
-type ScannedCheckoutData = {
-    type: 'checkout';
-    borrowerUserId: string;
-    studentName: string;
-    items: { id: string; name: string; quantity: number }[];
-    approvalsToConsume: string[];
+type ScannedCompactCheckoutData = {
+    t: 'c'; // type: 'checkout'
+    u: string; // userId
+    i: { id: string; q: number }[]; // items: id and quantity
+    a: string[]; // approvalsToConsume
 }
 
 type CheckoutSession = {
   studentName: string;
   items: { name: string; quantity: number}[];
   borrowerUserId: string;
-  originalPayload: ScannedCheckoutData;
+  originalPayload: ScannedCompactCheckoutData;
 }
 
 type PendingReturnGroup = {
@@ -37,7 +36,7 @@ type PendingReturnGroup = {
 };
 
 export function QrScannerView() {
-  const { items, borrowHistory } = useAppContext();
+  const { items, borrowHistory, allUsers } = useAppContext();
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -73,29 +72,35 @@ export function QrScannerView() {
         return;
     }
     try {
-        const payload = JSON.parse(scannedData) as ScannedCheckoutData;
-        if (payload.type !== 'checkout' || !payload.borrowerUserId || !payload.items) {
+        const payload = JSON.parse(scannedData) as ScannedCompactCheckoutData;
+        if (payload.t !== 'c' || !payload.u || !payload.i) {
             throw new Error("Invalid QR code data format.");
         }
         
-        // Group items by name for display
+        const student = allUsers.find(u => u.id === payload.u);
+        if (!student) {
+            throw new Error(`Student with ID ${payload.u} not found.`);
+        }
+
         const itemMap = new Map<string, number>();
-        payload.items.forEach(item => {
-            itemMap.set(item.name, (itemMap.get(item.name) || 0) + item.quantity);
+        payload.i.forEach(scannedItem => {
+            const dbItem = items.find(i => i.id === scannedItem.id);
+            const itemName = dbItem ? dbItem.name : 'Unknown Item';
+            itemMap.set(itemName, (itemMap.get(itemName) || 0) + scannedItem.q);
         });
 
         const displayItems = Array.from(itemMap.entries()).map(([name, quantity]) => ({ name, quantity }));
 
         setSessionInView({
-            borrowerUserId: payload.borrowerUserId,
-            studentName: payload.studentName,
+            borrowerUserId: payload.u,
+            studentName: student.displayName,
             items: displayItems,
             originalPayload: payload,
         });
 
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Invalid QR Code', description: 'The scanned data is not a valid checkout request.' });
+        toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid checkout request.' });
     }
   }
 
@@ -107,14 +112,14 @@ export function QrScannerView() {
     if (!sessionInView || !firestore) return;
     setIsProcessing(true);
 
-    const { originalPayload } = sessionInView;
+    const { originalPayload, studentName } = sessionInView;
 
     try {
         const batch = writeBatch(firestore);
 
         const itemQuantityUpdates = new Map<string, number>();
-        originalPayload.items.forEach(item => {
-            itemQuantityUpdates.set(item.id, (itemQuantityUpdates.get(item.id) || 0) + item.quantity);
+        originalPayload.i.forEach(item => {
+            itemQuantityUpdates.set(item.id, (itemQuantityUpdates.get(item.id) || 0) + item.q);
         });
 
         // 1. Decrement inventory quantities
@@ -137,13 +142,16 @@ export function QrScannerView() {
 
         // 2. Create 'Active' borrow history records for all borrowed items
         const historyCollectionRef = collection(firestore, 'borrowing_transactions');
-        originalPayload.items.forEach(({ name, quantity }) => {
-            for (let i=0; i < quantity; i++) {
+        originalPayload.i.forEach(({ id, q }) => {
+            const dbItem = items.find(item => item.id === id);
+            if (!dbItem) return;
+
+            for (let i=0; i < q; i++) {
                 const newDocRef = doc(historyCollectionRef);
                 const newRecord: Omit<BorrowHistory, 'id'> = {
-                    borrowerUserId: originalPayload.borrowerUserId,
-                    studentName: originalPayload.studentName,
-                    itemName: name,
+                    borrowerUserId: originalPayload.u,
+                    studentName: studentName,
+                    itemName: dbItem.name,
                     date: new Date().toISOString(),
                     status: 'Active',
                 };
@@ -152,16 +160,18 @@ export function QrScannerView() {
         });
 
         // 3. Mark the consumed teacher approvals as 'Active'
-        originalPayload.approvalsToConsume.forEach(approvalId => {
+        originalPayload.a.forEach(approvalId => {
             const approvalDocRef = doc(firestore, 'borrowing_transactions', approvalId);
             batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString() });
         });
         
         await batch.commit();
+
+        const totalItemsCheckedOut = originalPayload.i.reduce((sum, item) => sum + item.q, 0);
       
         toast({
             title: "Checkout Confirmed",
-            description: `${originalPayload.items.length} item(s) checked out to ${sessionInView.studentName}.`
+            description: `${totalItemsCheckedOut} item(s) checked out to ${studentName}.`
         });
 
     } catch (e: any) {
@@ -307,7 +317,7 @@ export function QrScannerView() {
                         </div>
                     </div>
                     <div>
-                        <h4 className="font-semibold mb-2">Items to Check Out ({sessionInView.items.length}):</h4>
+                        <h4 className="font-semibold mb-2">Items to Check Out ({sessionInView.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
                          {sessionInView.items.length > 0 ? (
                              <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 list-disc list-inside bg-black/20 p-3 rounded-md">
                                {sessionInView.items.map((item, index) => (

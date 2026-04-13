@@ -93,13 +93,12 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       }
     }
     
-    // Construct the payload for the QR code
+    // NEW COMPACT PAYLOAD
     const checkoutPayload = {
-      type: 'checkout',
-      borrowerUserId: user.uid,
-      studentName: user.displayName,
-      items: cartItems.map(({ item, quantity }) => ({ id: item.id, name: item.name, quantity })),
-      approvalsToConsume: approvalsToConsume,
+      t: 'c', // type: checkout
+      u: user.uid,
+      i: cartItems.map(({ item, quantity }) => ({ id: item.id, q: quantity })),
+      a: approvalsToConsume,
     };
     
     setQrCodeData(JSON.stringify(checkoutPayload));
@@ -211,9 +210,14 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
   }
 
-  const handleQrDialogClose = () => {
-    setIsQrCodeOpen(false)
-    onSuccess()
+  const handleCancelQrDialog = () => {
+    setIsQrCodeOpen(false);
+    // Do not call onSuccess, so the cart is not cleared.
+  }
+
+  const handleDoneQrDialog = () => {
+    setIsQrCodeOpen(false);
+    onSuccess(); // This clears the cart.
   }
 
   if (cartItems.length === 0) {
@@ -316,7 +320,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             </Button>
         </div>
 
-        <Dialog open={isQrCodeOpen} onOpenChange={setIsQrCodeOpen}>
+        <Dialog open={isQrCodeOpen} onOpenChange={(open) => !open && handleCancelQrDialog()}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle className="font-headline">Your QR Code</DialogTitle>
@@ -335,7 +339,10 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
               />
             </div>
             <DialogFooter>
-              <Button type="button" onClick={handleQrDialogClose}>
+              <Button type="button" variant="outline" onClick={handleCancelQrDialog}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleDoneQrDialog}>
                 Done
               </Button>
             </DialogFooter>
