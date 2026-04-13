@@ -51,6 +51,17 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
     
     const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
     
+    const groupedActiveBorrows = React.useMemo(() => {
+        const groups: { [itemName: string]: BorrowHistory[] } = {};
+        activeBorrows.forEach(record => {
+            if (!groups[record.itemName]) {
+                groups[record.itemName] = [];
+            }
+            groups[record.itemName].push(record);
+        });
+        return Object.values(groups);
+    }, [activeBorrows]);
+
     const requestHistory = borrowHistory
         .filter(h => h.teacherId && (h.status === 'Pending' || h.status === 'Approved' || h.status === 'Denied'))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -63,14 +74,6 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const handleSelectReturn = (historyId: string) => {
-        setSelectedToReturn(prev => 
-            prev.includes(historyId) 
-                ? prev.filter(id => id !== historyId) 
-                : [...prev, historyId]
-        );
-    }
-    
     const handleReturnSelected = () => {
         const recordsToReturn = borrowHistory.filter(h => selectedToReturn.includes(h.id));
         onReturn(recordsToReturn);
@@ -93,28 +96,48 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                     <CardDescription>Items you currently have checked out. Select items to return them.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {activeBorrows.length > 0 ? (
+                    {groupedActiveBorrows.length > 0 ? (
                         <div className="space-y-4">
-                            {activeBorrows.map(record => (
-                                <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                    <div className="flex items-center gap-4">
-                                        <Checkbox
-                                            id={`return-${record.id}`}
-                                            checked={selectedToReturn.includes(record.id)}
-                                            onCheckedChange={() => handleSelectReturn(record.id)}
-                                            disabled={record.status === 'Pending Return'}
-                                            aria-label={`Select ${record.itemName} for return`}
-                                        />
-                                        <div>
-                                            <p className="font-semibold">{record.itemName}</p>
-                                            <p className="text-sm text-muted-foreground">Borrowed on: {new Date(record.date).toLocaleDateString()}</p>
+                            {groupedActiveBorrows.map(group => {
+                                const firstRecord = group[0];
+                                if (!firstRecord) return null;
+
+                                const selectableItems = group.filter(r => r.status !== 'Pending Return');
+                                const isChecked = selectableItems.length > 0 && selectableItems.every(r => selectedToReturn.includes(r.id));
+                                const isDisabled = selectableItems.length === 0;
+
+                                const handleToggle = () => {
+                                    const selectableIds = selectableItems.map(r => r.id);
+                                    if (isChecked) {
+                                        setSelectedToReturn(prev => prev.filter(id => !selectableIds.includes(id)));
+                                    } else {
+                                        setSelectedToReturn(prev => [...new Set([...prev, ...selectableIds])]);
+                                    }
+                                };
+                                
+                                const hasPending = group.some(r => r.status === 'Pending Return');
+
+                                return (
+                                    <div key={firstRecord.itemName} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
+                                        <div className="flex items-center gap-4">
+                                            <Checkbox
+                                                id={`return-group-${firstRecord.itemName.replace(/\s/g, '-')}`}
+                                                checked={isChecked}
+                                                onCheckedChange={handleToggle}
+                                                disabled={isDisabled}
+                                                aria-label={`Select all available ${firstRecord.itemName} for return`}
+                                            />
+                                            <div>
+                                                <p className="font-semibold">{firstRecord.itemName} {group.length > 1 && <span className="text-muted-foreground font-normal">x{group.length}</span>}</p>
+                                                <p className="text-sm text-muted-foreground">Borrowed on: {new Date(firstRecord.date).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusBadge({ ...firstRecord, status: hasPending ? 'Pending Return' : 'Active' })}
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        {getStatusBadge(record)}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
                         <p className="text-muted-foreground text-center p-4">You have no items currently borrowed.</p>
