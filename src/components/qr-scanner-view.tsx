@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -90,7 +89,6 @@ export function QrScannerView() {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 },
             supportedScanTypes: [], // Use all supported scan types
           },
           (decodedText, decodedResult) => {
