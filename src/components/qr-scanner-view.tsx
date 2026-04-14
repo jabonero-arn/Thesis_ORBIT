@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -20,6 +21,13 @@ type ScannedCompactCheckoutData = {
     i: { id: string; q: number }[]; // items: id and quantity
     a: string[]; // approvalsToConsume
 }
+
+type ScannedReturnData = {
+    t: 'r'; // type: 'return'
+    ids: string[]; // array of borrowHistory document IDs
+};
+
+type ScannedData = ScannedCompactCheckoutData | ScannedReturnData;
 
 type CheckoutSession = {
   studentName: string;
@@ -49,94 +57,35 @@ export function QrScannerView() {
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isScanning, setIsScanning] = React.useState(true);
 
-  const groupedPendingReturns = React.useMemo(() => {
-    const groups: { [userId: string]: PendingReturnGroup } = {};
-    const pendingReturns = borrowHistory.filter(record => record.status === 'Pending Return');
-    
-    pendingReturns.forEach(record => {
-      const userId = record.borrowerUserId;
-      if (!userId) return;
-
-      if (!groups[userId]) {
-        groups[userId] = { 
-          studentName: record.studentName,
-          borrowerUserId: userId,
-          records: [] 
-        };
-      }
-      groups[userId].records.push(record);
-    });
-    return Object.values(groups);
-  }, [borrowHistory]);
+  // Use a ref to hold the lookup handler. This prevents the scanner's useEffect
+  // from re-running every time the underlying data changes.
+  const lookupHandlerRef = React.useRef<() => void>(() => {});
 
   const handleResetScanner = () => {
     setScannedData("");
     setSessionInView(null);
+    setSelectedReturnGroup(null);
     setIsScanning(true);
   };
   
-  React.useEffect(() => {
-    if (!isScanning) {
-      return;
-    }
-
-    const html5QrCode = new Html5Qrcode(qrCodeReaderId);
-    let scannerRunning = false;
-
-    const startScanner = async () => {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            supportedScanTypes: [], // Use all supported scan types
-          },
-          (decodedText, decodedResult) => {
-            if (scannerRunning) {
-              setScannedData(decodedText);
-              setIsScanning(false);
-            }
-          },
-          (errorMessage) => {
-            // This is called when a QR code is not found. We can ignore it.
-          }
-        );
-        scannerRunning = true;
-        if (hasCameraPermission === null || hasCameraPermission === false) {
-           setHasCameraPermission(true);
-        }
-      } catch (err) {
-        setHasCameraPermission(false);
-        console.error("Failed to start QR scanner", err);
-      }
-    };
-
-    startScanner();
-
-    return () => {
-      if (scannerRunning && html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(err => {
-            // This can fail if the scanner is already stopped. Safe to ignore.
-        }).finally(() => {
-            scannerRunning = false;
-        });
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScanning]);
-
-
   const isJsonString = (str: string) => {
     try { JSON.parse(str); } catch (e) { return false; }
     return true;
   };
 
-  const handleLookupQr = React.useCallback(() => {
+  // The actual lookup logic, defined inside the component to access latest state.
+  const handleLookupQr = () => {
+    if (!isJsonString(scannedData)) {
+      toast({ variant: 'destructive', title: 'Invalid QR Code', description: 'The scanned data is not a valid request.' });
+      handleResetScanner();
+      return;
+    }
+    
     try {
-        const payload = JSON.parse(scannedData) as ScannedCompactCheckoutData;
+        const payload: ScannedData = JSON.parse(scannedData);
         
-        // Handle both checkout and return QR codes
-        if (payload.t === 'c' && payload.u && payload.i) { // Checkout
+        // Handle CHECKOUT payload
+        if (payload.t === 'c' && payload.u && payload.i) {
             const student = allUsers.find(u => u.id === payload.u);
             if (!student) throw new Error(`Student with ID ${payload.u} not found.`);
 
@@ -155,7 +104,24 @@ export function QrScannerView() {
                 items: displayItems,
                 originalPayload: payload,
             });
-        } else {
+        // Handle RETURN payload
+        } else if (payload.t === 'r' && payload.ids) {
+            const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && h.status === 'Pending Return');
+            if (recordsToReturn.length === 0) {
+                 toast({ variant: 'destructive', title: 'Invalid Return', description: 'No pending returns found for this QR code.' });
+                 handleResetScanner();
+                 return;
+            }
+            const studentName = recordsToReturn[0]?.studentName || 'Unknown Student';
+            const borrowerUserId = recordsToReturn[0]?.borrowerUserId || 'unknown';
+
+            setSelectedReturnGroup({
+                studentName: studentName,
+                borrowerUserId: borrowerUserId,
+                records: recordsToReturn,
+            });
+        }
+        else {
              throw new Error("Invalid QR code data format.");
         }
     } catch (e) {
@@ -163,19 +129,66 @@ export function QrScannerView() {
         toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid request.' });
         handleResetScanner();
     }
-  }, [scannedData, allUsers, items, toast]);
+  };
 
+  // Keep the ref pointing to the latest version of the handler function
+  lookupHandlerRef.current = handleLookupQr;
+
+  // This effect now ONLY runs when scannedData changes, preventing re-renders.
   React.useEffect(() => {
-    if (scannedData && isJsonString(scannedData)) {
-        handleLookupQr();
+    if (scannedData) {
+        lookupHandlerRef.current();
     }
-  }, [scannedData, handleLookupQr]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scannedData]);
 
 
-  const handleSelectReturnGroup = (group: PendingReturnGroup) => {
-    setSelectedReturnGroup(group);
-  }
-  
+  // This effect controls the scanner hardware and ONLY runs when `isScanning` changes.
+  React.useEffect(() => {
+    const html5QrCode = new Html5Qrcode(qrCodeReaderId);
+
+    const startScanner = async () => {
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, supportedScanTypes: [] },
+          (decodedText) => {
+            // On success, immediately stop scanning and set the data.
+            // This prevents duplicate scans.
+            if (html5QrCode.isScanning) {
+              html5QrCode.stop();
+            }
+            setIsScanning(false);
+            setScannedData(decodedText);
+          },
+          (errorMessage) => { /* Ignore 'not found' errors */ }
+        );
+        if (hasCameraPermission === null || hasCameraPermission === false) {
+           setHasCameraPermission(true);
+        }
+      } catch (err) {
+        setHasCameraPermission(false);
+        // Do not log the "already under transition" error as it's a known race condition we are avoiding.
+        if (!String(err).includes('already under transition')) {
+            console.error("Failed to start QR scanner", err);
+        }
+      }
+    };
+    
+    if (isScanning) {
+        startScanner();
+    }
+
+    return () => {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => {
+            // Errors on stop can happen if it's already stopping. Safe to ignore.
+        });
+      }
+    };
+  }, [isScanning, hasCameraPermission]);
+
+
   const handleConfirmCheckout = async () => {
     if (!sessionInView || !firestore) return;
     setIsProcessing(true);
@@ -192,9 +205,19 @@ export function QrScannerView() {
                 if (itemToUpdate.quantity < quantityToDecrement) throw new Error(`Not enough stock for ${itemToUpdate.name}.`);
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+
+                // **BUG FIX**: Correctly update status based on new quantity.
+                // If quantity becomes 0, it's 'Borrowed'.
+                // If it's > 0 and was 'Borrowed', it becomes 'Available'.
+                // Otherwise, it keeps its existing status (e.g., 'Locked').
+                const oldStatus = itemToUpdate.status;
+                const newStatus = newQuantity > 0
+                    ? (oldStatus === 'Borrowed' ? 'Available' : oldStatus)
+                    : 'Borrowed';
+
                  batch.update(itemDocRef, { 
                     quantity: newQuantity,
-                    status: newQuantity === 0 ? 'Borrowed' : itemToUpdate.status 
+                    status: newStatus
                 });
             } else {
                 throw new Error(`Item with ID ${itemId} not found in inventory.`);
@@ -257,7 +280,8 @@ export function QrScannerView() {
                 const newQuantity = itemToUpdate.quantity + quantityToIncrement;
                 batch.update(itemDocRef, {
                     quantity: newQuantity,
-                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
+                    // **BUG FIX**: Logic mirrored from checkout for consistency
+                    status: newQuantity > 0 ? (itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status) : 'Borrowed'
                 });
             }
         });
@@ -268,7 +292,6 @@ export function QrScannerView() {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process returns. Please try again.' });
     } finally {
         setIsProcessing(false);
-        setSelectedReturnGroup(null);
         handleResetScanner();
     }
   };
@@ -298,45 +321,11 @@ export function QrScannerView() {
                     </div>
                 )}
             </div>
-            {scannedData && !sessionInView && (
+            {scannedData && (!sessionInView && !selectedReturnGroup) && (
                 <div className="mt-4 p-3 rounded-md bg-secondary text-secondary-foreground text-center">
                     <p className="text-sm font-semibold">QR Code Detected! Processing...</p>
                 </div>
             )}
-        </CardContent>
-      </Card>
-
-      <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><CornerDownLeft/> Pending Returns</CardTitle>
-          <CardDescription>
-            Select a student to process their returns in a single batch.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {groupedPendingReturns.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {groupedPendingReturns.map(group => (
-                <button 
-                  key={group.borrowerUserId}
-                  onClick={() => handleSelectReturnGroup(group)}
-                  className="p-4 rounded-lg bg-secondary hover:bg-accent text-left transition-colors flex items-start gap-4"
-                >
-                    <CornerDownLeft className="h-8 w-8 text-green-500 flex-shrink-0 mt-1"/>
-                    <div>
-                        <p className="font-semibold">{group.studentName}</p>
-                        <p className="text-sm text-muted-foreground">{group.records.length} item(s) to return</p>
-                    </div>
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-48 border-2 border-dashed border-border/50 rounded-lg">
-              <CornerDownLeft className="h-12 w-12 mb-4" />
-              <p className="font-semibold">No pending returns</p>
-              <p className="text-sm">Wait for a student to initiate a return.</p>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -386,7 +375,7 @@ export function QrScannerView() {
         </DialogContent>
       </Dialog>
       
-       <Dialog open={!!selectedReturnGroup} onOpenChange={(open) => !open && setSelectedReturnGroup(null)}>
+       <Dialog open={!!selectedReturnGroup} onOpenChange={(open) => !open && handleResetScanner()}>
         <DialogContent>
             <DialogHeader>
                 <DialogTitle className="font-headline">Confirm Return for {selectedReturnGroup?.studentName}</DialogTitle>

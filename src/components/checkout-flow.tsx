@@ -93,7 +93,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       }
     }
     
-    // NEW COMPACT PAYLOAD
     const checkoutPayload = {
       t: 'c', // type: checkout
       u: user.uid,
@@ -125,7 +124,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     
     setIsLoading(true);
 
-    // --- CONFLICT CHECK LOGIC ---
     let hasConflict = false;
     for (const cartItem of cartItems) {
         const { item, quantity: requestedQuantity } = cartItem;
@@ -133,7 +131,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         const allItemsInDB = allItems.find(i => i.id === item.id)
         if (!allItemsInDB) continue;
 
-        // Get all approved, overlapping reservations for this item
         const overlappingReservations = borrowHistory.filter(h => 
             h.itemName === item.name &&
             h.status === 'Approved' &&
@@ -142,7 +139,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             h.startTime < endTime && h.endTime > startTime
         ).length;
 
-        // Get all currently active borrows for this item
         const activeBorrows = borrowHistory.filter(h => 
             h.itemName === item.name && h.status === 'Active'
         ).length;
@@ -165,7 +161,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         setIsLoading(false);
         return;
     }
-    // --- END CONFLICT CHECK ---
 
     const newHistoryRecords: Omit<BorrowHistory, 'id'>[] = [];
 
@@ -212,12 +207,11 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
   const handleCancelQrDialog = () => {
     setIsQrCodeOpen(false);
-    // Do not call onSuccess, so the cart is not cleared.
   }
 
   const handleDoneQrDialog = () => {
     setIsQrCodeOpen(false);
-    onSuccess(); // This clears the cart.
+    onSuccess(); 
   }
 
   if (cartItems.length === 0) {
@@ -232,8 +226,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       </div>
     );
   }
-
-  const totalItemsInCart = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
       <>
@@ -364,7 +356,6 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
   const totalItemsInCart = props.items.reduce((sum, item) => sum + item.quantity, 0);
 
 
-  // Mobile version: FAB + Bottom Sheet
   if (isMobile) {
     return (
       <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
@@ -391,12 +382,10 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     )
   }
 
-  // Hide on desktop if cart is empty
   if (props.items.length === 0) {
       return null
   }
 
-  // Desktop version: Static Sidebar
   return (
     <div className="hidden md:flex w-80 bg-[#141821] p-4 flex-col border-l border-border/50">
       <CheckoutForm {...props} />
