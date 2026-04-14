@@ -1,0 +1,266 @@
+"use client"
+
+import * as React from "react"
+import { useAuth, useFirestore, useUser } from "@/firebase"
+import { doc, updateDoc } from "firebase/firestore"
+import { updatePassword, updateProfile, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth"
+import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Loader2 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { User as UserType } from "@/lib/types"
+
+type EditProfileDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  userProfile: UserType | null;
+  displayRole: string;
+};
+
+// Re-using options from signup page
+const collegeCourses = [
+    "BS in Information Technology",
+    "BS in Electronics Engineering",
+    "BS in Computer Engineering",
+    "BS in Industrial Engineering",
+  ];
+const shsStrands = [
+    "STEM (Science, Technology, Engineering, and Mathematics)",
+    "ABM (Accountancy, Business, and Management)",
+    "HUMSS (Humanities and Social Sciences)",
+    "GAS (General Academic Strand)",
+    "TVL (Technical-Vocational-Livelihood)",
+];
+const collegeYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
+const shsYearLevels = ["Grade 11", "Grade 12"];
+const departments = [
+  "Science Department",
+  "Social Studies",
+  "English Department",
+  "College of Computer Studies",
+  "IT Services",
+  "Facilities Management",
+];
+
+
+export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole }: EditProfileDialogProps) {
+  const { user } = useUser();
+  const auth = useAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [isLoading, setIsLoading] = React.useState(false);
+  
+  // Form state
+  const [displayName, setDisplayName] = React.useState("");
+  // Student fields
+  const [educationLevel, setEducationLevel] = React.useState("");
+  const [idNumber, setIdNumber] = React.useState("");
+  const [courseOrStrand, setCourseOrStrand] = React.useState("");
+  const [yearLevel, setYearLevel] = React.useState("");
+  // Staff/Teacher fields
+  const [department, setDepartment] = React.useState("");
+  const [employeeId, setEmployeeId] = React.useState("");
+
+  // Password fields
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = React.useState("");
+
+  React.useEffect(() => {
+    if (userProfile && open) {
+      setDisplayName(userProfile.displayName || "");
+      if (displayRole === 'Student') {
+          setIdNumber(userProfile.idNumber || "");
+          setEducationLevel(userProfile.educationLevel || "");
+          setCourseOrStrand(userProfile.courseOrStrand || "");
+          setYearLevel(userProfile.yearLevel || "");
+      } else {
+          setDepartment(userProfile.department || "");
+          setEmployeeId(userProfile.employeeId || "");
+      }
+    } else if (!open) {
+        // Reset fields when closed
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+    }
+  }, [userProfile, open, displayRole]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user || !firestore) return;
+
+    if (newPassword && newPassword !== confirmNewPassword) {
+      toast({ variant: "destructive", title: "Passwords do not match." });
+      return;
+    }
+    if (newPassword && !currentPassword) {
+      toast({ variant: "destructive", title: "Current Password Required", description: "Please enter your current password to set a new one." });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // 1. Update password if provided
+      if (newPassword && currentPassword && user.email) {
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, newPassword);
+        toast({ title: "Password Updated Successfully" });
+      }
+
+      // 2. Update display name in Auth if changed
+      if (user.displayName !== displayName) {
+          await updateProfile(user, { displayName });
+      }
+
+      // 3. Update Firestore profile
+      const userDocRef = doc(firestore, "users", user.uid);
+      const updatedProfileData: Partial<UserType> = { displayName };
+
+      if (displayRole === 'Student') {
+        updatedProfileData.idNumber = idNumber;
+        updatedProfileData.educationLevel = educationLevel as 'college' | 'shs';
+        updatedProfileData.courseOrStrand = courseOrStrand;
+        updatedProfileData.yearLevel = yearLevel;
+      } else {
+        updatedProfileData.department = department;
+        updatedProfileData.employeeId = employeeId;
+      }
+      
+      await updateDoc(userDocRef, updatedProfileData);
+
+      toast({ title: "Profile Updated!", description: "Your information has been saved." });
+      onOpenChange(false);
+
+    } catch (error: any) {
+      console.error(error);
+      let description = "An unexpected error occurred.";
+      if (error.code === 'auth/wrong-password') {
+          description = "The current password you entered is incorrect.";
+      } else if (error.code === 'auth/too-many-requests') {
+          description = "Too many attempts. Please try again later.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "Password is too weak. It must be at least 6 characters long.";
+      }
+      toast({ variant: "destructive", title: "Operation Failed", description });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderStudentFields = () => (
+    <>
+      <div className="grid gap-2">
+          <Label htmlFor="edit-id-number">ID Number</Label>
+          <Input id="edit-id-number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
+      </div>
+      <div className="grid gap-2">
+          <Label htmlFor="edit-education-level">Education Level</Label>
+          <Select value={educationLevel} onValueChange={(value: "college" | "shs") => { setEducationLevel(value); setCourseOrStrand(""); setYearLevel(""); }}>
+              <SelectTrigger id="edit-education-level"><SelectValue placeholder="Select education level" /></SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="college">College</SelectItem>
+                  <SelectItem value="shs">Senior High School</SelectItem>
+              </SelectContent>
+          </Select>
+      </div>
+
+      {educationLevel && (
+          <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                  <Label htmlFor="edit-course-strand">{educationLevel === 'college' ? 'Course' : 'Strand'}</Label>
+                  <Select value={courseOrStrand} onValueChange={setCourseOrStrand}>
+                      <SelectTrigger id="edit-course-strand"><SelectValue placeholder={`Select ${educationLevel === 'college' ? 'course' : 'strand'}`} /></SelectTrigger>
+                      <SelectContent>
+                          {(educationLevel === 'college' ? collegeCourses : shsStrands).map(option => (
+                              <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
+              <div className="grid gap-2">
+                  <Label htmlFor="edit-year-level">Year Level</Label>
+                  <Select value={yearLevel} onValueChange={setYearLevel}>
+                      <SelectTrigger id="edit-year-level"><SelectValue placeholder="Select year level" /></SelectTrigger>
+                      <SelectContent>
+                          {(educationLevel === 'college' ? collegeYearLevels : shsYearLevels).map(option => (
+                              <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+              </div>
+          </div>
+      )}
+    </>
+  );
+
+  const renderStaffFields = () => (
+    <>
+      <div className="grid gap-2">
+        <Label htmlFor="edit-department">Department</Label>
+        <Select value={department} onValueChange={setDepartment}>
+          <SelectTrigger id="edit-department"><SelectValue placeholder="Select your department" /></SelectTrigger>
+          <SelectContent>
+            {departments.map(dept => ( <SelectItem key={dept} value={dept}>{dept}</SelectItem> ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="edit-employeeId">Employee ID</Label>
+        <Input id="edit-employeeId" value={employeeId} onChange={e => setEmployeeId(e.target.value)} />
+      </div>
+    </>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogDescription>Make changes to your profile here. Click save when you're done.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="edit-displayName">Full Name</Label>
+                    <Input id="edit-displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+                </div>
+                
+                {displayRole === 'Student' ? renderStudentFields() : renderStaffFields()}
+
+                <div className="border-t pt-4 space-y-4">
+                    <p className="text-sm text-muted-foreground">Optionally, you can change your password below.</p>
+                    <div className="grid gap-2">
+                        <Label htmlFor="current-password">Current Password</Label>
+                        <Input id="current-password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="new-password">New Password</Label>
+                            <Input id="new-password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                            <Input id="confirm-new-password" type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <DialogFooter className="pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>Cancel</Button>
+                <Button type="submit" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
+                </Button>
+            </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
