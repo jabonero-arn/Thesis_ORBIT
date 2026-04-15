@@ -158,19 +158,12 @@ export default function PrimaryCustodianDashboardPage() {
         const quantity = parseInt(formData.get("quantity") as string, 10);
         const statusFromForm = formData.get("status") as InventoryItem['status'];
 
-        let newStatus = statusFromForm;
-        if (editingItem?.status === 'Borrowed' && quantity > 0) {
-            newStatus = 'Available';
-        } else if (quantity === 0) {
-            newStatus = 'Borrowed';
-        }
-
         const itemData = {
             name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             quantity: quantity,
-            status: newStatus,
+            status: quantity === 0 ? 'Borrowed' : statusFromForm,
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
             imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
@@ -299,8 +292,8 @@ export default function PrimaryCustodianDashboardPage() {
             case 'dashboard':
                  const totalItemTypes = dashboardItems.length;
                  const totalStock = dashboardItems.reduce((sum, item) => sum + item.quantity, 0);
-                 const borrowedItemsCount = dashboardHistory.filter(h => h.status === 'Active').length;
-                 const reservedItemsCount = dashboardHistory.filter(h => h.status === 'Approved').length;
+                 const borrowedItemsCount = borrowHistory.filter(h => h.status === 'Active').length;
+                 const reservedItemsCount = borrowHistory.filter(h => h.status === 'Approved').length;
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -600,5 +593,7 @@ export default function PrimaryCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
 
     
