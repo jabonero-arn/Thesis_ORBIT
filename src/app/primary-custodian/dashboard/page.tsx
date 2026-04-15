@@ -155,12 +155,15 @@ export default function PrimaryCustodianDashboardPage() {
 
         const formData = new FormData(event.currentTarget);
         const name = formData.get("name") as string;
+        const quantity = parseInt(formData.get("quantity") as string, 10);
+        const statusFromForm = formData.get("status") as InventoryItem['status'];
+
         const itemData = {
             name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
-            quantity: parseInt(formData.get("quantity") as string, 10),
-            status: formData.get("status") as InventoryItem['status'],
+            quantity: quantity,
+            status: quantity === 0 ? 'Borrowed' : statusFromForm,
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
             imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
