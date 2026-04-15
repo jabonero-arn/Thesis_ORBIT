@@ -591,7 +591,7 @@ export default function AdminDashboardPage() {
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
-                                <Select name="status" defaultValue={editingItem?.status || 'Available'} required>
+                                <Select name="status" defaultValue={editingItem?.status === 'Borrowed' ? 'Available' : (editingItem?.status || 'Available')} required>
                                     <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Available">Available</SelectItem>
