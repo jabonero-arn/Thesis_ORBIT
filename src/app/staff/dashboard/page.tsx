@@ -163,12 +163,19 @@ export default function StaffDashboardPage() {
         const quantity = parseInt(formData.get("quantity") as string, 10);
         const statusFromForm = formData.get("status") as InventoryItem['status'];
         
+        let newStatus = statusFromForm;
+        if (editingItem?.status === 'Borrowed' && quantity > 0) {
+            newStatus = 'Available';
+        } else if (quantity === 0) {
+            newStatus = 'Borrowed';
+        }
+
         const itemData = {
             name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             quantity: quantity,
-            status: quantity === 0 ? 'Borrowed' : statusFromForm,
+            status: newStatus,
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
             imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
@@ -755,3 +762,5 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
