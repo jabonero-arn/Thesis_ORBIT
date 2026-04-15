@@ -139,8 +139,8 @@ export default function Home() {
 
     const isApproved = approvedForBorrowItemNames.has(item.name);
     
-    // Case 1: Item is "Available" and has stock
-    if (item.status === "Available" && item.quantity > 0) {
+    // Case 1: Item is "Available" (or in a faulty "Borrowed" state with stock) and has stock
+    if ((item.status === "Available" || (item.status === "Borrowed" && item.quantity > 0)) && item.quantity > 0) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
         return;
     }
@@ -162,7 +162,7 @@ export default function Home() {
         return;
     }
     
-    // Case 4: Any other unavailable case (borrowed, no stock, etc.)
+    // Case 4: Any other unavailable case (borrowed with zero stock, etc.)
     toast({
         variant: "destructive",
         title: "Item Unavailable",

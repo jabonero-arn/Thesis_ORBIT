@@ -35,7 +35,8 @@ export function ItemCard({
       // In management view, the card isn't for selection.
       return;
     }
-    if (isSelectionEnabled && item.status !== 'Borrowed' && !isPending) {
+    // Allow selection if not 'Borrowed', OR if 'Borrowed' but has quantity (handles data inconsistency)
+    if (isSelectionEnabled && (item.status !== 'Borrowed' || item.quantity > 0) && !isPending) {
       onSelect();
     }
   };
@@ -48,9 +49,9 @@ export function ItemCard({
       onClick={handleCardClick}
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
-        (isSelectionEnabled && item.status !== 'Borrowed' && !isManagementView && !isPending) && "cursor-pointer",
+        (isSelectionEnabled && (item.status !== 'Borrowed' || item.quantity > 0) && !isManagementView && !isPending) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        (item.status === "Borrowed" || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed"
+        ((item.status === "Borrowed" && item.quantity === 0) || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed"
       )}
     >
       <div className="relative aspect-video overflow-hidden">
