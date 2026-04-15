@@ -57,8 +57,6 @@ export function QrScannerView() {
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isScanning, setIsScanning] = React.useState(true);
 
-  // Use a ref to hold the lookup handler. This prevents the scanner's useEffect
-  // from re-running every time the underlying data changes.
   const lookupHandlerRef = React.useRef<() => void>(() => {});
 
   const handleResetScanner = () => {
@@ -73,8 +71,7 @@ export function QrScannerView() {
     return true;
   };
 
-  // The actual lookup logic, defined inside the component to access latest state.
-  const handleLookupQr = () => {
+  lookupHandlerRef.current = () => {
     if (!isJsonString(scannedData)) {
       toast({ variant: 'destructive', title: 'Invalid QR Code', description: 'The scanned data is not a valid request.' });
       handleResetScanner();
@@ -84,7 +81,6 @@ export function QrScannerView() {
     try {
         const payload: ScannedData = JSON.parse(scannedData);
         
-        // Handle CHECKOUT payload
         if (payload.t === 'c' && payload.u && payload.i) {
             const student = allUsers.find(u => u.id === payload.u);
             if (!student) throw new Error(`Student with ID ${payload.u} not found.`);
@@ -104,7 +100,6 @@ export function QrScannerView() {
                 items: displayItems,
                 originalPayload: payload,
             });
-        // Handle RETURN payload
         } else if (payload.t === 'r' && payload.ids) {
             const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && h.status === 'Pending Return');
             if (recordsToReturn.length === 0) {
@@ -131,10 +126,6 @@ export function QrScannerView() {
     }
   };
 
-  // Keep the ref pointing to the latest version of the handler function
-  lookupHandlerRef.current = handleLookupQr;
-
-  // This effect now ONLY runs when scannedData changes, preventing re-renders.
   React.useEffect(() => {
     if (scannedData) {
         lookupHandlerRef.current();
@@ -143,50 +134,45 @@ export function QrScannerView() {
   }, [scannedData]);
 
 
-  // This effect controls the scanner hardware and ONLY runs when `isScanning` changes.
   React.useEffect(() => {
     const html5QrCode = new Html5Qrcode(qrCodeReaderId);
-
-    const startScanner = async () => {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, supportedScanTypes: [] },
-          (decodedText) => {
-            // On success, immediately stop scanning and set the data.
-            // This prevents duplicate scans.
-            if (html5QrCode.isScanning) {
-              html5QrCode.stop();
-            }
-            setIsScanning(false);
-            setScannedData(decodedText);
-          },
-          (errorMessage) => { /* Ignore 'not found' errors */ }
-        );
-        if (hasCameraPermission === null || hasCameraPermission === false) {
-           setHasCameraPermission(true);
-        }
-      } catch (err) {
-        setHasCameraPermission(false);
-        // Do not log the "already under transition" error as it's a known race condition we are avoiding.
-        if (!String(err).includes('already under transition')) {
-            console.error("Failed to start QR scanner", err);
-        }
-      }
-    };
     
     if (isScanning) {
-        startScanner();
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, supportedScanTypes: [] },
+            (decodedText, decodedResult) => {
+                // On success, do not call stop(). Just update state.
+                // The cleanup function will handle stopping the scanner.
+                setIsScanning(false);
+                setScannedData(decodedText);
+            },
+            (errorMessage) => { /* ignore */ }
+        )
+        .then(() => {
+            setHasCameraPermission(true);
+        })
+        .catch((err) => {
+            setHasCameraPermission(false);
+            // Do not log common race conditions or benign errors.
+            const errStr = String(err);
+            if (!errStr.includes('transition') && !errStr.includes('not found') && !errStr.includes('play()')) {
+                 console.error("Failed to start QR scanner", err);
+            }
+        });
     }
 
+    // The cleanup function is the ONLY place we should call stop().
+    // It runs when the component unmounts OR when `isScanning` changes.
     return () => {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().catch(err => {
-            // Errors on stop can happen if it's already stopping. Safe to ignore.
-        });
-      }
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(err => {
+                // Ignore cleanup errors as the component might be unmounting
+                // or the scanner is already in a stopped state.
+            });
+        }
     };
-  }, [isScanning, hasCameraPermission]);
+  }, [isScanning]);
 
 
   const handleConfirmCheckout = async () => {
@@ -206,10 +192,6 @@ export function QrScannerView() {
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
 
-                // **BUG FIX**: Correctly update status based on new quantity.
-                // If quantity becomes 0, it's 'Borrowed'.
-                // If it's > 0 and was 'Borrowed', it becomes 'Available'.
-                // Otherwise, it keeps its existing status (e.g., 'Locked').
                 const oldStatus = itemToUpdate.status;
                 const newStatus = newQuantity > 0
                     ? (oldStatus === 'Borrowed' ? 'Available' : oldStatus)
@@ -280,7 +262,6 @@ export function QrScannerView() {
                 const newQuantity = itemToUpdate.quantity + quantityToIncrement;
                 batch.update(itemDocRef, {
                     quantity: newQuantity,
-                    // **BUG FIX**: Logic mirrored from checkout for consistency
                     status: newQuantity > 0 ? (itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status) : 'Borrowed'
                 });
             }
