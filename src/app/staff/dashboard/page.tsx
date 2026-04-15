@@ -132,8 +132,23 @@ export default function StaffDashboardPage() {
     
     const handleQuantityChange = (itemId: string, newQuantity: number) => {
         if (newQuantity < 0 || !firestore) return;
+
+        const itemToUpdate = items.find(i => i.id === itemId);
+        if (!itemToUpdate) return;
+        
         const itemDocRef = doc(firestore, 'inventory_items', itemId);
-        updateDoc(itemDocRef, { quantity: newQuantity });
+        
+        const oldStatus = itemToUpdate.status;
+        const newStatus = newQuantity > 0
+            ? (oldStatus === 'Borrowed' ? 'Available' : oldStatus)
+            : 'Borrowed';
+
+        const updateData: any = { quantity: newQuantity };
+        if (newStatus !== oldStatus) {
+            updateData.status = newStatus;
+        }
+
+        updateDoc(itemDocRef, updateData);
     }
 
      const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
