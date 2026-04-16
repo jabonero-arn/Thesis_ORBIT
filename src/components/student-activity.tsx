@@ -71,7 +71,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const historyLog = borrowHistory
-        .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || h.status === 'Pending Return' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
+        .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && h.startTime))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
@@ -137,6 +137,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                     variant="outline" 
                                                     className="h-7 w-7" 
                                                     onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, group.length)}
+                                                    disabled={returnQuantity <= 0}
                                                 >
                                                     <Minus className="h-4 w-4" />
                                                 </Button>
@@ -146,6 +147,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                     variant="outline" 
                                                     className="h-7 w-7" 
                                                     onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, group.length)}
+                                                    disabled={returnQuantity >= group.length}
                                                 >
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
@@ -268,3 +270,5 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
 
     return null;
 }
+
+    

@@ -76,7 +76,7 @@ export default function Home() {
 
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
-  const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory[]>([]);
+  const [itemsToReturn, setItemsToReturn] = React.useState<BorrowHistory[]>([]);
 
   const studentBorrowHistory = React.useMemo(() => {
     if (!user?.uid) return [];
@@ -198,7 +198,7 @@ export default function Home() {
   
   const handleInitiateReturn = (records: BorrowHistory[]) => {
     if (!records.length) return;
-    setItemToReturn(records);
+    setItemsToReturn(records);
   }
 
   const handleCancelReservation = async (historyId: string) => {
@@ -480,16 +480,16 @@ export default function Home() {
           onConfirm={handleConfirmRequest}
         />
         
-        <Dialog open={itemToReturn.length > 0} onOpenChange={(open) => !open && setItemToReturn([])}>
+        <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemToReturn.length} item(s)</DialogTitle>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
                     <DialogDescription>Present this QR code to lab staff to process your return.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
-                    {itemToReturn.length > 0 && <Image
+                    {itemsToReturn.length > 0 && <Image
                         src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
-                            JSON.stringify({ t: 'r', ids: itemToReturn.map(i => i.id) })
+                            JSON.stringify({ t: 'r', ids: itemsToReturn.map(i => i.id) })
                         )}`}
                         alt="Return QR Code"
                         width={256}
@@ -499,7 +499,7 @@ export default function Home() {
                     />}
                 </div>
                 <DialogFooter>
-                    <Button onClick={() => setItemToReturn([])}>Done</Button>
+                    <Button onClick={() => setItemsToReturn([])}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -507,3 +507,5 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    

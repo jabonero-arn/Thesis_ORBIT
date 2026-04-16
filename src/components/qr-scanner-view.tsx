@@ -101,7 +101,7 @@ export function QrScannerView() {
                 originalPayload: payload,
             });
         } else if (payload.t === 'r' && payload.ids) {
-            const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && (h.status === 'Active' || h.status === 'Pending Return'));
+            const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && h.status === 'Active');
             if (recordsToReturn.length === 0) {
                  toast({ variant: 'destructive', title: 'Invalid Return', description: 'No eligible items to return found for this QR code. The item may have already been returned or is in an invalid state.' });
                  handleResetScanner();
@@ -154,7 +154,6 @@ export function QrScannerView() {
         })
         .catch((err) => {
             setHasCameraPermission(false);
-            // Do not log common race conditions or benign errors like permission denied.
             const errStr = String(err);
             if (
               !errStr.includes("NotAllowedError") &&
@@ -400,7 +399,5 @@ export function QrScannerView() {
     </div>
   )
 }
-
-    
 
     
