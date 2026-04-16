@@ -418,7 +418,6 @@ export default function StaffDashboardPage() {
     );
 
     const renderContent = () => {
-        const recentlyReturned = borrowHistory.filter(h => h.status === 'Returned').slice(0, 5);
         switch (activeView) {
             case 'borrow':
                 return (
@@ -444,23 +443,45 @@ export default function StaffDashboardPage() {
                     </Card>
                 );
             case 'transactions':
+                const pendingReturns = borrowHistory.filter(h => h.status === 'Pending Return');
                 return (
                      <div className="space-y-6">
                         {transactionSubView === 'reservations' && <PendingReservationsView />}
                         {transactionSubView === 'borrowed' && <CurrentlyBorrowedView />}
                          <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Recent Activity</CardTitle><CardDescription>A feed of the latest return transactions.</CardDescription></CardHeader>
+                            <CardHeader>
+                                <CardTitle>Pending Returns</CardTitle>
+                                <CardDescription>Confirm items that students have initiated for return.</CardDescription>
+                            </CardHeader>
                             <CardContent>
-                                {recentlyReturned.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {recentlyReturned.map(r => (
-                                            <li key={r.id} className="text-sm text-muted-foreground flex items-center gap-2">
-                                               <CornerDownLeft className="h-4 w-4 text-green-500" />
-                                               <span><span className="font-semibold text-foreground">{r.studentName}</span> returned <span className="font-semibold text-foreground">{r.itemName}</span>.</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : <p className="text-muted-foreground text-center p-4">No recent returns.</p>}
+                                {pendingReturns.length > 0 ? (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Student</TableHead>
+                                                <TableHead>Item</TableHead>
+                                                <TableHead>Date Initiated</TableHead>
+                                                <TableHead className="text-right">Action</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {pendingReturns.map(r => (
+                                                <TableRow key={r.id}>
+                                                    <TableCell>{r.studentName}</TableCell>
+                                                    <TableCell>{r.itemName}</TableCell>
+                                                    <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button size="sm" onClick={() => handleReturnItem(r.id)}>
+                                                            <Check className="mr-2 h-4 w-4" /> Confirm Return
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                ) : (
+                                    <p className="text-muted-foreground text-center p-4">No items are currently pending return.</p>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
