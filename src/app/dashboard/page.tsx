@@ -500,7 +500,9 @@ export default function Home() {
                 </DialogHeader>
                 <div className="flex justify-center py-4">
                     {itemToReturn.length > 0 && <Image
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${JSON.stringify({ returnIds: itemToReturn.map(i => i.id) })}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                            JSON.stringify({ t: 'r', ids: itemToReturn.map(i => i.id) })
+                        )}`}
                         alt="Return QR Code"
                         width={256}
                         height={256}
