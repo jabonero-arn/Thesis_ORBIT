@@ -51,7 +51,7 @@ const departments = [
 ];
 
 type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history' | 'scanner';
-type TransactionSubView = 'reservations' | 'borrowed' | 'returns';
+type TransactionSubView = 'reservations' | 'borrowed';
 
 export default function StaffDashboardPage() {
     const router = useRouter()
@@ -97,25 +97,6 @@ export default function StaffDashboardPage() {
     // Form state
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
-
-    const groupedPendingReturns = React.useMemo(() => {
-        const groups: { [key: string]: { studentName: string; itemName: string; records: BorrowHistory[] } } = {};
-        const pending = borrowHistory.filter(h => h.status === 'Pending Return');
-        
-        pending.forEach(record => {
-            const key = `${record.borrowerUserId || record.studentName}-${record.itemName}`; // Use studentName as fallback
-            if (!groups[key]) {
-                groups[key] = {
-                    studentName: record.studentName,
-                    itemName: record.itemName,
-                    records: []
-                };
-            }
-            groups[key].records.push(record);
-        });
-
-        return Object.values(groups);
-    }, [borrowHistory]);
 
     // Handlers
     const handleDepartmentSelect = (deptId: string) => {
@@ -236,41 +217,6 @@ export default function StaffDashboardPage() {
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
-        }
-    }
-    
-    const handleConfirmReturnGroup = async (records: BorrowHistory[]) => {
-        if (!firestore || records.length === 0) return;
-
-        const batch = writeBatch(firestore);
-        const firstRecord = records[0];
-        const itemToUpdate = items.find(item => item.name === firstRecord.itemName);
-
-        if (!itemToUpdate) {
-            toast({ variant: 'destructive', title: 'Error', description: `Item "${firstRecord.itemName}" not found in inventory.` });
-            return;
-        }
-
-        // Update all history records in the group
-        records.forEach(record => {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Returned' });
-        });
-
-        // Update inventory quantity
-        const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-        const newQuantity = itemToUpdate.quantity + records.length;
-        batch.update(itemDocRef, {
-            quantity: newQuantity,
-            status: newQuantity > 0 ? 'Available' : 'Borrowed'
-        });
-
-        try {
-            await batch.commit();
-            toast({ title: "Items Returned", description: `${records.length} x "${firstRecord.itemName}" from ${firstRecord.studentName} confirmed.` });
-        } catch (e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not process group return.' });
         }
     }
     
@@ -400,45 +346,6 @@ export default function StaffDashboardPage() {
         </Card>
     );
 
-    const PendingReturnsView = () => (
-        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-            <CardHeader>
-                <CardTitle>Pending Returns</CardTitle>
-                <CardDescription>Confirm items that students have initiated for return.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {groupedPendingReturns.length > 0 ? (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Student</TableHead>
-                                <TableHead>Item</TableHead>
-                                <TableHead>Quantity</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {groupedPendingReturns.map(group => (
-                                <TableRow key={`${group.studentName}-${group.itemName}`}>
-                                    <TableCell>{group.studentName}</TableCell>
-                                    <TableCell>{group.itemName}</TableCell>
-                                    <TableCell>{group.records.length}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button size="sm" onClick={() => handleConfirmReturnGroup(group.records)}>
-                                            <Check className="mr-2 h-4 w-4" /> Confirm Return
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                ) : (
-                    <p className="text-muted-foreground text-center p-4">No items are currently pending return.</p>
-                )}
-            </CardContent>
-        </Card>
-    );
-
     const InventoryTable = ({ items: tableItems }: { items: InventoryItem[] }) => (
         <Table>
             <TableHeader>
@@ -515,7 +422,6 @@ export default function StaffDashboardPage() {
                      <div className="space-y-6">
                         {transactionSubView === 'reservations' && <PendingReservationsView />}
                         {transactionSubView === 'borrowed' && <CurrentlyBorrowedView />}
-                        {transactionSubView === 'returns' && <PendingReturnsView />}
                     </div>
                 );
             case 'history':
@@ -541,15 +447,13 @@ export default function StaffDashboardPage() {
             );
         }
         if (activeView === 'transactions') {
-            const labels = {
+            const labels: {[key in TransactionSubView]: string} = {
                 borrowed: "Currently Borrowed",
                 reservations: "Pending Reservations",
-                returns: "Pending Returns",
             };
-            const icons = {
+            const icons: {[key in TransactionSubView]: React.ReactNode} = {
                 borrowed: <PackageCheck />,
                 reservations: <Hourglass />,
-                returns: <CornerDownLeft />,
             };
             const label = labels[transactionSubView];
             const icon = icons[transactionSubView];
@@ -614,7 +518,6 @@ export default function StaffDashboardPage() {
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setTransactionSubView('reservations'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
                         <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                         <li><button onClick={() => {setTransactionSubView('returns'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'returns' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><CornerDownLeft className="h-5 w-5" /> Pending Returns</button></li>
                     </ul>
                 </div>
             )}
@@ -703,7 +606,6 @@ export default function StaffDashboardPage() {
                                     <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
                                         <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                                        <li><button onClick={() => setTransactionSubView('returns')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'returns' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><CornerDownLeft className="h-5 w-5" /> Pending Returns</button></li>
                                     </ul>
                                 </div>
                             </div>
