@@ -4,7 +4,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { addDoc, collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
     PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X, Loader2
@@ -97,6 +97,25 @@ export default function StaffDashboardPage() {
     // Form state
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+
+    const groupedPendingReturns = React.useMemo(() => {
+        const groups: { [key: string]: { studentName: string; itemName: string; records: BorrowHistory[] } } = {};
+        const pending = borrowHistory.filter(h => h.status === 'Pending Return');
+        
+        pending.forEach(record => {
+            const key = `${record.borrowerUserId || record.studentName}-${record.itemName}`; // Use studentName as fallback
+            if (!groups[key]) {
+                groups[key] = {
+                    studentName: record.studentName,
+                    itemName: record.itemName,
+                    records: []
+                };
+            }
+            groups[key].records.push(record);
+        });
+
+        return Object.values(groups);
+    }, [borrowHistory]);
 
     // Handlers
     const handleDepartmentSelect = (deptId: string) => {
@@ -220,28 +239,38 @@ export default function StaffDashboardPage() {
         }
     }
     
-    const handleReturnItem = async (historyId: string) => {
-        if(!firestore) return;
-        const historyRecord = borrowHistory.find(h => h.id === historyId);
-        if (!historyRecord) return;
-        
+    const handleConfirmReturnGroup = async (records: BorrowHistory[]) => {
+        if (!firestore || records.length === 0) return;
+
+        const batch = writeBatch(firestore);
+        const firstRecord = records[0];
+        const itemToUpdate = items.find(item => item.name === firstRecord.itemName);
+
+        if (!itemToUpdate) {
+            toast({ variant: 'destructive', title: 'Error', description: `Item "${firstRecord.itemName}" not found in inventory.` });
+            return;
+        }
+
+        // Update all history records in the group
+        records.forEach(record => {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(historyDocRef, { status: 'Returned' });
+        });
+
+        // Update inventory quantity
+        const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+        const newQuantity = itemToUpdate.quantity + records.length;
+        batch.update(itemDocRef, {
+            quantity: newQuantity,
+            status: newQuantity > 0 ? 'Available' : 'Borrowed'
+        });
+
         try {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Returned' });
-            
-            const itemToUpdate = items.find(item => item.name === historyRecord.itemName);
-            if (itemToUpdate) {
-                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                const newQuantity = itemToUpdate.quantity + 1;
-                await updateDoc(itemDocRef, { 
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
-                });
-            }
-            toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
-        } catch(e) {
+            await batch.commit();
+            toast({ title: "Items Returned", description: `${records.length} x "${firstRecord.itemName}" from ${firstRecord.studentName} confirmed.` });
+        } catch (e) {
             console.error(e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not process return.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not process group return.' });
         }
     }
     
@@ -443,7 +472,6 @@ export default function StaffDashboardPage() {
                     </Card>
                 );
             case 'transactions':
-                const pendingReturns = borrowHistory.filter(h => h.status === 'Pending Return');
                 return (
                      <div className="space-y-6">
                         {transactionSubView === 'reservations' && <PendingReservationsView />}
@@ -454,24 +482,24 @@ export default function StaffDashboardPage() {
                                 <CardDescription>Confirm items that students have initiated for return.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                {pendingReturns.length > 0 ? (
+                                {groupedPendingReturns.length > 0 ? (
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Student</TableHead>
                                                 <TableHead>Item</TableHead>
-                                                <TableHead>Date Initiated</TableHead>
+                                                <TableHead>Quantity</TableHead>
                                                 <TableHead className="text-right">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {pendingReturns.map(r => (
-                                                <TableRow key={r.id}>
-                                                    <TableCell>{r.studentName}</TableCell>
-                                                    <TableCell>{r.itemName}</TableCell>
-                                                    <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
+                                            {groupedPendingReturns.map(group => (
+                                                <TableRow key={`${group.studentName}-${group.itemName}`}>
+                                                    <TableCell>{group.studentName}</TableCell>
+                                                    <TableCell>{group.itemName}</TableCell>
+                                                    <TableCell>{group.records.length}</TableCell>
                                                     <TableCell className="text-right">
-                                                        <Button size="sm" onClick={() => handleReturnItem(r.id)}>
+                                                        <Button size="sm" onClick={() => handleConfirmReturnGroup(group.records)}>
                                                             <Check className="mr-2 h-4 w-4" /> Confirm Return
                                                         </Button>
                                                     </TableCell>
@@ -776,9 +804,3 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
-
-    
-
-    
