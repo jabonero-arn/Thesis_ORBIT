@@ -196,21 +196,9 @@ export default function Home() {
     }
   }
   
-  const handleInitiateReturn = async (records: BorrowHistory[]) => {
-    if (!records.length || !firestore) return;
-
-    try {
-        const batch = writeBatch(firestore);
-        records.forEach(record => {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Pending Return' });
-        });
-        await batch.commit();
-        setItemToReturn(records);
-    } catch (error) {
-        console.error("Error initiating return:", error);
-        toast({ variant: 'destructive', title: 'Failed to initiate return' });
-    }
+  const handleInitiateReturn = (records: BorrowHistory[]) => {
+    if (!records.length) return;
+    setItemToReturn(records);
   }
 
   const handleCancelReservation = async (historyId: string) => {

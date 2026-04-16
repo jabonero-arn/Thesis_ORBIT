@@ -1,3 +1,4 @@
+
 'use client'
 
 import type { BorrowHistory } from "@/lib/types"
@@ -33,7 +34,7 @@ const getStatusBadge = (record: BorrowHistory) => {
              }
              return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>;
         case 'Pending Return':
-            return <Badge variant="secondary">Pending Return</Badge>
+            return <Badge variant="secondary">Processing Return...</Badge>
         case 'Returned':
             return <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Returned</Badge>
         case 'Denied':
@@ -48,7 +49,7 @@ const getStatusBadge = (record: BorrowHistory) => {
 export function StudentActivity({ borrowHistory, onReturn, view, onCancelReservation }: StudentActivityProps) {
     const [selectedToReturn, setSelectedToReturn] = React.useState<Map<string, number>>(new Map());
     
-    const activeBorrows = borrowHistory.filter(h => h.status === 'Active' || h.status === 'Pending Return');
+    const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
     
     const groupedActiveBorrows = React.useMemo(() => {
         const groups: { [itemName: string]: BorrowHistory[] } = {};
@@ -70,7 +71,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const historyLog = borrowHistory
-        .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
+        .filter(h => h.status === 'Returned' || h.status === 'Cancelled' || h.status === 'Pending Return' || (h.status === 'Denied' && !h.startTime && !h.teacherId))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
@@ -119,9 +120,6 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                 const firstRecord = group[0];
                                 if (!firstRecord) return null;
 
-                                const selectableItems = group.filter(r => r.status === 'Active');
-                                const pendingReturnItems = group.filter(r => r.status === 'Pending Return');
-                                
                                 const returnQuantity = selectedToReturn.get(firstRecord.itemName) || 0;
 
                                 return (
@@ -129,8 +127,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                         <div className="flex items-center gap-4">
                                             <div>
                                                 <p className="font-semibold">{firstRecord.itemName}</p>
-                                                <p className="text-sm text-muted-foreground">Borrowed: {group.length} | Available to return: {selectableItems.length}</p>
-                                                {pendingReturnItems.length > 0 && <p className="text-xs text-amber-400">Pending return: {pendingReturnItems.length}</p>}
+                                                <p className="text-sm text-muted-foreground">Borrowed: {group.length}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -139,8 +136,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                     size="icon" 
                                                     variant="outline" 
                                                     className="h-7 w-7" 
-                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, selectableItems.length)}
-                                                    disabled={selectableItems.length === 0}
+                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, group.length)}
                                                 >
                                                     <Minus className="h-4 w-4" />
                                                 </Button>
@@ -149,8 +145,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                     size="icon" 
                                                     variant="outline" 
                                                     className="h-7 w-7" 
-                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, selectableItems.length)}
-                                                    disabled={selectableItems.length === 0}
+                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, group.length)}
                                                 >
                                                     <Plus className="h-4 w-4" />
                                                 </Button>
