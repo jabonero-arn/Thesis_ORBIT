@@ -101,9 +101,9 @@ export function QrScannerView() {
                 originalPayload: payload,
             });
         } else if (payload.t === 'r' && payload.ids) {
-            const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && h.status === 'Active');
+            const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && (h.status === 'Active' || h.status === 'Pending Return'));
             if (recordsToReturn.length === 0) {
-                 toast({ variant: 'destructive', title: 'Invalid Return', description: 'No active items to return found for this QR code. The item may have already been returned.' });
+                 toast({ variant: 'destructive', title: 'Invalid Return', description: 'No eligible items to return found for this QR code. The item may have already been returned or is in an invalid state.' });
                  handleResetScanner();
                  return;
             }
@@ -395,3 +395,5 @@ export function QrScannerView() {
     </div>
   )
 }
+
+    
