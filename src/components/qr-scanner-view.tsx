@@ -154,10 +154,15 @@ export function QrScannerView() {
         })
         .catch((err) => {
             setHasCameraPermission(false);
-            // Do not log common race conditions or benign errors.
+            // Do not log common race conditions or benign errors like permission denied.
             const errStr = String(err);
-            if (!errStr.includes('transition') && !errStr.includes('not found') && !errStr.includes('play()')) {
-                 console.error("Failed to start QR scanner", err);
+            if (
+              !errStr.includes("NotAllowedError") &&
+              !errStr.includes('transition') &&
+              !errStr.includes('not found') &&
+              !errStr.includes('play()')
+            ) {
+              console.error("Failed to start QR scanner", err);
             }
         });
     }
@@ -395,5 +400,7 @@ export function QrScannerView() {
     </div>
   )
 }
+
+    
 
     
