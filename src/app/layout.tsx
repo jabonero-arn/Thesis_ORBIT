@@ -4,13 +4,13 @@ import { Toaster } from "@/components/ui/toaster"
 import { Providers } from '@/components/providers';
 
 export const metadata: Metadata = {
-  title: 'LabFlow',
+  title: 'Orbit',
   description: 'A Discord-inspired Laboratory Borrowing Web Application.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'LabFlow',
+    title: 'Orbit',
   },
   icons: {
     apple: '/icons/icon-192x192.png',

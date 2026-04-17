@@ -15,7 +15,7 @@ export function HelpDialog({ children }: { children: React.ReactNode }) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-lg bg-card/95 backdrop-blur-sm">
         <DialogHeader>
-          <DialogTitle className="font-headline text-2xl">Beginner's Guide to LabFlow</DialogTitle>
+          <DialogTitle className="font-headline text-2xl">Beginner's Guide to Orbit</DialogTitle>
           <DialogDescription>
             Welcome! Here’s a quick guide to get you started.
           </DialogDescription>

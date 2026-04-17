@@ -77,9 +77,9 @@ export default function RoleSelectionPage() {
                 ))}
             </div>
             <div>
-                 <h3 className="font-semibold mb-2">About LabFlow</h3>
+                 <h3 className="font-semibold mb-2">About Orbit</h3>
                  <p className="text-sm text-muted-foreground">
-                    LabFlow simplifies laboratory equipment management with a
+                    Orbit simplifies laboratory equipment management with a
                     Discord-inspired interface, making borrowing easy for students and
                     inventory control efficient for staff.
                 </p>
@@ -92,7 +92,7 @@ export default function RoleSelectionPage() {
           <CardHeader className="items-center text-center">
             <Logo />
             <CardTitle className="pt-2 font-headline text-2xl">
-              Welcome to LabFlow
+              Welcome to Orbit
             </CardTitle>
             <CardDescription>
               Please select your role to continue.

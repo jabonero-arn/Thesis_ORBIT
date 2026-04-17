@@ -146,7 +146,7 @@ export function BorrowFlow({ item, open, onOpenChange }: BorrowFlowProps) {
             </DialogHeader>
             <div className="flex justify-center py-4">
               <Image
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=LabFlow-Item-${item.id}`}
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=Orbit-Item-${item.id}`}
                 alt="QR Code"
                 width={256}
                 height={256}

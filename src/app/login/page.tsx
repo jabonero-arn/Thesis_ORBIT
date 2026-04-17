@@ -141,7 +141,7 @@ export default function LoginPage() {
             Sign In as {capitalizedRole}
           </CardTitle>
           <CardDescription>
-            Enter your credentials to continue to LabFlow.
+            Enter your credentials to continue to Orbit.
           </CardDescription>
         </CardHeader>
         <CardContent>
