@@ -247,8 +247,8 @@ export default function PrimaryCustodianDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive' } as const;
-        return <Badge variant={variants[status]}>{status}</Badge>;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default' } as const;
+        return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
     }
 
     const navItems = [
@@ -593,6 +593,8 @@ export default function PrimaryCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
 
     
 
