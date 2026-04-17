@@ -1,11 +1,15 @@
+
 "use client"
 
 import * as React from "react"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
+import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import { channels, currentUser, teachers } from "@/lib/data"
-import type { InventoryItem, BorrowHistory, CartItem } from "@/lib/types"
+import { channels } from "@/lib/data"
+import type { InventoryItem, BorrowHistory, CartItem, User as UserType } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Logo } from "@/components/logo"
@@ -22,19 +26,45 @@ import { StudentActivity } from "@/components/student-activity"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
-
 const departments = [
   { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
   { id: "chem", name: "Chemistry Lab", prefix: "chemistry-lab", icon: <FlaskConical /> },
   { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
 ];
 
-export default function Home() {
+export default function StudentDashboardPage() {
+  const router = useRouter()
+  const { user, isUserLoading } = useUser()
+  const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, setBorrowHistory } = useAppContext();
-  
+  const { items: allItems, borrowHistory } = useAppContext();
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
+
+  const teachersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), where('role', '==', 'Teacher'));
+  }, [firestore]);
+
+  const { data: teacherUsers } = useCollection<{ id: string, displayName: string }>(teachersQuery);
+
+  const teachersForDialog = React.useMemo(() => {
+      if (!teacherUsers) return [];
+      return teacherUsers.map(t => ({ id: t.id, name: t.displayName }));
+  }, [teacherUsers]);
+
+  React.useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login?role=student")
+    }
+  }, [user, isUserLoading, router])
+
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
-  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests'>('borrowed');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history'>('borrowed');
 
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
   const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
@@ -46,11 +76,14 @@ export default function Home() {
 
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
-  const [itemToReturn, setItemToReturn] = React.useState<BorrowHistory | null>(null);
+  const [itemsToReturn, setItemsToReturn] = React.useState<BorrowHistory[]>([]);
+  const [claimQrPayload, setClaimQrPayload] = React.useState<string | null>(null);
 
-  const studentBorrowHistory = React.useMemo(() => 
-    borrowHistory.filter(h => h.studentName === currentUser.name), 
-  [borrowHistory]);
+  const studentBorrowHistory = React.useMemo(() => {
+    if (!user?.uid) return [];
+    return borrowHistory.filter(h => h.borrowerUserId === user.uid);
+  }, [borrowHistory, user]);
+
 
   const pendingRequestedItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
@@ -61,7 +94,7 @@ export default function Home() {
   
   const approvedForBorrowItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
-        .filter(h => h.status === 'Approved')
+        .filter(h => h.status === 'Approved' && !h.checkoutSessionId)
         .map(h => h.itemName)),
     [studentBorrowHistory]
   );
@@ -92,8 +125,11 @@ export default function Home() {
   const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
 
   const handleItemSelect = (item: InventoryItem) => {
-    if (item.status === "Borrowed") return;
-    
+    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
+    if (isSelected) {
+        return; // Already in cart, do nothing
+    }
+
     if (pendingRequestedItemNames.has(item.name)) {
         toast({
             title: "Request Already Pending",
@@ -102,55 +138,97 @@ export default function Home() {
         return;
     }
 
-    const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
-    if (isSelected) {
-        // Quantity is managed in the cart
+    const isApproved = approvedForBorrowItemNames.has(item.name);
+    
+    // Case 1: Item is "Available" (or in a faulty "Borrowed" state with stock) and has stock
+    if ((item.status === "Available" || (item.status === "Borrowed" && item.quantity > 0)) && item.quantity > 0) {
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
         return;
     }
 
-    const isApproved = approvedForBorrowItemNames.has(item.name);
-
-    if (item.status === "Available" || isApproved) {
+    // Case 2: Item was "Locked" but is now approved by a teacher, and has stock
+    if (isApproved && item.quantity > 0) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
-         if(isApproved){
-             toast({
-                title: "Approved Item Added",
-                description: `"${item.name}" has been added to your cart.`,
-            });
-        }
-    } else if (item.status === "Locked") {
+        toast({
+            title: "Approved Item Added",
+            description: `"${item.name}" has been added to your cart.`,
+        });
+        return;
+    }
+
+    // Case 3: Item is "Locked" and not yet approved
+    if (item.status === "Locked" && !isApproved) {
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
+        return;
     }
-  }
-
-  const handleConfirmRequest = (teacherId: string) => {
-    if (!itemToRequest) return;
     
-    const newRequest: BorrowHistory = {
-        id: `bh-${Date.now()}`,
-        studentName: currentUser.name,
-        itemName: itemToRequest.name,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        teacherId: teacherId,
-    };
-    setBorrowHistory(prev => [newRequest, ...prev]);
-    setIsApprovalDialogOpen(false);
-    setItemToRequest(null);
+    // Case 4: Any other unavailable case (borrowed with zero stock, etc.)
     toast({
-        title: "Approval Request Sent",
-        description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
+        variant: "destructive",
+        title: "Item Unavailable",
+        description: `"${item.name}" is not available for borrowing at this time.`,
     });
   }
 
-  const handleInitiateReturn = (historyId: string) => {
-    const record = borrowHistory.find(h => h.id === historyId);
-    if (!record) return;
+  const handleConfirmRequest = async (teacherId: string) => {
+    if (!itemToRequest || !user?.displayName || !firestore || !user.uid) return;
+    
+    const newRequest: Omit<BorrowHistory, 'id'> = {
+        studentName: user.displayName,
+        itemName: itemToRequest.name,
+        date: new Date().toISOString(),
+        status: 'Pending',
+        teacherId: teacherId,
+        borrowerUserId: user.uid,
+    };
 
-    setBorrowHistory(prev => prev.map(h => h.id === historyId ? { ...h, status: 'Pending Return' } : h));
-    setItemToReturn(record);
+    try {
+      await addDoc(collection(firestore, 'borrowing_transactions'), newRequest);
+      setIsApprovalDialogOpen(false);
+      setItemToRequest(null);
+      toast({
+          title: "Approval Request Sent",
+          description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
+      });
+    } catch (error) {
+      console.error("Error sending request:", error);
+      toast({ variant: 'destructive', title: 'Failed to send request' });
+    }
   }
+  
+  const handleInitiateReturn = (records: BorrowHistory[]) => {
+    if (!records.length) return;
+    setItemsToReturn(records);
+  }
+
+  const handleCancelReservation = async (reservationId: string) => {
+    if (!firestore) return;
+    try {
+        const batch = writeBatch(firestore);
+        const recordsToCancel = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
+        
+        if (recordsToCancel.length === 0) {
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'This reservation is no longer pending.' });
+            return;
+        }
+
+        recordsToCancel.forEach(record => {
+            const docRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(docRef, { status: 'Cancelled' });
+        });
+
+        await batch.commit();
+        toast({
+            title: "Reservation Cancelled",
+            description: "Your reservation request has been cancelled.",
+        });
+    } catch (error) {
+        console.error("Error cancelling reservation:", error);
+        toast({ variant: 'destructive', title: 'Failed to cancel reservation' });
+    }
+  }
+
 
   const handleChannelSelect = (id: string) => {
     setSelectedChannelId(id)
@@ -178,6 +256,20 @@ export default function Home() {
     }
   };
 
+  if (isUserLoading || isProfileLoading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const activityNavItems = [
+    { id: 'borrowed', label: 'My Borrowed Items', icon: <PackageCheck /> },
+    { id: 'requests', label: 'My Requests', icon: <Hourglass /> },
+    { id: 'reservations', label: 'My Reservations', icon: <CalendarDays /> },
+    { id: 'history', label: 'History Log', icon: <History /> },
+  ] as const;
 
   return (
     <TooltipProvider>
@@ -207,7 +299,7 @@ export default function Home() {
                           </TooltipContent>
                       </Tooltip>
                     ))}
-                     <Tooltip>
+                    <Tooltip>
                         <TooltipTrigger asChild>
                             <Button 
                             variant={activeView === 'activity' ? 'secondary' : 'ghost'}
@@ -236,7 +328,7 @@ export default function Home() {
                           onChannelSelect={handleChannelSelect}
                         />
                     </div>
-                 ) : (
+                ) : (
                     <div className="w-64 flex-col bg-[#141821] p-2">
                         <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
                             My Activity
@@ -246,28 +338,19 @@ export default function Home() {
                                 CATEGORIES
                             </h2>
                             <ul className="flex flex-col gap-1">
-                                <li>
-                                    <button
-                                        onClick={() => setActivitySubView('borrowed')}
-                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                            activitySubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <PackageCheck className="h-5 w-5" />
-                                        <span className="truncate">My Borrowed Items</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button
-                                        onClick={() => setActivitySubView('requests')}
-                                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                            activitySubView === 'requests' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                        }`}
-                                    >
-                                        <Hourglass className="h-5 w-5" />
-                                        <span className="truncate">My Requests</span>
-                                    </button>
-                                </li>
+                                {activityNavItems.map(navItem => (
+                                    <li key={navItem.id}>
+                                        <button
+                                            onClick={() => setActivitySubView(navItem.id)}
+                                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
+                                                activitySubView === navItem.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                            }`}
+                                        >
+                                            {React.cloneElement(navItem.icon, { className: 'h-5 w-5' })}
+                                            <span className="truncate">{navItem.label}</span>
+                                        </button>
+                                    </li>
+                                ))}
                             </ul>
                         </div>
                     </div>
@@ -278,11 +361,11 @@ export default function Home() {
                   <UserProfileModal role="Student">
                     <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                         <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
+                          <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
                           <p className="text-xs text-muted-foreground">Student</p>
                         </div>
                     </div>
@@ -317,7 +400,7 @@ export default function Home() {
                                     </Button>
                                 ))}
                             </div>
-                             {activeView === 'borrow' && (
+                            {activeView === 'borrow' && (
                                 <AppSidebar
                                     departmentPrefix={selectedDepartment?.prefix ?? ''}
                                     selectedChannelId={selectedChannelId}
@@ -326,32 +409,30 @@ export default function Home() {
                             )}
                             <Separator className="my-2" />
                             <div className="p-2 space-y-1">
-                                <Button variant={activeView === 'activity' && activitySubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('borrowed'); setIsMobileMenuOpen(false); }}>
-                                    <PackageCheck />
-                                    My Borrowed Items
-                                </Button>
-                                <Button variant={activeView === 'activity' && activitySubView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView('requests'); setIsMobileMenuOpen(false); }}>
-                                    <Hourglass />
-                                    My Requests
-                                </Button>
+                                {activityNavItems.map(navItem => (
+                                     <Button key={navItem.id} variant={activeView === 'activity' && activitySubView === navItem.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('activity'); setActivitySubView(navItem.id); setIsMobileMenuOpen(false); }}>
+                                        {navItem.icon}
+                                        {navItem.label}
+                                    </Button>
+                                ))}
                             </div>
                         </div>
                         <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
-                           <div className="flex items-center justify-between p-2">
-                                <UserProfileModal role="Student">
-                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
-                                      <Avatar className="h-8 w-8 flex-shrink-0">
-                                          <AvatarImage src={currentUser.avatarUrl} alt={currentUser.name} />
-                                          <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-                                      </Avatar>
-                                      <div className="overflow-hidden">
-                                        <p className="truncate text-sm font-semibold leading-none">{currentUser.name}</p>
-                                        <p className="text-xs text-muted-foreground">Student</p>
-                                      </div>
-                                  </div>
-                                </UserProfileModal>
-                                <UserNav role="Student" />
-                            </div>
+                          <div className="flex items-center justify-between p-2">
+                              <UserProfileModal role="Student">
+                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                    <Avatar className="h-8 w-8 flex-shrink-0">
+                                        <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                        <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="overflow-hidden">
+                                      <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                                      <p className="text-xs text-muted-foreground">Student</p>
+                                    </div>
+                                </div>
+                              </UserProfileModal>
+                              <UserNav role="Student" />
+                          </div>
                         </div>
                       </div>
                   </SheetContent>
@@ -363,9 +444,9 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                    {activitySubView === 'borrowed' ? <PackageCheck className="text-muted-foreground" /> : <Hourglass className="text-muted-foreground" />}
+                    {React.cloneElement(activityNavItems.find(i => i.id === activitySubView)?.icon || <Inbox/>, { className: "text-muted-foreground" })}
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
-                        {activitySubView === 'borrowed' ? 'My Borrowed Items' : 'My Requests'}
+                       {activityNavItems.find(i => i.id === activitySubView)?.label}
                     </h1>
                 </div>
               )}
@@ -377,11 +458,23 @@ export default function Home() {
                 items={items} 
                 onItemSelect={handleItemSelect}
                 selectedItems={selectedItems.map(ci => ci.item)}
-                pendingRequestedItemNames={Array.from(pendingRequestedItemNames)}
+                pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
                 approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
                 />
             ) : (
-                <StudentActivity borrowHistory={studentBorrowHistory} onReturn={handleInitiateReturn} view={activitySubView} />
+                <StudentActivity 
+                    borrowHistory={studentBorrowHistory} 
+                    onReturn={handleInitiateReturn} 
+                    view={activitySubView}
+                    onCancelReservation={handleCancelReservation}
+                    onClaimReservation={(reservationId) => {
+                        const payload = {
+                            t: 'res-claim',
+                            rId: reservationId
+                        };
+                        setClaimQrPayload(JSON.stringify(payload));
+                    }}
+                />
             )}
           </div>
         </main>
@@ -401,21 +494,23 @@ export default function Home() {
 
         <RequestApprovalDialog
           item={itemToRequest}
-          teachers={teachers}
+          teachers={teachersForDialog}
           open={isApprovalDialogOpen}
           onOpenChange={setIsApprovalDialogOpen}
           onConfirm={handleConfirmRequest}
         />
         
-        <Dialog open={!!itemToReturn} onOpenChange={(open) => !open && setItemToReturn(null)}>
+        <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for "{itemToReturn?.itemName}"</DialogTitle>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
                     <DialogDescription>Present this QR code to lab staff to process your return.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
-                    {itemToReturn && <Image
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${JSON.stringify({ returnId: itemToReturn.id })}`}
+                    {itemsToReturn.length > 0 && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                            JSON.stringify({ t: 'r', ids: itemsToReturn.map(i => i.id) })
+                        )}`}
                         alt="Return QR Code"
                         width={256}
                         height={256}
@@ -424,10 +519,33 @@ export default function Home() {
                     />}
                 </div>
                 <DialogFooter>
-                    <Button onClick={() => setItemToReturn(null)}>Done</Button>
+                    <Button onClick={() => setItemsToReturn([])}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <Dialog open={!!claimQrPayload} onOpenChange={(open) => !open && setClaimQrPayload(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Reservation Claim QR Code</DialogTitle>
+                    <DialogDescription>Present this QR code to lab staff to claim your reserved items.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-4">
+                    {claimQrPayload && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(claimQrPayload)}`}
+                        alt="Reservation Claim QR Code"
+                        width={256}
+                        height={256}
+                        className="rounded-lg bg-white p-2"
+                        data-ai-hint="qr code"
+                    />}
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => setClaimQrPayload(null)}>Done</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
       </div>
     </TooltipProvider>
   )
