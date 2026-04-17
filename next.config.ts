@@ -50,16 +50,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-let finalConfig: NextConfig = nextConfig;
-
-// next-pwa is not compatible with Turbopack, so we only enable it for production builds.
-if (process.env.NODE_ENV === 'production') {
-    const withPWA = require('next-pwa')({
-        dest: 'public',
-        register: true,
-        skipWaiting: true,
-    });
-    finalConfig = withPWA(nextConfig);
-}
-
-export default finalConfig;
+export default nextConfig;

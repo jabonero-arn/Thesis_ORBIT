@@ -168,7 +168,7 @@ export function QrScannerView() {
     if (isScanning) {
         html5QrCode.start(
             { facingMode: "environment" },
-            { fps: 10, supportedScanTypes: [] },
+            { fps: 30, supportedScanTypes: [] },
             (decodedText, decodedResult) => {
                 setIsScanning(false);
                 setScannedData(decodedText);
