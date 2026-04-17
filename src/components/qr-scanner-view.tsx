@@ -187,7 +187,10 @@ export function QrScannerView() {
               !errStr.includes('not found') &&
               !errStr.includes('play()')
             ) {
-              console.error("Failed to start QR scanner", err);
+              // Non-permission related errors can be logged in development
+              if (process.env.NODE_ENV === 'development') {
+                console.error("Failed to start QR scanner", err);
+              }
             }
         });
     }

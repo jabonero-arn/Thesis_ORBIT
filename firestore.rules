@@ -62,7 +62,7 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if (isOwner(userId) && request.resource.data.id == userId) || isAdmin();
-      allow update: if isOwner(userId) || isAdmin();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
       allow delete: if isAdmin();
     }
 
