@@ -20,10 +20,9 @@ const getStatusBadge = (record: BorrowHistory) => {
     switch(record.status) {
         case 'Active':
             return <Badge variant="destructive">Borrowed</Badge>
+        case 'Reserved':
+             return <Badge variant="default">Reservation Confirmed</Badge>;
         case 'Approved':
-            if (record.startTime) {
-                return <Badge variant="default">Reservation Confirmed</Badge>;
-            }
             return <Badge variant="default">Approved for Pickup</Badge>;
         case 'Pending':
              if (record.teacherId) {
@@ -67,11 +66,11 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const reservations = borrowHistory
-        .filter(h => h.startTime && (h.status === 'Pending' || h.status === 'Approved' || h.status === 'Denied'))
+        .filter(h => h.startTime && (h.status === 'Pending' || h.status === 'Reserved' || h.status === 'Denied'))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const historyLog = borrowHistory
-        .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && h.startTime))
+        .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && !h.startTime) && !(h.status==='Reserved'))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
@@ -270,5 +269,3 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
 
     return null;
 }
-
-    

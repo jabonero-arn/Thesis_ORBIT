@@ -41,7 +41,7 @@ export type InventoryItem = {
   quantity: number;
 };
 
-export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled';
+export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
 
 export type BorrowHistory = {
     id: string;

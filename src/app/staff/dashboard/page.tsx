@@ -102,7 +102,7 @@ export default function StaffDashboardPage() {
     const handleDepartmentSelect = (deptId: string) => {
         setActiveView('borrow');
         setSelectedDepartmentId(deptId);
-        const firstChannelInDept = channels.find(c => c.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
+        const firstChannelInDept = channels.find(d => d.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
         if (firstChannelInDept) {
             setSelectedChannelId(firstChannelInDept.id);
         }
@@ -227,14 +227,14 @@ export default function StaffDashboardPage() {
 
         try {
             const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Approved' });
+            await updateDoc(historyDocRef, { status: 'Reserved' });
             toast({
-                title: "Reservation Approved",
-                description: `Reservation for ${record.itemName} by ${record.studentName} has been approved.`
+                title: "Reservation Confirmed",
+                description: `Reservation for ${record.itemName} by ${record.studentName} has been confirmed.`
             });
         } catch (e) {
             console.error(e);
-            toast({ variant: "destructive", title: "Error", description: `Could not approve reservation.` });
+            toast({ variant: "destructive", title: "Error", description: `Could not confirm reservation.` });
         }
     }
 
@@ -275,6 +275,11 @@ export default function StaffDashboardPage() {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
     [borrowHistory]);
 
+    const confirmedReservations = React.useMemo(() =>
+        borrowHistory.filter(h => h.status === 'Reserved')
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    [borrowHistory]);
+
 
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
@@ -283,8 +288,13 @@ export default function StaffDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive' } as const;
-        return <Badge variant={variants[status]}>{status}</Badge>;
+        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default' } as const;
+        
+        let text = status;
+        if (status === 'Approved') text = 'Approved for Pickup';
+        if (status === 'Reserved') text = 'Reserved';
+
+        return <Badge variant={variants[status] || 'default'}>{text}</Badge>;
     }
     
     const navItems = [
@@ -340,6 +350,39 @@ export default function StaffDashboardPage() {
                                 </TableCell>
                             </TableRow>
                         )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No pending reservations.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+
+    const ReservationListView = () => (
+        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+            <CardHeader>
+                <CardTitle>Confirmed Reservation List</CardTitle>
+                <CardDescription>All upcoming confirmed reservations.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead>Item</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Time</TableHead>
+                            <TableHead className="text-right">Status</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {confirmedReservations.length > 0 ? confirmedReservations.map(r => (
+                            <TableRow key={r.id}>
+                                <TableCell>{r.studentName}</TableCell>
+                                <TableCell>{r.itemName}</TableCell>
+                                <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
+                                <TableCell>{r.startTime} - {r.endTime}</TableCell>
+                                <TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell>
+                            </TableRow>
+                        )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No confirmed reservations.</TableCell></TableRow>}
                     </TableBody>
                 </Table>
             </CardContent>
@@ -420,7 +463,12 @@ export default function StaffDashboardPage() {
             case 'transactions':
                 return (
                      <div className="space-y-6">
-                        {transactionSubView === 'reservations' && <PendingReservationsView />}
+                        {transactionSubView === 'reservations' && (
+                            <>
+                                <PendingReservationsView />
+                                <ReservationListView />
+                            </>
+                        )}
                         {transactionSubView === 'borrowed' && <CurrentlyBorrowedView />}
                     </div>
                 );
@@ -449,7 +497,7 @@ export default function StaffDashboardPage() {
         if (activeView === 'transactions') {
             const labels: {[key in TransactionSubView]: string} = {
                 borrowed: "Currently Borrowed",
-                reservations: "Pending Reservations",
+                reservations: "Reservations",
             };
             const icons: {[key in TransactionSubView]: React.ReactNode} = {
                 borrowed: <PackageCheck />,
@@ -516,7 +564,7 @@ export default function StaffDashboardPage() {
                         QUEUES
                     </h2>
                     <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setTransactionSubView('reservations'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
+                        <li><button onClick={() => {setTransactionSubView('reservations'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
                         <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                     </ul>
                 </div>
@@ -604,7 +652,7 @@ export default function StaffDashboardPage() {
                                         QUEUES
                                     </h2>
                                     <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Pending Reservations</button></li>
+                                        <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
                                         <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
                                     </ul>
                                 </div>
