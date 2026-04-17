@@ -141,18 +141,28 @@ export default function TeacherDashboardPage() {
     }
   }
 
-  const getBadgeVariant = (status: BorrowHistoryStatus) => {
-    const variants: { [key in BorrowHistoryStatus]: "secondary" | "destructive" | "outline" | "default"} = {
-      'Pending': 'outline',
-      'Approved': 'default',
-      'Active': 'destructive',
-      'Denied': 'destructive',
-      'Returned': 'secondary',
-      'Pending Return': 'secondary',
-      'Cancelled': 'destructive',
+  const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
+    const variants: Record<BorrowHistoryStatus, "secondary" | "destructive" | "outline" | "default"> = {
+        'Pending': 'outline',
+        'Approved': 'default',
+        'Active': 'destructive',
+        'Denied': 'destructive',
+        'Returned': 'secondary',
+        'Pending Return': 'secondary',
+        'Cancelled': 'destructive',
+        'Reserved': 'default',
     };
-    return variants[status];
+
+    const textMap: Partial<Record<BorrowHistoryStatus, string>> = {
+        'Approved': 'Approved for Pickup',
+    };
+
+    const text = textMap[status] || status;
+    const variant = variants[status] || 'default';
+
+    return <Badge variant={variant}>{text}</Badge>;
   }
+
 
   // Handlers for borrowing
   const handleDepartmentSelect = (deptId: string) => {
@@ -277,9 +287,7 @@ export default function TeacherDashboardPage() {
                     <TableCell>{record.itemName}</TableCell>
                     <TableCell>{record.date}</TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={getBadgeVariant(record.status)}>
-                        {record.status}
-                      </Badge>
+                      {getHistoryStatusBadge(record.status)}
                     </TableCell>
                   </TableRow>
                 )) : (

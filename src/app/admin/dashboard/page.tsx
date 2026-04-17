@@ -250,8 +250,26 @@ export default function AdminDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default' } as const;
-        return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
+        const variants: Record<BorrowHistoryStatus, "secondary" | "destructive" | "outline" | "default"> = {
+            'Pending': 'outline',
+            'Approved': 'default',
+            'Active': 'destructive',
+            'Denied': 'destructive',
+            'Returned': 'secondary',
+            'Pending Return': 'secondary',
+            'Cancelled': 'destructive',
+            'Reserved': 'default',
+        };
+
+        const textMap: Partial<Record<BorrowHistoryStatus, string>> = {
+            'Approved': 'Approved for Pickup',
+            'Reserved': 'Reserved',
+        };
+
+        const text = textMap[status] || status;
+        const variant = variants[status] || 'default';
+
+        return <Badge variant={variant}>{text}</Badge>;
     }
 
     const navItems = [
@@ -615,11 +633,3 @@ export default function AdminDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
-
-    
-
-    
-
-    

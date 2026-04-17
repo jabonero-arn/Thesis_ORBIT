@@ -294,13 +294,26 @@ export default function StaffDashboardPage() {
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
-        const variants = { 'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive', 'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default' } as const;
-        
-        let text = status;
-        if (status === 'Approved') text = 'Approved for Pickup';
-        if (status === 'Reserved') text = 'Reserved';
+        const variants: Record<BorrowHistoryStatus, "secondary" | "destructive" | "outline" | "default"> = {
+            'Pending': 'outline',
+            'Approved': 'default',
+            'Active': 'destructive',
+            'Denied': 'destructive',
+            'Returned': 'secondary',
+            'Pending Return': 'secondary',
+            'Cancelled': 'destructive',
+            'Reserved': 'default',
+        };
 
-        return <Badge variant={variants[status] || 'default'}>{text}</Badge>;
+        const textMap: Partial<Record<BorrowHistoryStatus, string>> = {
+            'Approved': 'Approved for Pickup',
+            'Reserved': 'Reserved',
+        };
+
+        const text = textMap[status] || status;
+        const variant = variants[status] || 'default';
+
+        return <Badge variant={variant}>{text}</Badge>;
     }
     
     const navItems = [
