@@ -83,13 +83,15 @@
       "properties": {
         "studentName": { "type": "string" },
         "itemName": { "type": "string" },
+        "itemQuantity": { "type": "number", "description": "The quantity of the item being borrowed or reserved." },
         "date": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["Pending", "Approved", "Denied", "Active", "Returned", "Pending Return", "Cancelled", "Reserved"] },
         "teacherId": { "type": "string" },
         "checkoutSessionId": { "type": "string" },
         "startTime": { "type": "string" },
         "endTime": { "type": "string" },
-        "borrowerUserId": { "type": "string" }
+        "borrowerUserId": { "type": "string" },
+        "reservationId": { "type": "string", "description": "A unique ID to group multiple items under a single reservation." }
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
     },

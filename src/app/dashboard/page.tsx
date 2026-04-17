@@ -77,6 +77,7 @@ export default function Home() {
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = React.useState(false);
   const [itemToRequest, setItemToRequest] = React.useState<InventoryItem | null>(null);
   const [itemsToReturn, setItemsToReturn] = React.useState<BorrowHistory[]>([]);
+  const [claimQrPayload, setClaimQrPayload] = React.useState<string | null>(null);
 
   const studentBorrowHistory = React.useMemo(() => {
     if (!user?.uid) return [];
@@ -201,18 +202,30 @@ export default function Home() {
     setItemsToReturn(records);
   }
 
-  const handleCancelReservation = async (historyId: string) => {
+  const handleCancelReservation = async (reservationId: string) => {
     if (!firestore) return;
     try {
-      const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-      await updateDoc(historyDocRef, { status: 'Cancelled' });
-      toast({
-        title: "Reservation Cancelled",
-        description: "Your reservation has been cancelled.",
-      });
+        const batch = writeBatch(firestore);
+        const recordsToCancel = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
+        
+        if (recordsToCancel.length === 0) {
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'This reservation is no longer pending.' });
+            return;
+        }
+
+        recordsToCancel.forEach(record => {
+            const docRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(docRef, { status: 'Cancelled' });
+        });
+
+        await batch.commit();
+        toast({
+            title: "Reservation Cancelled",
+            description: "Your reservation request has been cancelled.",
+        });
     } catch (error) {
-      console.error("Error cancelling reservation:", error);
-      toast({ variant: 'destructive', title: 'Failed to cancel reservation' });
+        console.error("Error cancelling reservation:", error);
+        toast({ variant: 'destructive', title: 'Failed to cancel reservation' });
     }
   }
 
@@ -454,6 +467,13 @@ export default function Home() {
                     onReturn={handleInitiateReturn} 
                     view={activitySubView}
                     onCancelReservation={handleCancelReservation}
+                    onClaimReservation={(reservationId) => {
+                        const payload = {
+                            t: 'res-claim',
+                            rId: reservationId
+                        };
+                        setClaimQrPayload(JSON.stringify(payload));
+                    }}
                 />
             )}
           </div>
@@ -503,9 +523,30 @@ export default function Home() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        <Dialog open={!!claimQrPayload} onOpenChange={(open) => !open && setClaimQrPayload(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Reservation Claim QR Code</DialogTitle>
+                    <DialogDescription>Present this QR code to lab staff to claim your reserved items.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-4">
+                    {claimQrPayload && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(claimQrPayload)}`}
+                        alt="Reservation Claim QR Code"
+                        width={256}
+                        height={256}
+                        className="rounded-lg bg-white p-2"
+                        data-ai-hint="qr code"
+                    />}
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => setClaimQrPayload(null)}>Done</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
       </div>
     </TooltipProvider>
   )
 }
-
-    

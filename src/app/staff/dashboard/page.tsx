@@ -220,40 +220,30 @@ export default function StaffDashboardPage() {
         }
     }
     
-    const handleApproveReservation = async (historyId: string) => {
+    const handleReservationAction = async (reservationId: string, action: 'approve' | 'deny') => {
         if (!firestore) return;
-        const record = borrowHistory.find(h => h.id === historyId);
-        if (!record) return;
+
+        const recordsToUpdate = borrowHistory.filter(h => h.reservationId === reservationId);
+        if (recordsToUpdate.length === 0) return;
+
+        const studentName = recordsToUpdate[0].studentName;
+        const newStatus = action === 'approve' ? 'Reserved' : 'Denied';
 
         try {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Reserved' });
+            const batch = writeBatch(firestore);
+            recordsToUpdate.forEach(record => {
+                const docRef = doc(firestore, 'borrowing_transactions', record.id);
+                batch.update(docRef, { status: newStatus });
+            });
+            await batch.commit();
             toast({
-                title: "Reservation Confirmed",
-                description: `Reservation for ${record.itemName} by ${record.studentName} has been confirmed.`
+                title: `Reservation ${newStatus === 'Reserved' ? 'Confirmed' : 'Denied'}`,
+                description: `Reservation for ${studentName} has been ${newStatus.toLowerCase()}.`,
+                variant: newStatus === 'Denied' ? 'destructive' : 'default',
             });
         } catch (e) {
             console.error(e);
-            toast({ variant: "destructive", title: "Error", description: `Could not confirm reservation.` });
-        }
-    }
-
-    const handleDenyReservation = async (historyId: string) => {
-        if (!firestore) return;
-        const record = borrowHistory.find(h => h.id === historyId);
-        if (!record) return;
-
-        try {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Denied' });
-            toast({
-                variant: "destructive",
-                title: "Reservation Denied",
-                description: `Reservation for ${record.itemName} by ${record.studentName} has been denied.`
-            });
-        } catch (e) {
-            console.error(e);
-            toast({ variant: "destructive", title: "Error", description: `Could not deny reservation.` });
+            toast({ variant: "destructive", title: "Error", description: `Could not update reservation.` });
         }
     }
 
@@ -270,15 +260,31 @@ export default function StaffDashboardPage() {
         return items.filter(item => item.channelId.startsWith(selectedDeptPrefix));
     }, [items, inventorySelectedDeptId]);
     
-    const pendingReservations = React.useMemo(() => 
-        borrowHistory.filter(h => h.status === 'Pending' && !!h.startTime)
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-    [borrowHistory]);
+    const { groupedPendingReservations, groupedConfirmedReservations } = React.useMemo(() => {
+        const pending: { [id: string]: { records: BorrowHistory[], date: string, studentName: string, startTime?: string, endTime?: string } } = {};
+        const confirmed: { [id: string]: { records: BorrowHistory[], date: string, studentName: string, startTime?: string, endTime?: string } } = {};
+        
+        borrowHistory.forEach(h => {
+            if (h.reservationId) {
+                if (h.status === 'Pending') {
+                    if (!pending[h.reservationId]) {
+                        pending[h.reservationId] = { records: [], date: h.date, studentName: h.studentName, startTime: h.startTime, endTime: h.endTime };
+                    }
+                    pending[h.reservationId].records.push(h);
+                } else if (h.status === 'Reserved') {
+                    if (!confirmed[h.reservationId]) {
+                        confirmed[h.reservationId] = { records: [], date: h.date, studentName: h.studentName, startTime: h.startTime, endTime: h.endTime };
+                    }
+                    confirmed[h.reservationId].records.push(h);
+                }
+            }
+        });
 
-    const confirmedReservations = React.useMemo(() =>
-        borrowHistory.filter(h => h.status === 'Reserved')
-        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-    [borrowHistory]);
+        return {
+            groupedPendingReservations: Object.entries(pending).sort((a,b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime()),
+            groupedConfirmedReservations: Object.entries(confirmed).sort((a,b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime()),
+        }
+    }, [borrowHistory]);
 
 
     // Helper functions
@@ -327,31 +333,25 @@ export default function StaffDashboardPage() {
                 <CardDescription>Review and approve student reservation requests.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead>Item</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Time</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {pendingReservations.length > 0 ? pendingReservations.map(r => (
-                            <TableRow key={r.id}>
-                                <TableCell>{r.studentName}</TableCell>
-                                <TableCell>{r.itemName}</TableCell>
-                                <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
-                                <TableCell>{r.startTime} - {r.endTime}</TableCell>
-                                <TableCell className="text-right space-x-2">
-                                    <Button size="sm" onClick={() => handleApproveReservation(r.id)}><Check className="mr-2 h-4 w-4" /> Approve</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleDenyReservation(r.id)}><X className="mr-2 h-4 w-4" /> Deny</Button>
-                                </TableCell>
-                            </TableRow>
-                        )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No pending reservations.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
+                <div className="space-y-4">
+                {groupedPendingReservations.length > 0 ? groupedPendingReservations.map(([reservationId, group]) => (
+                    <div key={reservationId} className="p-4 border rounded-lg bg-black/20">
+                         <div className="flex justify-between items-start">
+                            <div>
+                                <p className="font-semibold">{group.studentName}</p>
+                                <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime}-{group.endTime}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button size="sm" onClick={() => handleReservationAction(reservationId, 'approve')}><Check className="mr-2 h-4 w-4" /> Approve</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleReservationAction(reservationId, 'deny')}><X className="mr-2 h-4 w-4" /> Deny</Button>
+                            </div>
+                        </div>
+                        <ul className="list-disc list-inside mt-2 pl-1 text-sm">
+                            {group.records.map(r => <li key={r.id}>{r.itemName} (x{r.itemQuantity || 1})</li>)}
+                        </ul>
+                    </div>
+                )) : <div className="text-center text-muted-foreground py-8">No pending reservations.</div>}
+                </div>
             </CardContent>
         </Card>
     );
@@ -363,28 +363,22 @@ export default function StaffDashboardPage() {
                 <CardDescription>All upcoming confirmed reservations.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Student</TableHead>
-                            <TableHead>Item</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Time</TableHead>
-                            <TableHead className="text-right">Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {confirmedReservations.length > 0 ? confirmedReservations.map(r => (
-                            <TableRow key={r.id}>
-                                <TableCell>{r.studentName}</TableCell>
-                                <TableCell>{r.itemName}</TableCell>
-                                <TableCell>{format(new Date(r.date), 'MMM d, yyyy')}</TableCell>
-                                <TableCell>{r.startTime} - {r.endTime}</TableCell>
-                                <TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell>
-                            </TableRow>
-                        )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No confirmed reservations.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
+                <div className="space-y-4">
+                {groupedConfirmedReservations.length > 0 ? groupedConfirmedReservations.map(([reservationId, group]) => (
+                     <div key={reservationId} className="p-4 border rounded-lg bg-black/20">
+                         <div className="flex justify-between items-start">
+                            <div>
+                                <p className="font-semibold">{group.studentName}</p>
+                                <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime}-{group.endTime}</p>
+                            </div>
+                            <Badge variant="default">Reserved</Badge>
+                        </div>
+                        <ul className="list-disc list-inside mt-2 pl-1 text-sm">
+                            {group.records.map(r => <li key={r.id}>{r.itemName} (x{r.itemQuantity || 1})</li>)}
+                        </ul>
+                    </div>
+                )) : <div className="text-center text-muted-foreground py-8">No confirmed reservations.</div>}
+                </div>
             </CardContent>
         </Card>
     );

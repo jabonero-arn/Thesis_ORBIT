@@ -133,11 +133,13 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
         const overlappingReservations = borrowHistory.filter(h => 
             h.itemName === item.name &&
-            h.status === 'Approved' &&
+            h.status === 'Reserved' &&
             h.date === format(reservationDate, "yyyy-MM-dd") &&
             h.startTime && h.endTime && startTime && endTime &&
             h.startTime < endTime && h.endTime > startTime
-        ).length;
+        );
+
+        const overlappingQuantity = overlappingReservations.reduce((sum, h) => sum + (h.itemQuantity || 1), 0);
 
         const activeBorrows = borrowHistory.filter(h => 
             h.itemName === item.name && h.status === 'Active'
@@ -145,9 +147,9 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
         const availableForReservation = allItemsInDB.quantity - activeBorrows;
 
-        if ((overlappingReservations + requestedQuantity) > availableForReservation) {
+        if ((overlappingQuantity + requestedQuantity) > availableForReservation) {
             hasConflict = true;
-            const canStillReserve = availableForReservation - overlappingReservations;
+            const canStillReserve = availableForReservation - overlappingQuantity;
             toast({
                 variant: 'destructive',
                 title: 'Reservation Conflict',
@@ -162,20 +164,21 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         return;
     }
 
+    const reservationId = `res-${user.uid}-${Date.now()}`;
     const newHistoryRecords: Omit<BorrowHistory, 'id'>[] = [];
 
     cartItems.forEach(({ item, quantity }) => {
-        for (let i = 0; i < quantity; i++) {
-            newHistoryRecords.push({
-                studentName: user.displayName!,
-                itemName: item.name,
-                date: reservationDate.toISOString(),
-                status: 'Pending', 
-                startTime: startTime,
-                endTime: endTime,
-                borrowerUserId: user.uid,
-            });
-        }
+        newHistoryRecords.push({
+            studentName: user.displayName!,
+            itemName: item.name,
+            itemQuantity: quantity,
+            date: reservationDate.toISOString(),
+            status: 'Pending', 
+            startTime: startTime,
+            endTime: endTime,
+            borrowerUserId: user.uid,
+            reservationId: reservationId,
+        });
     });
     
     try {

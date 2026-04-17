@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
-import { doc, writeBatch, collection } from "firebase/firestore"
+import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
 import { Html5Qrcode } from "html5-qrcode"
 
 
@@ -27,13 +27,24 @@ type ScannedReturnData = {
     ids: string[]; // array of borrowHistory document IDs
 };
 
-type ScannedData = ScannedCompactCheckoutData | ScannedReturnData;
+type ScannedReservationClaimData = {
+    t: 'res-claim',
+    rId: string, // reservationId
+};
+
+type ScannedData = ScannedCompactCheckoutData | ScannedReturnData | ScannedReservationClaimData;
 
 type CheckoutSession = {
   studentName: string;
   items: { name: string; quantity: number}[];
   borrowerUserId: string;
   originalPayload: ScannedCompactCheckoutData;
+}
+
+type ClaimSession = {
+  studentName: string;
+  items: { name: string; quantity: number }[];
+  records: BorrowHistory[];
 }
 
 type PendingReturnGroup = {
@@ -51,6 +62,7 @@ export function QrScannerView() {
   
   const [scannedData, setScannedData] = React.useState("");
   const [sessionInView, setSessionInView] = React.useState<CheckoutSession | null>(null);
+  const [claimSessionInView, setClaimSessionInView] = React.useState<ClaimSession | null>(null);
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
   
@@ -62,6 +74,7 @@ export function QrScannerView() {
   const handleResetScanner = () => {
     setScannedData("");
     setSessionInView(null);
+    setClaimSessionInView(null);
     setSelectedReturnGroup(null);
     setIsScanning(true);
   };
@@ -115,6 +128,21 @@ export function QrScannerView() {
                 borrowerUserId: borrowerUserId,
                 records: recordsToReturn,
             });
+        } else if (payload.t === 'res-claim' && payload.rId) {
+            const reservationId = payload.rId;
+            const recordsToClaim = borrowHistory.filter(h => h.reservationId === reservationId);
+
+            if (recordsToClaim.length === 0) throw new Error(`Reservation with ID ${reservationId} not found.`);
+            if (recordsToClaim[0].status !== 'Reserved') throw new Error(`Reservation is not in a claimable state (Status: ${recordsToClaim[0].status}).`);
+
+            const student = allUsers.find(u => u.id === recordsToClaim[0].borrowerUserId);
+            if (!student) throw new Error(`Student with ID ${recordsToClaim[0].borrowerUserId} not found.`);
+
+            setClaimSessionInView({
+                studentName: student.displayName,
+                items: recordsToClaim.map(r => ({ name: r.itemName, quantity: r.itemQuantity || 1})),
+                records: recordsToClaim,
+            });
         }
         else {
              throw new Error("Invalid QR code data format.");
@@ -142,8 +170,6 @@ export function QrScannerView() {
             { facingMode: "environment" },
             { fps: 10, supportedScanTypes: [] },
             (decodedText, decodedResult) => {
-                // On success, do not call stop(). Just update state.
-                // The cleanup function will handle stopping the scanner.
                 setIsScanning(false);
                 setScannedData(decodedText);
             },
@@ -166,13 +192,9 @@ export function QrScannerView() {
         });
     }
 
-    // The cleanup function is the ONLY place we should call stop().
-    // It runs when the component unmounts OR when `isScanning` changes.
     return () => {
         if (html5QrCode && html5QrCode.isScanning) {
             html5QrCode.stop().catch(err => {
-                // Ignore cleanup errors as the component might be unmounting
-                // or the scanner is already in a stopped state.
             });
         }
     };
@@ -215,7 +237,7 @@ export function QrScannerView() {
             if (!dbItem) return;
             for (let i=0; i < q; i++) {
                 const newDocRef = doc(historyCollectionRef);
-                const newRecord: Omit<BorrowHistory, 'id'> = {
+                const newRecord: Omit<BorrowHistory, 'id' | 'itemQuantity'> = {
                     borrowerUserId: originalPayload.u,
                     studentName: studentName,
                     itemName: dbItem.name,
@@ -280,6 +302,48 @@ export function QrScannerView() {
         handleResetScanner();
     }
   };
+
+  const handleConfirmClaim = async () => {
+    if (!claimSessionInView || !firestore) return;
+    setIsProcessing(true);
+    
+    try {
+        await runTransaction(firestore, async (transaction) => {
+            const inventoryUpdates: {ref: any, newQty: number}[] = [];
+            
+            for (const record of claimSessionInView.records) {
+                 const itemQuery = query(collection(firestore, 'inventory_items'), where('name', '==', record.itemName));
+                 const itemSnap = await getDocs(itemQuery);
+                 if (itemSnap.empty) throw new Error(`Item "${record.itemName}" not found in inventory.`);
+                 
+                 const itemDoc = itemSnap.docs[0];
+                 const itemData = itemDoc.data();
+                 const requestedQty = record.itemQuantity || 1;
+                 
+                 if (itemData.quantity < requestedQty) {
+                    throw new Error(`Not enough stock for "${record.itemName}". Available: ${itemData.quantity}, Requested: ${requestedQty}`);
+                 }
+                 inventoryUpdates.push({ ref: itemDoc.ref, newQty: itemData.quantity - requestedQty });
+                 
+                 const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+                 transaction.update(historyDocRef, { status: 'Active', date: new Date().toISOString() });
+            }
+
+            for(const update of inventoryUpdates) {
+                transaction.update(update.ref, { quantity: update.newQty, status: update.newQty > 0 ? 'Available' : 'Borrowed' });
+            }
+        });
+
+        toast({ title: "Reservation Claimed!", description: `${claimSessionInView.items.length} item type(s) checked out to ${claimSessionInView.studentName}.` });
+
+    } catch(e: any) {
+        console.error("Claim transaction failed: ", e);
+        toast({ variant: 'destructive', title: 'Claim Failed', description: e.message || "Could not process claim." });
+    } finally {
+        setIsProcessing(false);
+        handleResetScanner();
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -396,10 +460,39 @@ export function QrScannerView() {
             </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <Dialog open={!!claimSessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
+        <DialogContent className="max-w-lg">
+            <DialogHeader>
+                <DialogTitle className="font-headline">Confirm Reservation Claim</DialogTitle>
+                <DialogDescription>Confirm checkout of reserved items for {claimSessionInView?.studentName}.</DialogDescription>
+            </DialogHeader>
+            {claimSessionInView && (
+                <div className="py-4 space-y-4">
+                    <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
+                        <Avatar className="h-12 w-12"><AvatarFallback>{claimSessionInView.studentName.charAt(0)}</AvatarFallback></Avatar>
+                        <div><p className="font-semibold">{claimSessionInView.studentName}</p><p className="text-sm text-muted-foreground">Student</p></div>
+                    </div>
+                    <div>
+                        <h4 className="font-semibold mb-2">Items to Claim ({claimSessionInView.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
+                        <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 list-disc list-inside bg-black/20 p-3 rounded-md">
+                            {claimSessionInView.items.map((item, index) => (
+                                <li key={index}><span>{item.name} (x{item.quantity})</span></li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={handleResetScanner} disabled={isProcessing}>Cancel</Button>
+                <Button onClick={handleConfirmClaim} disabled={isProcessing || !claimSessionInView}>
+                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                    Confirm Checkout
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   )
 }
-
-    
-
-    

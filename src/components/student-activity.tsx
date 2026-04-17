@@ -5,15 +5,17 @@ import type { BorrowHistory } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle, Minus, Plus } from "lucide-react"
+import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle, Minus, Plus, QrCode } from "lucide-react"
 import * as React from "react"
+import { format } from "date-fns"
 
 
 type StudentActivityProps = {
     borrowHistory: BorrowHistory[]
     onReturn: (records: BorrowHistory[]) => void
     view: 'borrowed' | 'requests' | 'reservations' | 'history'
-    onCancelReservation: (historyId: string) => void
+    onCancelReservation: (reservationId: string) => void
+    onClaimReservation: (reservationId: string) => void
 }
 
 const getStatusBadge = (record: BorrowHistory) => {
@@ -45,7 +47,7 @@ const getStatusBadge = (record: BorrowHistory) => {
     }
 }
 
-export function StudentActivity({ borrowHistory, onReturn, view, onCancelReservation }: StudentActivityProps) {
+export function StudentActivity({ borrowHistory, onReturn, view, onCancelReservation, onClaimReservation }: StudentActivityProps) {
     const [selectedToReturn, setSelectedToReturn] = React.useState<Map<string, number>>(new Map());
     
     const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
@@ -65,12 +67,34 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         .filter(h => h.teacherId && (h.status === 'Pending' || h.status === 'Approved' || h.status === 'Denied'))
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const reservations = borrowHistory
-        .filter(h => h.startTime && (h.status === 'Pending' || h.status === 'Reserved' || h.status === 'Denied'))
-        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const groupedReservations = React.useMemo(() => {
+        const reservationRecords = borrowHistory.filter(h => h.reservationId);
+        
+        if (!reservationRecords.length) return [];
+        
+        const groups: { [id: string]: { records: BorrowHistory[], status: BorrowHistoryStatus, date: string, startTime?: string, endTime?: string } } = {};
+
+        reservationRecords.forEach(record => {
+            if (!record.reservationId) return;
+            if (!groups[record.reservationId]) {
+                groups[record.reservationId] = {
+                    records: [],
+                    status: record.status, 
+                    date: record.date,
+                    startTime: record.startTime,
+                    endTime: record.endTime
+                };
+            }
+            groups[record.reservationId].records.push(record);
+        });
+
+        return Object.values(groups)
+            .filter(g => g.records.length > 0)
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [borrowHistory]);
 
     const historyLog = borrowHistory
-        .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && !h.startTime) && !(h.status==='Reserved'))
+        .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && !h.startTime) && !(h.status==='Reserved') && !h.reservationId)
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
@@ -206,25 +230,41 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
             <CardDescription>Your pending and confirmed reservations.</CardDescription>
           </CardHeader>
           <CardContent>
-            {reservations.length > 0 ? (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                {reservations.map(record => (
-                  <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                    <div>
-                      <p className="font-semibold">{record.itemName}</p>
-                      <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
-                      {record.startTime && record.endTime && <p className="text-sm text-muted-foreground">Time: {record.startTime} - {record.endTime}</p>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(record)}
-                      {record.status === 'Pending' && (
-                          <Button size="sm" variant="destructive" onClick={() => onCancelReservation(record.id)}>
-                              <XCircle className="mr-2 h-4 w-4"/> Cancel
-                          </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            {groupedReservations && groupedReservations.length > 0 ? (
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                {groupedReservations.map((group, index) => {
+                    const reservationId = group.records[0].reservationId;
+                    if (!reservationId) return null;
+                    
+                    return (
+                        <div key={reservationId || index} className="p-4 rounded-lg bg-black/20 border border-border/50">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="font-semibold text-lg">Reservation</p>
+                                    <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime} - {group.endTime}</p>
+                                </div>
+                                {getStatusBadge(group.records[0])}
+                            </div>
+                            <ul className="list-disc list-inside my-3 space-y-1 pl-1">
+                                {group.records.map(record => (
+                                    <li key={record.id} className="text-sm">{record.itemName} (x{record.itemQuantity || 1})</li>
+                                ))}
+                            </ul>
+                            <div className="flex justify-end gap-2 mt-2">
+                                {group.status === 'Pending' && (
+                                    <Button size="sm" variant="destructive" onClick={() => onCancelReservation(reservationId)}>
+                                        <XCircle className="mr-2 h-4 w-4"/> Cancel
+                                    </Button>
+                                )}
+                                {group.status === 'Reserved' && (
+                                     <Button size="sm" onClick={() => onClaimReservation(reservationId)}>
+                                        <QrCode className="mr-2 h-4 w-4"/> Claim Items
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+                    )
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-center p-4">You have no reservations.</p>
