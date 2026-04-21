@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { UserNav } from "@/components/user-nav"
+import { UserNav } from "@/components/ui/user-nav"
 import {
   Table,
   TableBody,
@@ -48,6 +48,7 @@ import { AddDepartmentForm } from "@/components/primary-custodian/add-department
 import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
+import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -113,6 +114,9 @@ export default function PrimaryCustodianDashboardPage() {
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [formDepartmentContext, setFormDepartmentContext] = React.useState<Department | null>(null);
+    const [isEditUserRoleOpen, setIsEditUserRoleOpen] = React.useState(false);
+    const [userToEdit, setUserToEdit] = React.useState<UserType | null>(null);
+
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
@@ -165,6 +169,11 @@ export default function PrimaryCustodianDashboardPage() {
     const handleViewChange = (view: AdminView) => {
         setActiveView(view);
         setIsMobileMenuOpen(false);
+    }
+    
+    const handleEditUser = (user: UserType) => {
+        setUserToEdit(user);
+        setIsEditUserRoleOpen(true);
     }
 
     const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -408,7 +417,38 @@ export default function PrimaryCustodianDashboardPage() {
                                     </Button>
                                 )}
                             </CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Role</TableHead>
+                                            <TableHead>Assigned Department</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {usersToDisplay.map(u => {
+                                            const canEdit = u.role === 'Supervisor' || u.role === 'Staff';
+                                            const departmentName = canEdit ? departments.find(d => d.id === u.assignedDepartmentId)?.name || 'Not Assigned' : 'N/A';
+                                            return (
+                                                <TableRow key={u.id}>
+                                                    <TableCell className="font-medium">{u.displayName}</TableCell>
+                                                    <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                                                    <TableCell>{departmentName}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        {canEdit && (
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditUser(u)}>
+                                                                <Edit className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         </Card>
                     </div>
                 );
@@ -686,10 +726,18 @@ export default function PrimaryCustodianDashboardPage() {
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
                 
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
+                
+                <EditUserRoleDialog
+                    open={isEditUserRoleOpen}
+                    onOpenChange={setIsEditUserRoleOpen}
+                    user={userToEdit}
+                />
 
             </div>
         </TooltipProvider>
     )
 }
+
+    
 
     
