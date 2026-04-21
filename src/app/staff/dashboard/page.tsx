@@ -157,8 +157,8 @@ export default function StaffDashboardPage() {
             case 'scanner': return <QrScannerView />;
             case 'inventory': return (
                 <Card className="bg-card/80"><CardHeader><CardTitle>Department Inventory</CardTitle><CardDescription>All items in the {assignedDepartment?.name} department.</CardDescription></CardHeader>
-                    <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                        <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell></TableRow>))}</TableBody>
+                    <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
+                        <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell><TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
                     </Table></CardContent>
                 </Card>
             );
@@ -277,3 +277,5 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
