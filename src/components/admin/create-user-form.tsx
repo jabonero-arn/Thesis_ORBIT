@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -71,11 +70,11 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       });
       return;
     }
-     if (roleToCreate === 'Supervisor' && !assignedDepartmentId) {
+     if ((roleToCreate === 'Supervisor' || roleToCreate === 'Staff') && !assignedDepartmentId) {
       toast({
         variant: "destructive",
         title: "Missing assignment",
-        description: "Please assign a department for the Supervisor.",
+        description: `Please assign a department for the ${roleToCreate}.`,
       });
       return;
     }
@@ -113,7 +112,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
         passwordChangeRequired: true,
       };
 
-      if (roleToCreate === 'Supervisor') {
+      if (roleToCreate === 'Supervisor' || roleToCreate === 'Staff') {
         userProfileData.assignedDepartmentId = assignedDepartmentId;
       }
       
@@ -182,7 +181,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
                     <Label htmlFor="password">Temporary Password</Label>
                     <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Must be at least 6 characters" required />
                 </div>
-                {roleToCreate === 'Supervisor' && (
+                {(roleToCreate === 'Supervisor' || roleToCreate === 'Staff') && (
                   <div className="grid gap-2">
                     <Label htmlFor="department-id">Assign Department</Label>
                     <Select value={assignedDepartmentId} onValueChange={setAssignedDepartmentId} required>
