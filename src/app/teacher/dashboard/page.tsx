@@ -8,6 +8,7 @@ import { doc, updateDoc } from "firebase/firestore"
 import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
+import { format } from "date-fns"
 
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -251,7 +252,7 @@ export default function TeacherDashboardPage() {
                     <TableRow key={record.id}>
                       <TableCell className="font-medium">{record.studentName}</TableCell>
                       <TableCell>{record.itemName}</TableCell>
-                      <TableCell>{record.date}</TableCell>
+                      <TableCell>{format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="secondary" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Approved')}>
                           <Check className="mr-2 h-4 w-4" /> Approve
@@ -293,7 +294,7 @@ export default function TeacherDashboardPage() {
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.studentName}</TableCell>
                     <TableCell>{record.itemName}</TableCell>
-                    <TableCell>{record.date}</TableCell>
+                    <TableCell>{format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                     <TableCell className="text-right">
                       {getHistoryStatusBadge(record.status)}
                     </TableCell>

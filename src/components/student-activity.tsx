@@ -204,7 +204,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                 <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
                                     <div>
                                         <p className="font-semibold">{record.itemName}</p>
-                                        <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
+                                        <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {getStatusBadge(record)}
@@ -290,7 +290,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                         <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
                             <div>
                                 <p className="font-semibold">{record.itemName}</p>
-                                <p className="text-sm text-muted-foreground">Date: {new Date(record.date).toLocaleDateString()}</p>
+                                <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                                 {getStatusBadge(record)}
