@@ -126,6 +126,27 @@
         "prefix": { "type": "string", "description": "A unique prefix used for grouping channels/facilities." }
       },
       "required": ["name", "prefix"]
+    },
+    "Channel": {
+      "title": "Channel",
+      "description": "Represents a specific room or laboratory within a department.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "departmentId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "departmentId",
+        "description"
+      ]
     }
   },
   "auth": {
@@ -179,6 +200,12 @@
     "/departments/{departmentId}": {
         "schema": { "$ref": "#/entities/Department" },
         "description": "Stores the list of departments."
+    },
+    "/channels/{channelId}": {
+      "schema": {
+        "$ref": "#/entities/Channel"
+      },
+      "description": "Stores the list of rooms/laboratories within departments."
     }
   }
 }

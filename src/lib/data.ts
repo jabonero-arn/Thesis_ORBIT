@@ -1,4 +1,5 @@
-import type { Channel, User } from "@/lib/types";
+
+import type { User } from "@/lib/types";
 
 export const currentUser: User = {
   id: 'user-1',
@@ -13,31 +14,3 @@ export const currentUser: User = {
   department: 'College of Computer Studies',
   employeeId: 'EMP-98765',
 };
-
-export const channels: Channel[] = [
-  {
-    id: "computer-lab-1",
-    name: "#computer-lab-1",
-    description: "Basic computer and electronics kits",
-  },
-  {
-    id: "computer-lab-2",
-    name: "#computer-lab-2",
-    description: "Advanced micro-controllers and IoT",
-  },
-  {
-    id: "chemistry-lab-1",
-    name: "#chemistry-lab-1",
-    description: "General chemistry equipment",
-  },
-  {
-    id: "robotics-lab-1",
-    name: "#robotics-lab-1",
-    description: "Robotics components and kits",
-  },
-  {
-    id: "robotics-lab-2",
-    name: "#robotics-lab-2",
-    description: "Large mechanical and fabrication equipment",
-  },
-];

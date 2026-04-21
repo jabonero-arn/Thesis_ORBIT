@@ -1,3 +1,4 @@
+
 /**
  * # Firestore Security Rules: LabFlow Prototyping
  *
@@ -88,6 +89,18 @@ service cloud.firestore {
         allow read: if false;
         allow create, delete: if isPrimaryCustodian();
         allow update: if false;
+    }
+    
+    // --------------------------------------------------------------------------------
+    // Facility Management Rules
+    // --------------------------------------------------------------------------------
+    match /departments/{departmentId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPrimaryCustodian();
+    }
+    match /channels/{channelId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isPrimaryCustodian();
     }
 
     // --------------------------------------------------------------------------------

@@ -45,6 +45,7 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import { CreateUserForm } from "@/components/admin/create-user-form"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
+import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 import { cn } from "@/lib/utils"
 
 const userRoles = [
@@ -109,14 +110,17 @@ export default function PrimaryCustodianDashboardPage() {
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
     const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
+    const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [formDepartmentContext, setFormDepartmentContext] = React.useState<Department | null>(null);
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
         const prefix = departments?.find(d => d.prefix === dashboardSubView)?.prefix;
-        return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, dashboardSubView, departments]);
+        const deptId = departments?.find(d => d.prefix === dashboardSubView)?.id;
+        const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
+        return prefix ? items.filter(item => channelIds.includes(item.channelId)) : [];
+    }, [items, dashboardSubView, departments, channels]);
 
     const dashboardHistory = React.useMemo(() => {
         if (dashboardSubView === 'overall') return borrowHistory;
@@ -126,19 +130,21 @@ export default function PrimaryCustodianDashboardPage() {
 
     const inventoryItemsToDisplay = React.useMemo(() => {
         if (inventorySubView === 'all') return items;
-        const prefix = departments?.find(d => d.prefix === inventorySubView)?.prefix;
-        return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, inventorySubView, departments]);
+        const deptId = departments?.find(d => d.prefix === inventorySubView)?.id;
+        const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
+        return deptId ? items.filter(item => channelIds.includes(item.channelId)) : [];
+    }, [items, inventorySubView, departments, channels]);
 
     const historyToDisplay = React.useMemo(() => {
         if (historySubView === 'overall') return borrowHistory;
         
-        const prefix = departments?.find(d => d.prefix === historySubView)?.prefix;
-        if (!prefix) return borrowHistory;
+        const deptId = departments?.find(d => d.prefix === historySubView)?.id;
+        if (!deptId) return borrowHistory;
 
-        const itemNamesInDept = new Set(items.filter(item => item.channelId.startsWith(prefix)).map(i => i.name));
+        const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
+        const itemNamesInDept = new Set(items.filter(item => channelIds.includes(item.channelId)).map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, items, historySubView, departments]);
+    }, [borrowHistory, items, historySubView, departments, channels]);
 
     const usersToDisplay = React.useMemo(() => {
         if (usersSubView === 'all') return allUsers;
@@ -147,7 +153,7 @@ export default function PrimaryCustodianDashboardPage() {
 
     const dialogChannels = React.useMemo(() => {
         if (!formDepartmentContext) return [];
-        return channels.filter(c => c.id.startsWith(formDepartmentContext.prefix));
+        return channels.filter(c => c.departmentId === formDepartmentContext.id);
     }, [formDepartmentContext, channels]);
 
 
@@ -198,7 +204,7 @@ export default function PrimaryCustodianDashboardPage() {
     
     const openEditForm = (item: InventoryItem) => {
         const itemChannel = channels.find(c => c.id === item.channelId);
-        const itemDept = departments?.find(d => itemChannel?.id.startsWith(d.prefix));
+        const itemDept = departments?.find(d => d.id === itemChannel?.departmentId);
         setFormDepartmentContext(itemDept || null);
         setEditingItem(item);
         setIsFormOpen(true);
@@ -623,7 +629,13 @@ export default function PrimaryCustodianDashboardPage() {
                                         <Badge variant="outline" className="border-dashed">Department: {formDepartmentContext.name}</Badge>
                                     </div>
                                 )}
-                                <Label htmlFor="channelId">Specific Room</Label>
+                                <div className="flex items-center justify-between">
+                                  <Label htmlFor="channelId">Specific Room</Label>
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => setIsAddChannelOpen(true)} disabled={!formDepartmentContext}>
+                                      <PlusCircle className="mr-2 h-4 w-4" />
+                                      Add Room
+                                  </Button>
+                                </div>
                                 <Select name="channelId" defaultValue={editingItem?.channelId} required>
                                     <SelectTrigger id="channelId"><SelectValue placeholder="Select a room..." /></SelectTrigger>
                                     <SelectContent>{dialogChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name.replace(/#/g, '')}</SelectItem>))}</SelectContent>
@@ -653,6 +665,8 @@ export default function PrimaryCustodianDashboardPage() {
                 />
                 
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
+                
+                <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
 
             </div>
         </TooltipProvider>

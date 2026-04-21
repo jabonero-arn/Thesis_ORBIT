@@ -7,12 +7,12 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { addDoc, collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu, Hash, Hourglass,
-    PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X, Loader2
+    PlusCircle, Edit, Trash, QrCode, CornerDownLeft, Check, X, Loader2, User as UserIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { channels } from "@/lib/data"
+
 import {
   Table,
   TableBody,
@@ -43,13 +43,6 @@ import { QrScannerView } from "@/components/qr-scanner-view"
 import { format } from "date-fns"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
-
-const departments = [
-  { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
-  { id: "chem", name: "Chemistry Lab", prefix: "chemistry-lab", icon: <FlaskConical /> },
-  { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
-];
-
 type StaffView = 'borrow' | 'inventory' | 'transactions' | 'history' | 'scanner';
 type TransactionSubView = 'reservations' | 'borrowed';
 
@@ -57,7 +50,7 @@ export default function StaffDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory } = useAppContext();
+    const { items, borrowHistory, departments, channels } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -85,10 +78,28 @@ export default function StaffDashboardPage() {
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('reservations');
     
     // Borrowing view states
-    const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
-    const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
-        channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
-    );
+    const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string|null>(null);
+    const [selectedChannelId, setSelectedChannelId] = React.useState<string|null>(null);
+    
+    React.useEffect(() => {
+        if (!selectedDepartmentId && departments.length > 0) {
+        setSelectedDepartmentId(departments[0].id);
+        }
+    }, [departments, selectedDepartmentId]);
+
+    React.useEffect(() => {
+        if (selectedDepartmentId && !selectedChannelId) {
+            const dept = departments.find(d => d.id === selectedDepartmentId);
+            if (dept) {
+                const firstChannel = channels.find(c => c.departmentId === dept.id);
+                if (firstChannel) {
+                    setSelectedChannelId(firstChannel.id);
+                }
+            }
+        }
+    }, [selectedDepartmentId, selectedChannelId, channels, departments]);
+
+
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
     // Inventory view state
@@ -102,10 +113,8 @@ export default function StaffDashboardPage() {
     const handleDepartmentSelect = (deptId: string) => {
         setActiveView('borrow');
         setSelectedDepartmentId(deptId);
-        const firstChannelInDept = channels.find(d => d.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
-        if (firstChannelInDept) {
-            setSelectedChannelId(firstChannelInDept.id);
-        }
+        const firstChannelInDept = channels.find(d => d.departmentId === deptId);
+        setSelectedChannelId(firstChannelInDept?.id ?? null);
         setIsMobileMenuOpen(false);
     }
     
@@ -118,10 +127,12 @@ export default function StaffDashboardPage() {
         setActiveView(view);
          if (view === 'borrow' && activeView !== 'borrow') {
              const firstDept = departments[0];
-             setSelectedDepartmentId(firstDept.id);
-             const firstChannel = channels.find(c => c.id.startsWith(firstDept.prefix));
-             if (firstChannel) {
-                setSelectedChannelId(firstChannel.id);
+             if (firstDept) {
+                setSelectedDepartmentId(firstDept.id);
+                const firstChannel = channels.find(c => c.departmentId === firstDept.id);
+                if (firstChannel) {
+                    setSelectedChannelId(firstChannel.id);
+                }
              }
         }
         if (view === 'inventory' && activeView !== 'inventory') {
@@ -240,16 +251,17 @@ export default function StaffDashboardPage() {
 
     // Data for views
     const filteredItems = React.useMemo(() => items.filter((item) => item.channelId === selectedChannelId), [items, selectedChannelId]);
-    const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId]);
-    const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
+    const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId, channels]);
+    const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId, departments]);
     const inventoryItemsToDisplay = React.useMemo(() => {
         if (inventorySelectedDeptId === 'all') {
             return items;
         }
-        const selectedDeptPrefix = departments.find(d => d.id === inventorySelectedDeptId)?.prefix;
-        if (!selectedDeptPrefix) return [];
-        return items.filter(item => item.channelId.startsWith(selectedDeptPrefix));
-    }, [items, inventorySelectedDeptId]);
+        const selectedDept = departments.find(d => d.id === inventorySelectedDeptId);
+        if (!selectedDept) return [];
+        const channelIds = channels.filter(c => c.departmentId === selectedDept.id).map(c => c.id);
+        return items.filter(item => channelIds.includes(item.channelId));
+    }, [items, inventorySelectedDeptId, departments, channels]);
     
     const { groupedPendingReservations, groupedConfirmedReservations } = React.useMemo(() => {
         const pending: { [id: string]: { records: BorrowHistory[], date: string, studentName: string, startTime?: string, endTime?: string } } = {};
@@ -307,6 +319,13 @@ export default function StaffDashboardPage() {
         return <Badge variant={variant}>{text}</Badge>;
     }
     
+    const getDeptIcon = (prefix: string) => {
+        if (prefix.startsWith('comp')) return <Cpu />;
+        if (prefix.startsWith('chem')) return <FlaskConical />;
+        if (prefix.startsWith('robo')) return <Cog />;
+        return <UserIcon />;
+    }
+
     const navItems = [
         { id: 'scanner', label: 'QR Scanner', icon: <QrCode /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
@@ -526,11 +545,11 @@ export default function StaffDashboardPage() {
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Departments</div>
              <div className="p-2 space-y-1">
-                {departments.map(dept => ( <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{dept.icon} {dept.name}</Button>))}
+                {departments.map(dept => ( <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{getDeptIcon(dept.prefix)} {dept.name}</Button>))}
             </div>
 
-            {activeView === 'borrow' && (
-                <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
+            {activeView === 'borrow' && selectedDepartmentId && (
+                <AppSidebar departmentId={selectedDepartmentId} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
             )}
 
             <Separator />
@@ -550,7 +569,7 @@ export default function StaffDashboardPage() {
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => { setInventorySelectedDeptId('all'); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>All Items</button></li>
                         {departments.map(dept => (
-                            <li key={dept.id}><button onClick={() => { setInventorySelectedDeptId(dept.id); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>
+                            <li key={dept.id}><button onClick={() => { setInventorySelectedDeptId(dept.id); setIsMobileMenuOpen(false); }} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
                         ))}
                     </ul>
                 </div>
@@ -587,7 +606,7 @@ export default function StaffDashboardPage() {
       </div>
     );
     
-    if (isUserLoading || !user) {
+    if (isUserLoading || !user || !selectedDepartmentId || !selectedChannelId) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -613,7 +632,7 @@ export default function StaffDashboardPage() {
                                     <Tooltip key={dept.id}>
                                         <TooltipTrigger asChild>
                                             <Button variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleDepartmentSelect(dept.id)}>
-                                                {dept.icon}
+                                                {getDeptIcon(dept.prefix)}
                                             </Button>
                                         </TooltipTrigger>
                                         <TooltipContent side="right" align="center"><p>{dept.name}</p></TooltipContent>
@@ -635,10 +654,10 @@ export default function StaffDashboardPage() {
                             </div>
                         </div>
                         {/* Contextual Sidebar */}
-                        {(activeView === 'borrow') && (
+                        {(activeView === 'borrow') && selectedDepartmentId && (
                             <div className="w-64 flex-col bg-[#141821] p-2">
                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{selectedDepartment?.name}</div>
-                                <AppSidebar departmentPrefix={selectedDepartment?.prefix ?? ''} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
+                                <AppSidebar departmentId={selectedDepartmentId} selectedChannelId={selectedChannelId} onChannelSelect={handleChannelSelect} />
                             </div>
                         )}
                         {activeView === 'transactions' && (
@@ -669,7 +688,7 @@ export default function StaffDashboardPage() {
                                         {departments.map(dept => (
                                             <li key={dept.id}>
                                                 <button onClick={() => setInventorySelectedDeptId(dept.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySelectedDeptId === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                    {React.cloneElement(dept.icon, { className: 'h-5 w-5' })}
+                                                    {getDeptIcon(dept.prefix)}
                                                     {dept.name}
                                                 </button>
                                             </li>

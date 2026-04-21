@@ -8,7 +8,7 @@ import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "fi
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
-import { channels } from "@/lib/data"
+
 import type { InventoryItem, BorrowHistory, CartItem, User as UserType } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { InventoryGrid } from "@/components/inventory-grid"
@@ -26,18 +26,12 @@ import { StudentActivity } from "@/components/student-activity"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
-const departments = [
-  { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
-  { id: "chem", name: "Chemistry Lab", prefix: "chemistry-lab", icon: <FlaskConical /> },
-  { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
-];
-
 export default function Home() {
   const router = useRouter()
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory } = useAppContext();
+  const { items: allItems, borrowHistory, departments, channels } = useAppContext();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -66,10 +60,27 @@ export default function Home() {
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
   const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history'>('borrowed');
 
-  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState(departments[0].id)
-  const [selectedChannelId, setSelectedChannelId] = React.useState<string>(
-    channels.find(c => c.id.startsWith(departments[0].prefix))?.id ?? ""
-  );
+  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null)
+  
+  React.useEffect(() => {
+    if (!selectedDepartmentId && departments.length > 0) {
+      setSelectedDepartmentId(departments[0].id);
+    }
+  }, [departments, selectedDepartmentId]);
+
+  React.useEffect(() => {
+    if (selectedDepartmentId && !selectedChannelId) {
+        const dept = departments.find(d => d.id === selectedDepartmentId);
+        if (dept) {
+            const firstChannel = channels.find(c => c.departmentId === dept.id);
+            if (firstChannel) {
+                setSelectedChannelId(firstChannel.id);
+            }
+        }
+    }
+  }, [selectedDepartmentId, selectedChannelId, channels, departments]);
+  
   
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -102,10 +113,8 @@ export default function Home() {
   const handleDepartmentSelect = (deptId: string) => {
     setActiveView('borrow');
     setSelectedDepartmentId(deptId);
-    const firstChannelInDept = channels.find(c => c.id.startsWith(departments.find(d=>d.id === deptId)?.prefix ?? ''));
-    if (firstChannelInDept) {
-      setSelectedChannelId(firstChannelInDept.id);
-    }
+    const firstChannelInDept = channels.find(c => c.departmentId === deptId);
+    setSelectedChannelId(firstChannelInDept?.id ?? null);
     setSelectedItems([]);
     setIsMobileMenuOpen(false);
   }
@@ -121,8 +130,8 @@ export default function Home() {
     [allItems, selectedChannelId]
   )
   
-  const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId])
-  const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId]);
+  const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId, channels])
+  const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId, departments]);
 
   const handleItemSelect = (item: InventoryItem) => {
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
@@ -255,8 +264,15 @@ export default function Home() {
         ));
     }
   };
+  
+  const getDeptIcon = (prefix: string) => {
+    if (prefix.startsWith('comp')) return <Cpu />;
+    if (prefix.startsWith('chem')) return <FlaskConical />;
+    if (prefix.startsWith('robo')) return <Cog />;
+    return <User />;
+  }
 
-  if (isUserLoading || isProfileLoading || !user) {
+  if (isUserLoading || isProfileLoading || !user || !selectedDepartmentId || !selectedChannelId) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -291,7 +307,7 @@ export default function Home() {
                                 size="icon" 
                                 className="h-12 w-12 rounded-lg"
                                 onClick={() => handleDepartmentSelect(dept.id)}>
-                                  {dept.icon}
+                                  {getDeptIcon(dept.prefix)}
                               </Button>
                           </TooltipTrigger>
                           <TooltipContent side="right" align="center">
@@ -323,7 +339,7 @@ export default function Home() {
                           {selectedDepartment?.name}
                         </div>
                         <AppSidebar
-                          departmentPrefix={selectedDepartment?.prefix ?? ''}
+                          departmentId={selectedDepartmentId}
                           selectedChannelId={selectedChannelId}
                           onChannelSelect={handleChannelSelect}
                         />
@@ -395,14 +411,14 @@ export default function Home() {
                             <div className="p-2 space-y-1">
                                 {departments.map(dept => (
                                     <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
-                                        {dept.icon}
+                                        {getDeptIcon(dept.prefix)}
                                         {dept.name}
                                     </Button>
                                 ))}
                             </div>
-                            {activeView === 'borrow' && (
+                            {activeView === 'borrow' && selectedDepartmentId && (
                                 <AppSidebar
-                                    departmentPrefix={selectedDepartment?.prefix ?? ''}
+                                    departmentId={selectedDepartmentId}
                                     selectedChannelId={selectedChannelId}
                                     onChannelSelect={handleChannelSelect}
                                 />

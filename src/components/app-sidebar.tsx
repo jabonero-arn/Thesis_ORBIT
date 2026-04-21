@@ -1,38 +1,34 @@
+
 "use client"
 
 import {
-  CircuitBoard,
-  FlaskConical,
-  Cog,
-  HardDrive,
-  TestTube2,
   Hash,
 } from "lucide-react"
 
-import { channels } from "@/lib/data"
+import { useAppContext } from "@/context/app-context"
+import { useMemo } from "react"
 
 type AppSidebarProps = {
-  departmentPrefix: string;
-  selectedChannelId: string
+  departmentId: string;
+  selectedChannelId: string | null;
   onChannelSelect: (id: string) => void
 }
 
-const departments = [
-  { name: "Computer Labs", prefix: "computer-lab"},
-  { name: "Chemistry Labs", prefix: "chemistry-lab"},
-  { name: "Robotics Labs", prefix: "robotics-lab"},
-]
-
-export function AppSidebar({ departmentPrefix, selectedChannelId, onChannelSelect }: AppSidebarProps) {
-  const department = departments.find(d => d.prefix === departmentPrefix);
-  const departmentChannels = channels.filter(c => c.id.startsWith(departmentPrefix));
+export function AppSidebar({ departmentId, selectedChannelId, onChannelSelect }: AppSidebarProps) {
+  const { channels, departments } = useAppContext();
+  
+  const department = useMemo(() => departments.find(d => d.id === departmentId), [departments, departmentId]);
+  
+  const departmentChannels = useMemo(() => 
+    channels.filter(c => c.departmentId === departmentId)
+  , [channels, departmentId]);
 
   return (
     <div className="flex-1 py-4">
       {department && (
         <div>
           <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-            {department.name}
+            {department.name} Rooms
           </h2>
           <ul className="flex flex-col gap-1">
             {departmentChannels.map((channel) => (

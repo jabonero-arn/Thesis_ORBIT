@@ -33,6 +33,7 @@ export type Channel = {
   id: string;
   name: string;
   description: string;
+  departmentId: string;
 };
 
 export type ItemStatus = "Available" | "Locked" | "Borrowed" | "Pending Receipt";
