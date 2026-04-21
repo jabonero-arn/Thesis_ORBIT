@@ -288,16 +288,19 @@ export default function SupervisorDashboardPage() {
                                 <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
                                 <CardContent>
                                     <Table>
-                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
                                         <TableBody>
-                                            {departmentItems.length > 0 ? departmentItems.map(item => (
+                                            {departmentItems.length > 0 ? departmentItems.map(item => {
+                                                const dateToShow = item.verifiedAt || item.createdAt;
+                                                return (
                                                 <TableRow key={item.id}>
                                                     <TableCell className="font-medium">{item.name}</TableCell>
                                                     <TableCell>{getItemChannelName(item.channelId)}</TableCell>
                                                     <TableCell>{item.quantity}</TableCell>
                                                     <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                    <TableCell>{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                                                 </TableRow>
-                                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                            )}) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items found.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
@@ -516,3 +519,5 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    

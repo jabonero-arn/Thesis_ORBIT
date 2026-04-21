@@ -197,7 +197,7 @@ export default function PrimaryCustodianDashboardPage() {
         try {
             if (editingItem) {
                 const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
-                await updateDoc(itemDocRef, itemData as any);
+                await updateDoc(itemDocRef, { ...itemData, verifiedAt: new Date().toISOString() } as any);
                 toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
             } else {
                 const inventoryCollection = collection(firestore, "inventory_items");
@@ -300,22 +300,26 @@ export default function PrimaryCustodianDashboardPage() {
                     <TableHead className="hidden md:table-cell">Lab</TableHead>
                     <TableHead>Quantity</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Last Updated</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {tableItems.length > 0 ? tableItems.map(item => (
+                {tableItems.length > 0 ? tableItems.map(item => {
+                    const dateToShow = item.verifiedAt || item.createdAt;
+                    return (
                     <TableRow key={item.id}>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell className="hidden md:table-cell">{getItemChannelName(item.channelId)}</TableCell>
                         <TableCell>{item.quantity}</TableCell>
                         <TableCell>{getStatusBadge(item.status)}</TableCell>
+                        <TableCell>{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                         <TableCell className="text-right space-x-2">
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
                             <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                         </TableCell>
                     </TableRow>
-                )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                )}) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No items found.</TableCell></TableRow>}
             </TableBody>
         </Table>
     );
@@ -687,3 +691,5 @@ export default function PrimaryCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
