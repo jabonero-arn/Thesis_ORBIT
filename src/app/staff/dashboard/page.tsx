@@ -178,10 +178,6 @@ export default function StaffDashboardPage() {
                 const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
                 await updateDoc(itemDocRef, itemData);
                 toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
-            } else {
-                const inventoryCollection = collection(firestore, "inventory_items");
-                await addDoc(inventoryCollection, itemData);
-                toast({ title: "Item Added", description: `${itemData.name} has been added to inventory.` });
             }
             closeForm();
         } catch (e) {
@@ -192,11 +188,6 @@ export default function StaffDashboardPage() {
 
     const openEditForm = (item: InventoryItem) => {
         setEditingItem(item);
-        setIsFormOpen(true);
-    }
-
-    const openAddForm = () => {
-        setEditingItem(null);
         setIsFormOpen(true);
     }
 
@@ -459,8 +450,7 @@ export default function StaffDashboardPage() {
                 return (
                     <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                         <CardHeader className="flex flex-row items-center justify-between">
-                            <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
-                            <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
+                            <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit items from all labs.</CardDescription></div>
                         </CardHeader>
                         <CardContent>
                            <InventoryTable items={inventoryItemsToDisplay} />

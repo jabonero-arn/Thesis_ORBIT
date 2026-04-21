@@ -3,12 +3,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building
 } from "lucide-react"
 import {
   Card,
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -43,27 +43,30 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
+import { CreateUserForm } from "@/components/admin/create-user-form"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
-
-const departments = [
-  { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
-  { id: "chem", name: "Chemistry Lab", prefix: "chemistry-lab", icon: <FlaskConical /> },
-  { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
-];
+import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
     { id: 'Primary Custodian', name: 'Primary Custodian', icon: <Crown /> },
-    { id: 'Admin', name: 'Admin', icon: <Shield /> },
+    { id: 'Supervisor', name: 'Supervisor', icon: <Shield /> },
     { id: 'Staff', name: 'Staff', icon: <ClipboardList /> },
     { id: 'Teacher', name: 'Teacher', icon: <BookUser /> },
     { id: 'Student', name: 'Student', icon: <User /> },
 ];
 
+const getDeptIcon = (prefix: string) => {
+    if (prefix.startsWith('comp')) return <Cpu />;
+    if (prefix.startsWith('chem')) return <FlaskConical />;
+    if (prefix.startsWith('robo')) return <Cog />;
+    return <Building />;
+}
+
 
 type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'users';
-type DashboardSubView = 'overall' | 'comp' | 'chem' | 'robo';
-type InventorySubView = 'all' | 'comp' | 'chem' | 'robo';
+type DashboardSubView = 'overall' | string; // string is department prefix
+type InventorySubView = 'all' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
 
 export default function PrimaryCustodianDashboardPage() {
@@ -79,6 +82,11 @@ export default function PrimaryCustodianDashboardPage() {
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
+
+    const departmentsQuery = useMemoFirebase(() =>
+        firestore ? collection(firestore, 'departments') : null
+    , [firestore]);
+    const { data: departments } = useCollection<Department>(departmentsQuery);
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
@@ -99,18 +107,20 @@ export default function PrimaryCustodianDashboardPage() {
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
     const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
-    const [usersSubView, setUsersSubView] = React.useState<'all' | 'Primary Custodian' | 'Admin' | 'Staff' | 'Teacher' | 'Student'>('all');
+    const [usersSubView, setUsersSubView] = React.useState<'all' | 'Primary Custodian' | 'Supervisor' | 'Staff' | 'Teacher' | 'Student'>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+    const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
+    const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
-        const prefix = departments.find(d => d.id === dashboardSubView)?.prefix;
+        const prefix = departments?.find(d => d.prefix === dashboardSubView)?.prefix;
         return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, dashboardSubView]);
+    }, [items, dashboardSubView, departments]);
 
     const dashboardHistory = React.useMemo(() => {
         if (dashboardSubView === 'overall') return borrowHistory;
@@ -120,19 +130,19 @@ export default function PrimaryCustodianDashboardPage() {
 
     const inventoryItemsToDisplay = React.useMemo(() => {
         if (inventorySubView === 'all') return items;
-        const prefix = departments.find(d => d.id === inventorySubView)?.prefix;
+        const prefix = departments?.find(d => d.prefix === inventorySubView)?.prefix;
         return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, inventorySubView]);
+    }, [items, inventorySubView, departments]);
 
     const historyToDisplay = React.useMemo(() => {
         if (historySubView === 'overall') return borrowHistory;
         
-        const prefix = departments.find(d => d.id === historySubView)?.prefix;
+        const prefix = departments?.find(d => d.prefix === historySubView)?.prefix;
         if (!prefix) return borrowHistory;
 
         const itemNamesInDept = new Set(items.filter(item => item.channelId.startsWith(prefix)).map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, items, historySubView]);
+    }, [borrowHistory, items, historySubView, departments]);
 
     const usersToDisplay = React.useMemo(() => {
         if (usersSubView === 'all') return allUsers;
@@ -215,31 +225,6 @@ export default function PrimaryCustodianDashboardPage() {
         }
     }
     
-    const handleReturnItem = async (historyId: string) => {
-        if(!firestore) return;
-        const historyRecord = borrowHistory.find(h => h.id === historyId);
-        if (!historyRecord) return;
-        
-        try {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Returned' });
-            
-            const itemToUpdate = items.find(item => item.name === historyRecord.itemName);
-            if (itemToUpdate) {
-                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                const newQuantity = itemToUpdate.quantity + 1;
-                await updateDoc(itemDocRef, { 
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
-                });
-            }
-            toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not process return.' });
-        }
-    }
-    
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
     const getStatusBadge = (status: InventoryItem['status']) => {
@@ -310,8 +295,8 @@ export default function PrimaryCustodianDashboardPage() {
             case 'dashboard':
                  const totalItemTypes = dashboardItems.length;
                  const totalStock = dashboardItems.reduce((sum, item) => sum + item.quantity, 0);
-                 const borrowedItemsCount = borrowHistory.filter(h => h.status === 'Active').length;
-                 const reservedItemsCount = borrowHistory.filter(h => h.status === 'Approved').length;
+                 const borrowedItemsCount = dashboardHistory.filter(h => h.status === 'Active').length;
+                 const reservedItemsCount = dashboardHistory.filter(h => h.status === 'Approved').length;
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -328,6 +313,7 @@ export default function PrimaryCustodianDashboardPage() {
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
+                                <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
                             </CardHeader>
                             <CardContent>
                                 <InventoryTable items={inventoryItemsToDisplay} />
@@ -363,8 +349,19 @@ export default function PrimaryCustodianDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80">
-                            <CardHeader><CardTitle>User Management</CardTitle><CardDescription>Oversee all users in the system.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
+                           <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>User Management</CardTitle>
+                                    <CardDescription>Oversee all users in the system.</CardDescription>
+                                </div>
+                                {usersSubView !== 'all' && usersSubView !== 'Student' && (
+                                    <Button onClick={() => setIsCreateUserOpen(true)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        Create User
+                                    </Button>
+                                )}
+                            </CardHeader>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
                 );
@@ -397,7 +394,7 @@ export default function PrimaryCustodianDashboardPage() {
                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setDashboardSubView(dept.id as DashboardSubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                        {departments?.map(dept => (<li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                     </ul>
                 </div>
             )}
@@ -406,8 +403,9 @@ export default function PrimaryCustodianDashboardPage() {
                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.id as InventorySubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                        {departments?.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                     </ul>
+                     <Button className="w-full mt-2" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button>
                 </div>
             )}
             {activeView === 'transactions' && (
@@ -423,7 +421,7 @@ export default function PrimaryCustodianDashboardPage() {
                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setHistorySubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setHistorySubView(dept.id as DashboardSubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                        {departments?.map(dept => (<li key={dept.id}><button onClick={() => {setHistorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                     </ul>
                 </div>
             )}
@@ -500,7 +498,7 @@ export default function PrimaryCustodianDashboardPage() {
                                      <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
                                      <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                         {departments.map(dept => (<li key={dept.id}><button onClick={() => setDashboardSubView(dept.id as DashboardSubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                                         {departments?.map(dept => (<li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                                      </ul>
                                  </div>
                                 </>
@@ -512,8 +510,9 @@ export default function PrimaryCustodianDashboardPage() {
                                      <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2>
                                      <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                                         {departments.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.id as InventorySubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                                         {departments?.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                                      </ul>
+                                     <Button className="w-full mt-4" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button>
                                  </div>
                                 </>
                              )}
@@ -535,7 +534,7 @@ export default function PrimaryCustodianDashboardPage() {
                                         <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
                                         <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setHistorySubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                            {departments.map(dept => (<li key={dept.id}><button onClick={() => setHistorySubView(dept.id as DashboardSubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                                            {departments?.map(dept => (<li key={dept.id}><button onClick={() => setHistorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
                                         </ul>
                                     </div>
                                 </>
@@ -592,7 +591,7 @@ export default function PrimaryCustodianDashboardPage() {
                                 <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
                                 <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                             </div>
-                            <div className="grid gap-2">
+                             <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
                                 <Select name="status" defaultValue={editingItem?.status === 'Borrowed' ? 'Available' : (editingItem?.status || 'Available')} required>
                                     <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
@@ -607,6 +606,15 @@ export default function PrimaryCustodianDashboardPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
+
+                <CreateUserForm 
+                    open={isCreateUserOpen} 
+                    onOpenChange={setIsCreateUserOpen} 
+                    roleToCreate={usersSubView as Exclude<Role, "Student" | "Primary Custodian">}
+                />
+                
+                <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
+
             </div>
         </TooltipProvider>
     )

@@ -1,5 +1,5 @@
 
-export type Role = "Student" | "Teacher" | "Admin" | "Staff" | "Primary Custodian";
+export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Primary Custodian";
 
 export type User = {
   id: string;
@@ -13,13 +13,27 @@ export type User = {
   courseOrStrand?: string;
   yearLevel?: string;
   
-  // Teacher/Staff/Admin specific
+  // Teacher/Staff/Supervisor specific
   department?: string;
   employeeId?: string;
   passwordChangeRequired?: boolean;
+  assignedFacilityId?: string;
+  assignedFacilityType?: 'Office' | 'Laboratory';
 
   // This is not in Firestore, can be added from auth user if needed for display
   avatarUrl?: string;
+};
+
+export type Facility = {
+  id: string;
+  name: string;
+  type: 'Office' | 'Laboratory';
+};
+
+export type Department = {
+  id: string;
+  name: string;
+  prefix: string;
 };
 
 export type Channel = {
@@ -28,7 +42,7 @@ export type Channel = {
   description: string;
 };
 
-export type ItemStatus = "Available" | "Locked" | "Borrowed";
+export type ItemStatus = "Available" | "Locked" | "Borrowed" | "Pending Receipt";
 
 export type InventoryItem = {
   id: string;

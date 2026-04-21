@@ -26,7 +26,7 @@
             "Student",
             "Teacher",
             "Staff",
-            "Admin",
+            "Supervisor",
             "Primary Custodian"
           ]
         },
@@ -57,6 +57,15 @@
         "passwordChangeRequired": {
           "type": "boolean",
           "description": "If true, the user must change their password on next login."
+        },
+        "assignedFacilityType": {
+            "type": "string",
+            "enum": ["Office", "Laboratory"],
+            "description": "The type of facility a Supervisor is assigned to."
+        },
+        "assignedFacilityId": {
+            "type": "string",
+            "description": "The ID of the specific facility a Supervisor is assigned to."
         }
       },
       "required": ["id", "displayName", "email", "role"]
@@ -69,7 +78,7 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "channelId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed"] },
+        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt"] },
         "imageUrl": { "type": "string", "format": "uri" },
         "imageHint": { "type": "string" },
         "quantity": { "type": "number" }
@@ -112,6 +121,26 @@
         "role",
         "assignedAt"
       ]
+    },
+    "Facility": {
+      "title": "Facility",
+      "description": "Represents a physical location like a laboratory or office.",
+      "type": "object",
+      "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["Laboratory", "Office"] }
+      },
+      "required": ["name", "type"]
+    },
+     "Department": {
+      "title": "Department",
+      "description": "Represents a department or a major laboratory grouping.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "prefix": { "type": "string", "description": "A unique prefix used for grouping channels/facilities." }
+      },
+      "required": ["name", "prefix"]
     }
   },
   "auth": {
@@ -150,17 +179,25 @@
       },
       "description": "Grants a user the 'Staff' role."
     },
-    "/roles_admin/{userId}": {
+    "/roles_supervisor/{userId}": {
       "schema": {
         "$ref": "#/entities/RoleFlag"
       },
-      "description": "Grants a user the 'Admin' role."
+      "description": "Grants a user the 'Supervisor' role."
     },
     "/roles_primary_custodian/{userId}": {
       "schema": {
         "$ref": "#/entities/RoleFlag"
       },
       "description": "Grants a user the 'Primary Custodian' role."
+    },
+    "/facilities/{facilityId}": {
+        "schema": { "$ref": "#/entities/Facility" },
+        "description": "Stores all manageable facilities."
+    },
+    "/departments/{departmentId}": {
+        "schema": { "$ref": "#/entities/Department" },
+        "description": "Stores the list of departments."
     }
   }
 }
