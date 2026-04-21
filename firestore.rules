@@ -108,7 +108,8 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
      match /inventory_items/{itemId} {
         allow get, list: if isSignedIn();
-        allow create, update, delete: if isStaff() || isSupervisor() || isPrimaryCustodian();
+        allow create, delete: if isPrimaryCustodian();
+        allow update: if isStaff() || isSupervisor() || isPrimaryCustodian();
       }
 
     // --------------------------------------------------------------------------------

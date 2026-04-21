@@ -8,7 +8,7 @@ import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestor
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle
 } from "lucide-react"
 import {
   Card,
@@ -67,7 +67,7 @@ const getDeptIcon = (prefix: string) => {
 
 type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'users';
 type DashboardSubView = 'overall' | string; // string is department prefix
-type InventorySubView = 'all' | string; // string is department prefix
+type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
 
 export default function PrimaryCustodianDashboardPage() {
@@ -129,6 +129,9 @@ export default function PrimaryCustodianDashboardPage() {
     }, [borrowHistory, dashboardItems, dashboardSubView]);
 
     const inventoryItemsToDisplay = React.useMemo(() => {
+        if (inventorySubView === 'inaccurate') {
+            return items.filter(item => item.status === 'Inaccurate');
+        }
         if (inventorySubView === 'all') return items;
         const deptId = departments?.find(d => d.prefix === inventorySubView)?.id;
         const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
@@ -173,17 +176,22 @@ export default function PrimaryCustodianDashboardPage() {
         const formData = new FormData(event.currentTarget);
         const name = formData.get("name") as string;
         const quantity = parseInt(formData.get("quantity") as string, 10);
-        const statusFromForm = formData.get("status") as InventoryItem['status'];
-
+        
         const itemData = {
             name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             quantity: quantity,
-            status: quantity === 0 ? 'Borrowed' : statusFromForm,
+            status: editingItem 
+                ? (formData.get("status") as InventoryItem['status']) 
+                : 'Pending Receipt',
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
             imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
         };
+        
+        if (editingItem && quantity === 0 && itemData.status !== 'Borrowed') {
+            itemData.status = 'Borrowed';
+        }
 
         try {
             if (editingItem) {
@@ -193,7 +201,7 @@ export default function PrimaryCustodianDashboardPage() {
             } else {
                 const inventoryCollection = collection(firestore, "inventory_items");
                 await addDoc(inventoryCollection, itemData);
-                toast({ title: "Item Added", description: `${itemData.name} has been added to inventory.` });
+                toast({ title: "Item Added", description: `${itemData.name} is now pending receipt by the facility supervisor.` });
             }
             closeForm();
         } catch (e) {
@@ -249,7 +257,7 @@ export default function PrimaryCustodianDashboardPage() {
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
     const getStatusBadge = (status: InventoryItem['status']) => {
-        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline" } as const;
+        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
@@ -337,12 +345,12 @@ export default function PrimaryCustodianDashboardPage() {
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <div className={cn(inventorySubView === 'all' && 'cursor-not-allowed')}>
-                                            <Button onClick={openAddForm} disabled={inventorySubView === 'all'}>
+                                            <Button onClick={openAddForm} disabled={inventorySubView === 'all' || inventorySubView === 'inaccurate'}>
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Add New Item
                                             </Button>
                                         </div>
                                     </TooltipTrigger>
-                                    {inventorySubView === 'all' && (
+                                    {(inventorySubView === 'all' || inventorySubView === 'inaccurate') && (
                                         <TooltipContent>
                                             <p>Please select a department to add an item to.</p>
                                         </TooltipContent>
@@ -438,6 +446,7 @@ export default function PrimaryCustodianDashboardPage() {
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
                         {departments?.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
+                         <li><button onClick={() => {setInventorySubView('inaccurate'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li>
                     </ul>
                      <Button className="w-full mt-2" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button>
                 </div>
@@ -545,6 +554,7 @@ export default function PrimaryCustodianDashboardPage() {
                                      <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
                                          {departments?.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}
+                                        <li><button onClick={() => setInventorySubView('inaccurate')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li>
                                      </ul>
                                      <Button className="w-full mt-4" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button>
                                  </div>
@@ -616,7 +626,7 @@ export default function PrimaryCustodianDashboardPage() {
                     {renderContent()}
                 </main>
 
-                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
                     <DialogContent><DialogHeader><DialogTitle>{editingItem ? "Edit Item" : "Add New Inventory Item"}</DialogTitle></DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" defaultValue={editingItem?.name} required/></div>
@@ -642,16 +652,20 @@ export default function PrimaryCustodianDashboardPage() {
                                 </Select>
                             </div>
 
-                             <div className="grid gap-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select name="status" defaultValue={editingItem?.status === 'Borrowed' ? 'Available' : (editingItem?.status || 'Available')} required>
-                                    <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Available">Available</SelectItem>
-                                        <SelectItem value="Locked">Locked</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                             {editingItem && (
+                               <div className="grid gap-2">
+                                  <Label htmlFor="status">Status</Label>
+                                  <Select name="status" defaultValue={editingItem.status} required>
+                                      <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="Available">Available</SelectItem>
+                                          <SelectItem value="Locked">Locked</SelectItem>
+                                          <SelectItem value="Pending Receipt">Pending Receipt</SelectItem>
+                                          <SelectItem value="Inaccurate">Inaccurate</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                             )}
                             <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL</Label><Input id="imageUrl" name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="https://..."/></div>
                             <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">{editingItem ? "Save Changes" : "Add Item"}</Button></DialogFooter>
                         </form>

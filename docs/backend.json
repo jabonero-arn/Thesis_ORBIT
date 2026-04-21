@@ -73,7 +73,7 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "channelId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt"] },
+        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt", "Inaccurate"] },
         "imageUrl": { "type": "string", "format": "uri" },
         "imageHint": { "type": "string" },
         "quantity": { "type": "number" }

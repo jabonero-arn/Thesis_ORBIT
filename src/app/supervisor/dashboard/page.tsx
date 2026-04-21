@@ -3,12 +3,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
-import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { doc, updateDoc } from "firebase/firestore"
 import { 
-    Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
+    Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X
 } from "lucide-react"
 import {
   Card,
@@ -30,36 +30,21 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
-const getDeptIcon = (prefix: string) => {
-    if (prefix.startsWith('comp')) return <Cpu />;
-    if (prefix.startsWith('chem')) return <FlaskConical />;
-    if (prefix.startsWith('robo')) return <Cog />;
-    return <Building />;
-}
-
-type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history';
-type DashboardSubView = 'overall' | string; // string is channelId
-type InventorySubView = 'all' | string; // string is channelId
+type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, allUsers, channels, departments } = useAppContext();
+    const { items, borrowHistory, channels, departments } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -71,12 +56,11 @@ export default function SupervisorDashboardPage() {
     
     const assignedDepartmentId = userProfile?.assignedDepartmentId;
     const assignedDepartment = React.useMemo(() => departments.find(d => d.id === assignedDepartmentId), [departments, assignedDepartmentId]);
-    const assignedDepartmentPrefix = assignedDepartment?.prefix;
 
     const assignedChannels = React.useMemo(() => {
-        if (!assignedDepartmentPrefix) return [];
-        return channels.filter(c => c.id.startsWith(assignedDepartmentPrefix));
-    }, [channels, assignedDepartmentPrefix]);
+        if (!assignedDepartmentId) return [];
+        return channels.filter(c => c.departmentId === assignedDepartmentId);
+    }, [channels, assignedDepartmentId]);
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
@@ -91,7 +75,6 @@ export default function SupervisorDashboardPage() {
                 title: 'Assignment Error',
                 description: "Your account has not been assigned to a department. Please contact the Primary Custodian."
             })
-            // Consider logging out or redirecting
         }
     }, [userProfile, isProfileLoading, assignedDepartmentId, toast]);
 
@@ -103,121 +86,46 @@ export default function SupervisorDashboardPage() {
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
     // View state
-    const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
-    const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
-    const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
-    const [transactionSubView, setTransactionSubView] = React.useState('borrowed');
-    const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
-    
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
-    const [isFormOpen, setIsFormOpen] = React.useState(false);
-    const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+    const [activeView, setActiveView] = React.useState<SupervisorView>('verification');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Data Filtering
     const departmentItems = React.useMemo(() => {
-        if (!assignedDepartmentPrefix) return [];
-        return items.filter(item => item.channelId.startsWith(assignedDepartmentPrefix));
-    }, [items, assignedDepartmentPrefix]);
-
-    const dashboardItems = React.useMemo(() => {
-        if (dashboardSubView === 'overall') return departmentItems;
-        return departmentItems.filter(item => item.channelId === dashboardSubView);
-    }, [departmentItems, dashboardSubView]);
+        if (!assignedDepartmentId) return [];
+        const assignedChannelIds = new Set(assignedChannels.map(c => c.id));
+        return items.filter(item => assignedChannelIds.has(item.channelId));
+    }, [items, assignedChannels, assignedDepartmentId]);
 
     const departmentHistory = React.useMemo(() => {
         const itemNamesInDept = new Set(departmentItems.map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, departmentItems]);
 
-    const dashboardHistory = React.useMemo(() => {
-        if (dashboardSubView === 'overall') return departmentHistory;
-        const itemNamesInChannel = new Set(dashboardItems.map(i => i.name));
-        return departmentHistory.filter(h => itemNamesInChannel.has(h.itemName));
-    }, [departmentHistory, dashboardItems, dashboardSubView]);
-
-
-    const inventoryItemsToDisplay = React.useMemo(() => {
-        if (inventorySubView === 'all') return departmentItems;
-        return departmentItems.filter(item => item.channelId === inventorySubView);
-    }, [departmentItems, inventorySubView]);
-
-    const historyToDisplay = React.useMemo(() => {
-        if (historySubView === 'overall') return departmentHistory;
-        const itemNamesInChannel = new Set(items.filter(item => item.channelId === historySubView).map(i => i.name));
-        return departmentHistory.filter(h => itemNamesInChannel.has(h.itemName));
-    }, [departmentHistory, items, historySubView]);
-
-
     // Handlers
     const handleViewChange = (view: SupervisorView) => {
         setActiveView(view);
         setIsMobileMenuOpen(false);
     }
-
-    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!firestore) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
-            return;
-        }
-
-        const formData = new FormData(event.currentTarget);
-        const name = formData.get("name") as string;
-        const quantity = parseInt(formData.get("quantity") as string, 10);
-        const statusFromForm = formData.get("status") as InventoryItem['status'];
-        
-        const itemData = {
-            name: name,
-            description: formData.get("description") as string,
-            channelId: formData.get("channelId") as string,
-            quantity: quantity,
-            status: quantity === 0 ? 'Borrowed' : statusFromForm,
-            imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
-            imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
-        };
-
-        try {
-            if (editingItem) {
-                const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
-                await updateDoc(itemDocRef, itemData);
-                toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
-            }
-            closeForm();
-        } catch (e) {
-            console.error(e);
-            toast({ variant: "destructive", title: "Error", description: "Could not save the item." });
-        }
-    }
     
-    const openEditForm = (item: InventoryItem) => {
-        setEditingItem(item);
-        setIsFormOpen(true);
-    }
-
-    const closeForm = () => {
-        setEditingItem(null);
-        setIsFormOpen(false);
-    }
-
-    const handleDeleteItem = async (itemId: string) => {
-        if (!firestore) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
-            return;
-        }
+    const handleVerificationAction = async (itemId: string, newStatus: 'Available' | 'Inaccurate') => {
+        if (!firestore) return;
+        const itemDocRef = doc(firestore, "inventory_items", itemId);
         try {
-            const itemDocRef = doc(firestore, "inventory_items", itemId);
-            await deleteDoc(itemDocRef);
-            toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
+            await updateDoc(itemDocRef, { status: newStatus });
+            toast({
+                title: `Item ${newStatus === 'Available' ? 'Confirmed' : 'Flagged'}`,
+                description: `The item status has been updated.`,
+            });
         } catch (e) {
             console.error(e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
+            toast({ variant: 'destructive', title: 'Update Failed' });
         }
-    }
+    };
     
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
     const getStatusBadge = (status: InventoryItem['status']) => {
-        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline" } as const;
+        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
@@ -245,46 +153,61 @@ export default function SupervisorDashboardPage() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
+        { id: 'verification', label: 'Pending Items', icon: <ClipboardCheck /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
     ];
     
-    const InventoryTable = ({ items: tableItems }: { items: InventoryItem[] }) => (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="hidden md:table-cell">Lab</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {tableItems.length > 0 ? tableItems.map(item => (
-                    <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.name}</TableCell>
-                        <TableCell className="hidden md:table-cell">{getItemChannelName(item.channelId)}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>{getStatusBadge(item.status)}</TableCell>
-                        <TableCell className="text-right space-x-2">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
-                            <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-                        </TableCell>
-                    </TableRow>
-                )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items found.</TableCell></TableRow>}
-            </TableBody>
-        </Table>
-    );
+    const VerificationView = () => {
+        const pendingItems = departmentItems.filter(item => item.status === 'Pending Receipt');
+
+        return (
+            <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                <CardHeader>
+                    <CardTitle>Pending Item Verification</CardTitle>
+                    <CardDescription>Confirm receipt of new items for your department.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Quantity</TableHead>
+                                <TableHead>Assigned Room</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {pendingItems.length > 0 ? pendingItems.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                    <TableCell className="text-right space-x-2">
+                                        <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}>
+                                            <Check className="mr-2 h-4 w-4"/> Confirm
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}>
+                                            <X className="mr-2 h-4 w-4"/> Inaccurate
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        )
+    };
 
     const renderContent = () => {
         switch (activeView) {
             case 'dashboard':
-                 const totalItemTypes = dashboardItems.length;
-                 const totalStock = dashboardItems.reduce((sum, item) => sum + item.quantity, 0);
-                 const borrowedItemsCount = dashboardHistory.filter(h => h.status === 'Active').length;
-                 const reservedItemsCount = dashboardHistory.filter(h => h.status === 'Approved').length;
+                 const totalItemTypes = departmentItems.length;
+                 const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
+                 const borrowedItemsCount = departmentHistory.filter(h => h.status === 'Active').length;
+                 const reservedItemsCount = departmentHistory.filter(h => h.status === 'Approved').length;
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -295,15 +218,31 @@ export default function SupervisorDashboardPage() {
                         </div>
                      </div>
                 );
+            case 'verification':
+                return (
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <VerificationView />
+                    </div>
+                );
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit or remove items in your assigned laboratories.</CardDescription></div>
-                            </CardHeader>
+                            <CardHeader><div><CardTitle>Department Inventory</CardTitle><CardDescription>View all available items in your department.</CardDescription></div></CardHeader>
                             <CardContent>
-                                <InventoryTable items={inventoryItemsToDisplay} />
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {departmentItems.length > 0 ? departmentItems.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
                             </CardContent>
                         </Card>
                     </div>
@@ -328,7 +267,7 @@ export default function SupervisorDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses for your department.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{historyToDisplay.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{departmentHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
                 );
@@ -349,48 +288,12 @@ export default function SupervisorDashboardPage() {
     const mobileSidebarContent = (
       <div className="flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
-            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Menu</div>
+            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Supervisor"}</div>
             <div className="p-2 space-y-1">
                 {navItems.map(item => (
                   <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon} {item.label}</Button>
                 ))}
             </div>
-            {/* Submenus */}
-            {activeView === 'dashboard' && (
-                <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setDashboardSubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                    </ul>
-                </div>
-            )}
-            {activeView === 'inventory' && (
-                <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setInventorySubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                    </ul>
-                </div>
-            )}
-            {activeView === 'transactions' && (
-                <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                    </ul>
-                </div>
-            )}
-            {activeView === 'history' && (
-                 <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setHistorySubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setHistorySubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                    </ul>
-                </div>
-            )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
@@ -449,53 +352,20 @@ export default function SupervisorDashboardPage() {
 
                         {/* Contextual Sidebar */}
                         <div className="w-64 flex-col bg-[#141821] p-2">
-                             {activeView === 'dashboard' && (
-                                <>
-                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Dashboard View</div>
-                                 <div className="py-4">
-                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
-                                     <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                         {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setDashboardSubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                                     </ul>
-                                 </div>
-                                </>
-                             )}
-                             {activeView === 'inventory' && (
-                                <>
-                                 <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Inventory Filter</div>
-                                 <div className="py-4">
-                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
-                                     <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                                         {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setInventorySubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                                     </ul>
-                                 </div>
-                                </>
-                             )}
-                            {activeView === 'transactions' && (
-                                <>
-                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div>
-                                <div className="py-4">
-                                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
-                                    <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                                    </ul>
-                                </div>
-                                </>
-                            )}
-                            {activeView === 'history' && (
-                                <>
-                                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">History Filter</div>
-                                    <div className="py-4">
-                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
-                                        <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setHistorySubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                            {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setHistorySubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
-                                        </ul>
-                                    </div>
-                                </>
-                            )}
+                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Supervisor"}</div>
+                             <div className="py-4">
+                                 <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">MENU</h2>
+                                 <ul className="flex flex-col gap-1">
+                                    {navItems.map(item => (
+                                        <li key={item.id}>
+                                            <button onClick={() => handleViewChange(item.id as SupervisorView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === item.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                {React.cloneElement(item.icon, {className: "h-5 w-5"})}
+                                                {item.label}
+                                            </button>
+                                        </li>
+                                    ))}
+                                 </ul>
+                             </div>
                         </div>
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
@@ -528,30 +398,6 @@ export default function SupervisorDashboardPage() {
                     {renderContent()}
                 </main>
 
-                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                    <DialogContent><DialogHeader><DialogTitle>{editingItem ? "Edit Item" : "Add New Inventory Item"}</DialogTitle></DialogHeader>
-                        <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" defaultValue={editingItem?.name} required/></div>
-                            <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={editingItem?.description} required/></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
-                                <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{assignedChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
-                            </div>
-                             <div className="grid gap-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select name="status" defaultValue={editingItem?.status === 'Borrowed' ? 'Available' : (editingItem?.status || 'Available')} required>
-                                    <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Available">Available</SelectItem>
-                                        <SelectItem value="Locked">Locked</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL</Label><Input id="imageUrl" name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="https://..."/></div>
-                            <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">{editingItem ? "Save Changes" : "Add Item"}</Button></DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
             </div>
         </TooltipProvider>
     )
