@@ -441,7 +441,7 @@ export default function TeacherDashboardPage() {
     </>
   );
 
-  if (isUserLoading || isProfileLoading || !teacherData || !selectedDepartmentId || !selectedChannelId) {
+  if (isUserLoading || isProfileLoading || !teacherData || (activeView === 'borrow' && (!selectedDepartmentId || !selectedChannelId))) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
