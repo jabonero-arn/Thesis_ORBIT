@@ -4,7 +4,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
@@ -39,6 +39,13 @@ import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { InventoryGrid } from "@/components/inventory-grid"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 
 type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification';
 
@@ -89,9 +96,12 @@ export default function SupervisorDashboardPage() {
 
     // View state
     const [activeView, setActiveView] = React.useState<SupervisorView>('verification');
-    const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table'>('grid');
+    const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table'>('table');
     const [verificationSubView, setVerificationSubView] = React.useState<'pending' | 'history'>('pending');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isFormOpen, setIsFormOpen] = React.useState(false);
+    const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+
 
     // Data Filtering
     const departmentItems = React.useMemo(() => {
@@ -125,6 +135,66 @@ export default function SupervisorDashboardPage() {
             toast({ variant: 'destructive', title: 'Update Failed' });
         }
     };
+    
+    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!firestore || !editingItem) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Cannot save item.' });
+            return;
+        }
+
+        const formData = new FormData(event.currentTarget);
+        const quantity = parseInt(formData.get("quantity") as string, 10);
+        
+        const itemData: Partial<InventoryItem> = {
+            name: formData.get("name") as string,
+            description: formData.get("description") as string,
+            channelId: formData.get("channelId") as string,
+            quantity: quantity,
+            status: formData.get("status") as InventoryItem['status'],
+            imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${(formData.get("name") as string).replace(/\s/g, '-')}/600/400`,
+            imageHint: (formData.get("name") as string).toLowerCase().split(' ').slice(0, 2).join(' ')
+        };
+
+        if (quantity === 0 && itemData.status !== 'Borrowed') {
+            itemData.status = 'Borrowed';
+        }
+
+        try {
+            const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
+            await updateDoc(itemDocRef, { ...itemData, verifiedAt: new Date().toISOString() } as any);
+            toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
+            closeForm();
+        } catch (e) {
+            console.error(e);
+            toast({ variant: "destructive", title: "Error", description: "Could not save the item." });
+        }
+    }
+
+    const openEditForm = (item: InventoryItem) => {
+        setEditingItem(item);
+        setIsFormOpen(true);
+    }
+
+    const closeForm = () => {
+        setEditingItem(null);
+        setIsFormOpen(false);
+    }
+
+    const handleDeleteItem = async (itemId: string) => {
+        if (!firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+            return;
+        }
+        try {
+            const itemDocRef = doc(firestore, "inventory_items", itemId);
+            await deleteDoc(itemDocRef);
+            toast({ variant: "destructive", title: "Item Removed", description: `Item has been removed from inventory.` });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
+        }
+    }
     
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
@@ -288,7 +358,7 @@ export default function SupervisorDashboardPage() {
                                 <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
                                 <CardContent>
                                     <Table>
-                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
                                             {departmentItems.length > 0 ? departmentItems.map(item => {
                                                 const dateToShow = item.verifiedAt || item.createdAt;
@@ -299,8 +369,12 @@ export default function SupervisorDashboardPage() {
                                                     <TableCell>{item.quantity}</TableCell>
                                                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                                                     <TableCell>{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
+                                                    <TableCell className="text-right space-x-2">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
+                                                        <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                                    </TableCell>
                                                 </TableRow>
-                                            )}) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                            )}) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No items found.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
@@ -515,9 +589,60 @@ export default function SupervisorDashboardPage() {
                     {renderContent()}
                 </main>
 
+                <Dialog open={isFormOpen} onOpenChange={closeForm}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Edit Item</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleFormSubmit} className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Item Name</Label>
+                                <Input id="name" name="name" defaultValue={editingItem?.name} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea id="description" name="description" defaultValue={editingItem?.description} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="quantity">Quantity</Label>
+                                <Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity} required />
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="channelId">Specific Room</Label>
+                                <Select name="channelId" defaultValue={editingItem?.channelId} required>
+                                    <SelectTrigger id="channelId"><SelectValue placeholder="Select a room..." /></SelectTrigger>
+                                    <SelectContent>{assignedChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name.replace(/#/g, '')}</SelectItem>))}</SelectContent>
+                                </Select>
+                            </div>
+                            {editingItem && (
+                                <div className="grid gap-2">
+                                    <Label htmlFor="status">Status</Label>
+                                    <Select name="status" defaultValue={editingItem.status} required>
+                                        <SelectTrigger id="status"><SelectValue placeholder="Select a status" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Locked">Locked</SelectItem>
+                                            <SelectItem value="Inaccurate">Inaccurate</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                            <div className="grid gap-2">
+                                <Label htmlFor="imageUrl">Image URL</Label>
+                                <Input id="imageUrl" name="imageUrl" defaultValue={editingItem?.imageUrl} placeholder="https://..." />
+                            </div>
+                            <DialogFooter className="mt-4 sticky bottom-0 bg-background py-4">
+                                <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
+                                <Button type="submit">Save Changes</Button>
+                            </DialogFooter>
+                        </form>
+                    </DialogContent>
+                </Dialog>
+
             </div>
         </TooltipProvider>
     )
 }
 
     
+
