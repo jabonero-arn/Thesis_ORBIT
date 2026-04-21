@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -11,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
-import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firestore"
+import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
 import { Html5Qrcode } from "html5-qrcode"
 
 
