@@ -89,6 +89,7 @@ export default function SupervisorDashboardPage() {
     // View state
     const [activeView, setActiveView] = React.useState<SupervisorView>('verification');
     const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table'>('grid');
+    const [verificationSubView, setVerificationSubView] = React.useState<'pending' | 'history'>('pending');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Data Filtering
@@ -155,7 +156,7 @@ export default function SupervisorDashboardPage() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'verification', label: 'Pending Items', icon: <ClipboardCheck /> },
+        { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
         { id: 'inventory', label: 'Department Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
@@ -203,6 +204,40 @@ export default function SupervisorDashboardPage() {
         )
     };
 
+    const VerificationHistoryView = () => {
+        const processedItems = departmentItems.filter(item => item.status === 'Available' || item.status === 'Inaccurate');
+        return (
+            <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                <CardHeader>
+                    <CardTitle>Verification History</CardTitle>
+                    <CardDescription>A log of items that have been verified or flagged as inaccurate.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Lab</TableHead>
+                                <TableHead>Quantity</TableHead>
+                                <TableHead className="text-right">Status</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {processedItems.length > 0 ? processedItems.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell className="text-right">{getStatusBadge(item.status)}</TableCell>
+                                </TableRow>
+                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No verification history.</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        )
+    };
+
     const renderContent = () => {
         switch (activeView) {
             case 'dashboard':
@@ -223,7 +258,7 @@ export default function SupervisorDashboardPage() {
             case 'verification':
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <VerificationView />
+                        {verificationSubView === 'pending' ? <VerificationView /> : <VerificationHistoryView />}
                     </div>
                 );
              case 'inventory':
@@ -318,6 +353,19 @@ export default function SupervisorDashboardPage() {
                     </div>
                 </div>
             )}
+             {activeView === 'verification' && (
+                <div className="p-2">
+                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VERIFICATION</h2>
+                    <div className="space-y-1">
+                        <Button variant={verificationSubView === 'pending' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setVerificationSubView('pending'); setIsMobileMenuOpen(false); }}>
+                            <ClipboardCheck /> Pending
+                        </Button>
+                        <Button variant={verificationSubView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setVerificationSubView('history'); setIsMobileMenuOpen(false); }}>
+                            <HistoryIcon /> History
+                        </Button>
+                    </div>
+                </div>
+            )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
@@ -379,7 +427,7 @@ export default function SupervisorDashboardPage() {
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Supervisor"}</div>
                              <div className="py-4">
                                 <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                    {activeView === 'inventory' ? 'VIEW OPTIONS' : 'MENU'}
+                                    {activeView === 'inventory' ? 'VIEW OPTIONS' : (activeView === 'verification' ? 'VERIFICATION' : 'MENU')}
                                 </h2>
                                 {activeView === 'inventory' ? (
                                     <ul className="flex flex-col gap-1">
@@ -391,6 +439,19 @@ export default function SupervisorDashboardPage() {
                                         <li>
                                             <button onClick={() => setInventorySubView('table')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'table' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
                                                 <List className="h-5 w-5" /> Table View
+                                            </button>
+                                        </li>
+                                    </ul>
+                                ) : activeView === 'verification' ? (
+                                     <ul className="flex flex-col gap-1">
+                                        <li>
+                                            <button onClick={() => setVerificationSubView('pending')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'pending' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <ClipboardCheck className="h-5 w-5" /> Pending
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button onClick={() => setVerificationSubView('history')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'history' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <HistoryIcon className="h-5 w-5" /> History
                                             </button>
                                         </li>
                                     </ul>
@@ -443,5 +504,7 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
 
     
