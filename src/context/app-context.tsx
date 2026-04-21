@@ -22,7 +22,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
 
   const itemsQuery = useMemoFirebase(() => 
-    firestore ? collection(firestore, 'inventory_items') : null
+    firestore ? query(collection(firestore, 'inventory_items'), orderBy('name')) : null
   , [firestore]);
   
   const { data: itemsData } = useCollection<Omit<InventoryItem, 'id'>>(itemsQuery);

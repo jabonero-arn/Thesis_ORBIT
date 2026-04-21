@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -46,6 +45,7 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import { CreateUserForm } from "@/components/admin/create-user-form"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
+import { cn } from "@/lib/utils"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -73,7 +73,7 @@ export default function PrimaryCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, allUsers } = useAppContext();
+    const { items, borrowHistory, allUsers, departments, channels } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -82,11 +82,6 @@ export default function PrimaryCustodianDashboardPage() {
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
-
-    const departmentsQuery = useMemoFirebase(() =>
-        firestore ? collection(firestore, 'departments') : null
-    , [firestore]);
-    const { data: departments } = useCollection<Department>(departmentsQuery);
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
@@ -114,6 +109,7 @@ export default function PrimaryCustodianDashboardPage() {
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
     const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
+    const [formDepartmentContext, setFormDepartmentContext] = React.useState<Department | null>(null);
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
@@ -148,6 +144,11 @@ export default function PrimaryCustodianDashboardPage() {
         if (usersSubView === 'all') return allUsers;
         return allUsers.filter(user => user.role === usersSubView);
     }, [usersSubView, allUsers]);
+
+    const dialogChannels = React.useMemo(() => {
+        if (!formDepartmentContext) return [];
+        return channels.filter(c => c.id.startsWith(formDepartmentContext.prefix));
+    }, [formDepartmentContext, channels]);
 
 
     // Handlers
@@ -196,18 +197,32 @@ export default function PrimaryCustodianDashboardPage() {
     }
     
     const openEditForm = (item: InventoryItem) => {
+        const itemChannel = channels.find(c => c.id === item.channelId);
+        const itemDept = departments?.find(d => itemChannel?.id.startsWith(d.prefix));
+        setFormDepartmentContext(itemDept || null);
         setEditingItem(item);
         setIsFormOpen(true);
     }
 
     const openAddForm = () => {
-        setEditingItem(null);
-        setIsFormOpen(true);
+        const currentDept = departments?.find(d => d.prefix === inventorySubView);
+        if (currentDept) {
+            setFormDepartmentContext(currentDept);
+            setEditingItem(null);
+            setIsFormOpen(true);
+        } else {
+            toast({
+                variant: "destructive",
+                title: "No Department Selected",
+                description: "Please select a department from the sidebar before adding an item."
+            })
+        }
     }
 
     const closeForm = () => {
         setEditingItem(null);
         setIsFormOpen(false);
+        setFormDepartmentContext(null);
     }
 
     const handleDeleteItem = async (itemId: string) => {
@@ -313,7 +328,20 @@ export default function PrimaryCustodianDashboardPage() {
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader className="flex flex-row items-center justify-between">
                                 <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
-                                <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className={cn(inventorySubView === 'all' && 'cursor-not-allowed')}>
+                                            <Button onClick={openAddForm} disabled={inventorySubView === 'all'}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add New Item
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {inventorySubView === 'all' && (
+                                        <TooltipContent>
+                                            <p>Please select a department to add an item to.</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
                             </CardHeader>
                             <CardContent>
                                 <InventoryTable items={inventoryItemsToDisplay} />
@@ -587,10 +615,21 @@ export default function PrimaryCustodianDashboardPage() {
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" defaultValue={editingItem?.name} required/></div>
                             <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={editingItem?.description} required/></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
-                                <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                            <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
+                           
+                            <div className="grid gap-2">
+                                {formDepartmentContext && (
+                                    <div className="mb-1">
+                                        <Badge variant="outline" className="border-dashed">Department: {formDepartmentContext.name}</Badge>
+                                    </div>
+                                )}
+                                <Label htmlFor="channelId">Specific Room</Label>
+                                <Select name="channelId" defaultValue={editingItem?.channelId} required>
+                                    <SelectTrigger id="channelId"><SelectValue placeholder="Select a room..." /></SelectTrigger>
+                                    <SelectContent>{dialogChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name.replace(/#/g, '')}</SelectItem>))}</SelectContent>
+                                </Select>
                             </div>
+
                              <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
                                 <Select name="status" defaultValue={editingItem?.status === 'Borrowed' ? 'Available' : (editingItem?.status || 'Available')} required>
