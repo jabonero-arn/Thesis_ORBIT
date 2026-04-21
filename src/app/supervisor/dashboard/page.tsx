@@ -3,12 +3,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
 import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
-    User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
-    Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Sparkles, Terminal, Activity, Loader2, UserPlus
+    Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
+    Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
+    Shield, Activity, Loader2, Building
 } from "lucide-react"
 import {
   Card,
@@ -20,7 +20,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { UserNav } from "@/components/user-nav"
-import { channels } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -31,7 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -43,35 +42,24 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
-import { CreateUserForm } from "@/components/admin/create-user-form"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
-const departments = [
-  { id: "comp", name: "Computer Lab", prefix: "computer-lab", icon: <Cpu /> },
-  { id: "chem", name: "Chemistry Lab", prefix: "chemistry-lab", icon: <FlaskConical /> },
-  { id: "robo", name: "Robotics Lab", prefix: "robotics-lab", icon: <Cog /> },
-];
+const getDeptIcon = (prefix: string) => {
+    if (prefix.startsWith('comp')) return <Cpu />;
+    if (prefix.startsWith('chem')) return <FlaskConical />;
+    if (prefix.startsWith('robo')) return <Cog />;
+    return <Building />;
+}
 
-const userRoles = [
-    { id: 'all', name: 'All Users', icon: <Users /> },
-    { id: 'Primary Custodian', name: 'Primary Custodian', icon: <Crown /> },
-    { id: 'Admin', name: 'Admin', icon: <Shield /> },
-    { id: 'Staff', name: 'Staff', icon: <ClipboardList /> },
-    { id: 'Teacher', name: 'Teacher', icon: <BookUser /> },
-    { id: 'Student', name: 'Student', icon: <User /> },
-];
+type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history';
+type DashboardSubView = 'overall' | string; // string is channelId
+type InventorySubView = 'all' | string; // string is channelId
 
-
-type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'users';
-type DashboardSubView = 'overall' | 'comp' | 'chem' | 'robo';
-type InventorySubView = 'all' | 'comp' | 'chem' | 'robo';
-type TransactionSubView = 'borrowed';
-
-export default function AdminDashboardPage() {
+export default function SupervisorDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, allUsers } = useAppContext();
+    const { items, borrowHistory, allUsers, channels, departments } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -80,6 +68,32 @@ export default function AdminDashboardPage() {
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
+    
+    const assignedDepartmentId = userProfile?.assignedDepartmentId;
+    const assignedDepartment = React.useMemo(() => departments.find(d => d.id === assignedDepartmentId), [departments, assignedDepartmentId]);
+    const assignedDepartmentPrefix = assignedDepartment?.prefix;
+
+    const assignedChannels = React.useMemo(() => {
+        if (!assignedDepartmentPrefix) return [];
+        return channels.filter(c => c.id.startsWith(assignedDepartmentPrefix));
+    }, [channels, assignedDepartmentPrefix]);
+    
+    React.useEffect(() => {
+      if (!isUserLoading && !user) {
+        router.push("/login?role=supervisor")
+      }
+    }, [user, isUserLoading, router])
+    
+    React.useEffect(() => {
+        if (!isProfileLoading && assignedDepartmentId === undefined && userProfile) {
+             toast({
+                variant: 'destructive',
+                title: 'Assignment Error',
+                description: "Your account has not been assigned to a department. Please contact the Primary Custodian."
+            })
+            // Consider logging out or redirecting
+        }
+    }, [userProfile, isProfileLoading, assignedDepartmentId, toast]);
 
     React.useEffect(() => {
         if (isUserLoading || isProfileLoading || !user) return;
@@ -87,64 +101,55 @@ export default function AdminDashboardPage() {
             setShowPasswordChangeDialog(true);
         }
     }, [user, userProfile, isUserLoading, isProfileLoading]);
-    
-    React.useEffect(() => {
-      if (!isUserLoading && !user) {
-        router.push("/login?role=admin")
-      }
-    }, [user, isUserLoading, router])
 
     // View state
-    const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
+    const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
-    const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
+    const [transactionSubView, setTransactionSubView] = React.useState('borrowed');
     const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
-    const [usersSubView, setUsersSubView] = React.useState<'all' | 'Primary Custodian' | 'Admin' | 'Staff' | 'Teacher' | 'Student'>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
-    const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
-
 
     // Data Filtering
+    const departmentItems = React.useMemo(() => {
+        if (!assignedDepartmentPrefix) return [];
+        return items.filter(item => item.channelId.startsWith(assignedDepartmentPrefix));
+    }, [items, assignedDepartmentPrefix]);
+
     const dashboardItems = React.useMemo(() => {
-        if (dashboardSubView === 'overall') return items;
-        const prefix = departments.find(d => d.id === dashboardSubView)?.prefix;
-        return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, dashboardSubView]);
+        if (dashboardSubView === 'overall') return departmentItems;
+        return departmentItems.filter(item => item.channelId === dashboardSubView);
+    }, [departmentItems, dashboardSubView]);
+
+    const departmentHistory = React.useMemo(() => {
+        const itemNamesInDept = new Set(departmentItems.map(i => i.name));
+        return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
+    }, [borrowHistory, departmentItems]);
 
     const dashboardHistory = React.useMemo(() => {
-        if (dashboardSubView === 'overall') return borrowHistory;
-        const itemNamesInDept = new Set(dashboardItems.map(i => i.name));
-        return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, dashboardItems, dashboardSubView]);
+        if (dashboardSubView === 'overall') return departmentHistory;
+        const itemNamesInChannel = new Set(dashboardItems.map(i => i.name));
+        return departmentHistory.filter(h => itemNamesInChannel.has(h.itemName));
+    }, [departmentHistory, dashboardItems, dashboardSubView]);
+
 
     const inventoryItemsToDisplay = React.useMemo(() => {
-        if (inventorySubView === 'all') return items;
-        const prefix = departments.find(d => d.id === inventorySubView)?.prefix;
-        return prefix ? items.filter(item => item.channelId.startsWith(prefix)) : [];
-    }, [items, inventorySubView]);
+        if (inventorySubView === 'all') return departmentItems;
+        return departmentItems.filter(item => item.channelId === inventorySubView);
+    }, [departmentItems, inventorySubView]);
 
     const historyToDisplay = React.useMemo(() => {
-        if (historySubView === 'overall') return borrowHistory;
-        
-        const prefix = departments.find(d => d.id === historySubView)?.prefix;
-        if (!prefix) return borrowHistory;
-
-        const itemNamesInDept = new Set(items.filter(item => item.channelId.startsWith(prefix)).map(i => i.name));
-        return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, items, historySubView]);
-
-    const usersToDisplay = React.useMemo(() => {
-        if (usersSubView === 'all') return allUsers;
-        return allUsers.filter(user => user.role === usersSubView);
-    }, [usersSubView, allUsers]);
+        if (historySubView === 'overall') return departmentHistory;
+        const itemNamesInChannel = new Set(items.filter(item => item.channelId === historySubView).map(i => i.name));
+        return departmentHistory.filter(h => itemNamesInChannel.has(h.itemName));
+    }, [departmentHistory, items, historySubView]);
 
 
     // Handlers
-    const handleViewChange = (view: AdminView) => {
+    const handleViewChange = (view: SupervisorView) => {
         setActiveView(view);
         setIsMobileMenuOpen(false);
     }
@@ -176,10 +181,6 @@ export default function AdminDashboardPage() {
                 const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
                 await updateDoc(itemDocRef, itemData);
                 toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
-            } else {
-                const inventoryCollection = collection(firestore, "inventory_items");
-                await addDoc(inventoryCollection, itemData);
-                toast({ title: "Item Added", description: `${itemData.name} has been added to inventory.` });
             }
             closeForm();
         } catch (e) {
@@ -190,11 +191,6 @@ export default function AdminDashboardPage() {
     
     const openEditForm = (item: InventoryItem) => {
         setEditingItem(item);
-        setIsFormOpen(true);
-    }
-
-    const openAddForm = () => {
-        setEditingItem(null);
         setIsFormOpen(true);
     }
 
@@ -215,31 +211,6 @@ export default function AdminDashboardPage() {
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
-        }
-    }
-    
-    const handleReturnItem = async (historyId: string) => {
-        if(!firestore) return;
-        const historyRecord = borrowHistory.find(h => h.id === historyId);
-        if (!historyRecord) return;
-        
-        try {
-            const historyDocRef = doc(firestore, 'borrowing_transactions', historyId);
-            await updateDoc(historyDocRef, { status: 'Returned' });
-            
-            const itemToUpdate = items.find(item => item.name === historyRecord.itemName);
-            if (itemToUpdate) {
-                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                const newQuantity = itemToUpdate.quantity + 1;
-                await updateDoc(itemDocRef, { 
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? 'Available' : itemToUpdate.status
-                });
-            }
-            toast({ title: "Item Returned", description: `${historyRecord.itemName} has been returned.` });
-        } catch(e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not process return.' });
         }
     }
     
@@ -277,7 +248,6 @@ export default function AdminDashboardPage() {
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
-        { id: 'users', label: 'Users', icon: <Users /> },
     ];
     
     const InventoryTable = ({ items: tableItems }: { items: InventoryItem[] }) => (
@@ -330,8 +300,7 @@ export default function AdminDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Add, edit, or remove items from all labs.</CardDescription></div>
-                                <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Item</Button>
+                                <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit or remove items in your assigned laboratories.</CardDescription></div>
                             </CardHeader>
                             <CardContent>
                                 <InventoryTable items={inventoryItemsToDisplay} />
@@ -340,10 +309,10 @@ export default function AdminDashboardPage() {
                     </div>
                 );
             case 'transactions':
-                const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
+                const activeBorrows = departmentHistory.filter(h => h.status === 'Active');
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out.</CardDescription></CardHeader>
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out from your department.</CardDescription></CardHeader>
                            <CardContent>
                                <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
                                    <TableBody>
@@ -358,28 +327,8 @@ export default function AdminDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
+                            <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses for your department.</CardDescription></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{historyToDisplay.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'users':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80">
-                           <CardHeader className="flex flex-row items-center justify-between">
-                                <div>
-                                    <CardTitle>User Management</CardTitle>
-                                    <CardDescription>Oversee all users in the system.</CardDescription>
-                                </div>
-                                {usersSubView !== 'all' && usersSubView !== 'Student' && (
-                                    <Button onClick={() => setIsCreateUserOpen(true)}>
-                                        <UserPlus className="mr-2 h-4 w-4" />
-                                        Create User
-                                    </Button>
-                                )}
-                            </CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead></TableRow></TableHeader><TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="font-medium">{u.displayName}</TableCell><TableCell><Badge variant={(u.role === 'Admin' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
                 );
@@ -403,25 +352,25 @@ export default function AdminDashboardPage() {
             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Menu</div>
             <div className="p-2 space-y-1">
                 {navItems.map(item => (
-                  <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as AdminView)}>{item.icon} {item.label}</Button>
+                  <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon} {item.label}</Button>
                 ))}
             </div>
             {/* Submenus */}
             {activeView === 'dashboard' && (
                 <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
+                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setDashboardSubView(dept.id as DashboardSubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setDashboardSubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                     </ul>
                 </div>
             )}
             {activeView === 'inventory' && (
                 <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2>
+                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.id as InventorySubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setInventorySubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                     </ul>
                 </div>
             )}
@@ -435,43 +384,35 @@ export default function AdminDashboardPage() {
             )}
             {activeView === 'history' && (
                  <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
+                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || 'Laboratories'}</h2>
                     <ul className="flex flex-col gap-1">
                         <li><button onClick={() => {setHistorySubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments.map(dept => (<li key={dept.id}><button onClick={() => {setHistorySubView(dept.id as DashboardSubView); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
-                    </ul>
-                </div>
-            )}
-            {activeView === 'users' && (
-                <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2>
-                    <ul className="flex flex-col gap-1">
-                        {userRoles.map(role => (<li key={role.id}><button onClick={() => {setUsersSubView(role.id as any); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{role.icon}{role.name}</button></li>))}
+                        {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => {setHistorySubView(channel.id); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                     </ul>
                 </div>
             )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
-                  <UserProfileModal role="Admin">
+                  <UserProfileModal role="Supervisor">
                       <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                            <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                           </Avatar>
                           <div className="overflow-hidden">
-                              <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Admin"}</p>
-                              <p className="text-xs text-muted-foreground">Admin</p>
+                              <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Supervisor"}</p>
+                              <p className="text-xs text-muted-foreground">Supervisor</p>
                           </div>
                       </div>
                   </UserProfileModal>
-                  <UserNav role="Admin" />
+                  <UserNav role="Supervisor" />
               </div>
           </div>
       </div>
     );
     
-    if (isUserLoading || !user) {
+    if (isUserLoading || !user || isProfileLoading) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -496,7 +437,7 @@ export default function AdminDashboardPage() {
                                 {navItems.map(item => (
                                     <Tooltip key={item.id}>
                                         <TooltipTrigger asChild>
-                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleViewChange(item.id as AdminView)}>
+                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleViewChange(item.id as SupervisorView)}>
                                                 {item.icon}
                                             </Button>
                                         </TooltipTrigger>
@@ -512,10 +453,10 @@ export default function AdminDashboardPage() {
                                 <>
                                  <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Dashboard View</div>
                                  <div className="py-4">
-                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
+                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
                                      <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                         {departments.map(dept => (<li key={dept.id}><button onClick={() => setDashboardSubView(dept.id as DashboardSubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                                         {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setDashboardSubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                                      </ul>
                                  </div>
                                 </>
@@ -524,10 +465,10 @@ export default function AdminDashboardPage() {
                                 <>
                                  <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Inventory Filter</div>
                                  <div className="py-4">
-                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2>
+                                     <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
                                      <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>
-                                         {departments.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.id as InventorySubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
+                                         {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setInventorySubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                                      </ul>
                                  </div>
                                 </>
@@ -547,21 +488,10 @@ export default function AdminDashboardPage() {
                                 <>
                                     <div className="p-4 font-headline text-lg font-bold border-b border-border/50">History Filter</div>
                                     <div className="py-4">
-                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
+                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">{assignedDepartment?.name || "Laboratories"}</h2>
                                         <ul className="flex flex-col gap-1">
                                         <li><button onClick={() => setHistorySubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                            {departments.map(dept => (<li key={dept.id}><button onClick={() => setHistorySubView(dept.id as DashboardSubView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{dept.icon}{dept.name}</button></li>))}
-                                        </ul>
-                                    </div>
-                                </>
-                            )}
-                            {activeView === 'users' && (
-                                <>
-                                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">User Filter</div>
-                                    <div className="py-4">
-                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2>
-                                        <ul className="flex flex-col gap-1">
-                                            {userRoles.map(role => (<li key={role.id}><button onClick={() => setUsersSubView(role.id as any)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(role.icon, {className: "h-5 w-5"})}{role.name}</button></li>))}
+                                            {assignedChannels.map(channel => (<li key={channel.id}><button onClick={() => setHistorySubView(channel.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === channel.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{channel.name}</button></li>))}
                                         </ul>
                                     </div>
                                 </>
@@ -570,19 +500,19 @@ export default function AdminDashboardPage() {
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
                          <div className="flex items-center justify-between p-2">
-                             <UserProfileModal role="Admin">
+                             <UserProfileModal role="Supervisor">
                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                      <Avatar className="h-8 w-8 flex-shrink-0">
                                          <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'A'}</AvatarFallback>
+                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                      </Avatar>
                                      <div className="overflow-hidden">
-                                         <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Admin"}</p>
-                                         <p className="text-xs text-muted-foreground">Admin</p>
+                                         <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Supervisor"}</p>
+                                         <p className="text-xs text-muted-foreground">Supervisor</p>
                                      </div>
                                  </div>
                              </UserProfileModal>
-                             <UserNav role="Admin" />
+                             <UserNav role="Supervisor" />
                          </div>
                     </div>
                 </div>
@@ -605,7 +535,7 @@ export default function AdminDashboardPage() {
                             <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" defaultValue={editingItem?.description} required/></div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2"><Label htmlFor="quantity">Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity || 1} required/></div>
-                                <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
+                                <div className="grid gap-2"><Label htmlFor="channelId">Lab/Channel</Label><Select name="channelId" defaultValue={editingItem?.channelId} required><SelectTrigger><SelectValue placeholder="Select a lab" /></SelectTrigger><SelectContent>{assignedChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent></Select></div>
                             </div>
                              <div className="grid gap-2">
                                 <Label htmlFor="status">Status</Label>
@@ -622,13 +552,6 @@ export default function AdminDashboardPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
-
-                <CreateUserForm 
-                    open={isCreateUserOpen} 
-                    onOpenChange={setIsCreateUserOpen} 
-                    roleToCreate={usersSubView as Exclude<Role, "Student">}
-                />
-
             </div>
         </TooltipProvider>
     )

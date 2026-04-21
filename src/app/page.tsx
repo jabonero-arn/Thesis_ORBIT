@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link"
@@ -21,8 +22,8 @@ export default function RoleSelectionPage() {
       icon: <Crown className="mr-2 h-5 w-5" />,
     },
     {
-      name: "Admin",
-      href: "/login?role=admin",
+      name: "Supervisor",
+      href: "/login?role=supervisor",
       icon: <Shield className="mr-2 h-5 w-5" />,
     },
     {
@@ -61,7 +62,7 @@ export default function RoleSelectionPage() {
             </CardTitle>
              <div className="flex flex-wrap gap-2 pt-2">
                 <Badge variant="secondary">Primary Custodian</Badge>
-                <Badge variant="secondary">Admin</Badge>
+                <Badge variant="secondary">Supervisor</Badge>
                 <Badge variant="secondary">Staff</Badge>
                 <Badge variant="secondary">Teacher</Badge>
                 <Badge variant="secondary">Student</Badge>

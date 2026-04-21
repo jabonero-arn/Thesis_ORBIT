@@ -17,17 +17,10 @@ export type User = {
   department?: string;
   employeeId?: string;
   passwordChangeRequired?: boolean;
-  assignedFacilityId?: string;
-  assignedFacilityType?: 'Office' | 'Laboratory';
+  assignedDepartmentId?: string;
 
   // This is not in Firestore, can be added from auth user if needed for display
   avatarUrl?: string;
-};
-
-export type Facility = {
-  id: string;
-  name: string;
-  type: 'Office' | 'Laboratory';
 };
 
 export type Department = {

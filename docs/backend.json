@@ -58,14 +58,9 @@
           "type": "boolean",
           "description": "If true, the user must change their password on next login."
         },
-        "assignedFacilityType": {
+        "assignedDepartmentId": {
             "type": "string",
-            "enum": ["Office", "Laboratory"],
-            "description": "The type of facility a Supervisor is assigned to."
-        },
-        "assignedFacilityId": {
-            "type": "string",
-            "description": "The ID of the specific facility a Supervisor is assigned to."
+            "description": "The ID of the specific department a Supervisor is assigned to."
         }
       },
       "required": ["id", "displayName", "email", "role"]
@@ -121,16 +116,6 @@
         "role",
         "assignedAt"
       ]
-    },
-    "Facility": {
-      "title": "Facility",
-      "description": "Represents a physical location like a laboratory or office.",
-      "type": "object",
-      "properties": {
-          "name": { "type": "string" },
-          "type": { "type": "string", "enum": ["Laboratory", "Office"] }
-      },
-      "required": ["name", "type"]
     },
      "Department": {
       "title": "Department",
@@ -190,10 +175,6 @@
         "$ref": "#/entities/RoleFlag"
       },
       "description": "Grants a user the 'Primary Custodian' role."
-    },
-    "/facilities/{facilityId}": {
-        "schema": { "$ref": "#/entities/Facility" },
-        "description": "Stores all manageable facilities."
     },
     "/departments/{departmentId}": {
         "schema": { "$ref": "#/entities/Department" },

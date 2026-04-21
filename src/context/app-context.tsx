@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import type { InventoryItem, BorrowHistory, User } from '@/lib/types';
+import type { InventoryItem, BorrowHistory, User, Department, Channel } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -10,6 +11,8 @@ type AppContextType = {
   items: InventoryItem[];
   borrowHistory: BorrowHistory[];
   allUsers: User[];
+  departments: Department[];
+  channels: Channel[];
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -36,6 +39,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   const { data: usersData } = useCollection<Omit<User, 'id'>>(usersQuery);
   
+  const departmentsQuery = useMemoFirebase(() => 
+      firestore ? query(collection(firestore, 'departments'), orderBy('name', 'asc')) : null
+  , [firestore]);
+  const { data: departmentsData } = useCollection<Omit<Department, 'id'>>(departmentsQuery);
+
+  const channelsQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'channels'), orderBy('name', 'asc')) : null
+  , [firestore]);
+  const { data: channelsData } = useCollection<Omit<Channel, 'id'>>(channelsQuery);
+
+
   // This ref is to prevent the effect from running multiple times for the same set of cancellations
   const processedReservationIds = React.useRef<Set<string>>(new Set());
 
@@ -91,7 +105,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     items: itemsData || [],
     borrowHistory: historyData || [],
     allUsers: usersData || [],
-  }), [itemsData, historyData, usersData]);
+    departments: departmentsData || [],
+    channels: channelsData || [],
+  }), [itemsData, historyData, usersData, departmentsData, channelsData]);
 
   return (
     <AppContext.Provider value={value}>

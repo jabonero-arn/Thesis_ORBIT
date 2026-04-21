@@ -100,8 +100,8 @@ export default function LoginPage() {
       let redirectPath = "/dashboard"; // default to student
       if (role === "teacher") {
           redirectPath = "/teacher/dashboard";
-      } else if (role === "admin") {
-          redirectPath = "/admin/dashboard";
+      } else if (role === "supervisor") {
+          redirectPath = "/supervisor/dashboard";
       } else if (role === "staff") {
           redirectPath = "/staff/dashboard";
       } else if (role === "primary-custodian") {
