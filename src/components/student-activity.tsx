@@ -150,7 +150,8 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                         <div className="flex items-center gap-4">
                                             <div>
                                                 <p className="font-semibold">{firstRecord.itemName}</p>
-                                                <p className="text-sm text-muted-foreground">Borrowed: {group.length}</p>
+                                                <p className="text-sm text-muted-foreground">Quantity: {group.length}</p>
+                                                <p className="text-sm text-muted-foreground">Last borrowed: {format(new Date(firstRecord.date), 'MMM d, yyyy, h:mm a')}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
