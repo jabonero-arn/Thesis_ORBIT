@@ -58,7 +58,7 @@ export default function Home() {
   }, [user, isUserLoading, router])
 
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
-  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history'>('borrowed');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
 
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null)
@@ -348,6 +348,7 @@ export default function Home() {
     { id: 'requests', label: 'My Requests', icon: <Hourglass /> },
     { id: 'reservations', label: 'My Reservations', icon: <CalendarDays /> },
     { id: 'history', label: 'History Log', icon: <History /> },
+    { id: 'issues', label: 'Damaged/Lost Items', icon: <XCircle /> },
   ] as const;
 
   return (
@@ -629,3 +630,5 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    

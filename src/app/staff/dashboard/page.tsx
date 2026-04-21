@@ -7,7 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, Edit, Trash, QrCode, Loader2, Menu,
-    Hourglass, PackageCheck, LayoutGrid, List
+    Hourglass, PackageCheck, LayoutGrid, List, AlertTriangle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -29,7 +29,7 @@ import { ForcePasswordChangeDialog } from "@/components/force-password-change-di
 import { InventoryGrid } from "@/components/inventory-grid"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
 
-type StaffView = 'scanner' | 'inventory' | 'transactions' | 'history';
+type StaffView = 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged';
 type TransactionSubView = 'reservations' | 'borrowed';
 type InventorySubView = 'grid' | 'table';
 
@@ -142,6 +142,7 @@ export default function StaffDashboardPage() {
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
+        { id: 'damaged', label: 'Damaged Items', icon: <AlertTriangle /> },
     ];
 
     const getHeaderContent = () => {
@@ -156,6 +157,7 @@ export default function StaffDashboardPage() {
 
     const renderContent = () => {
         const activeBorrows = departmentHistory.filter(h => h.status === 'Active');
+        const damagedHistory = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
 
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
@@ -200,6 +202,13 @@ export default function StaffDashboardPage() {
                         <TableBody>{departmentHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{h.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {h.groupNumber} ({h.groupSubject})</p><p className="text-muted-foreground max-w-xs">{h.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{h.status === 'Returned' && h.returnCondition ? <ReturnConditionBadge condition={h.returnCondition}/> : getHistoryStatusBadge(h.status)}</TableCell></TableRow>)}</TableBody>
                     </Table></CardContent>
                  </Card>
+            );
+            case 'damaged': return (
+                <Card className="bg-card/80"><CardHeader><CardTitle>Damaged & Lost Items</CardTitle><CardDescription>Log of all items returned with issues from your department.</CardDescription></CardHeader>
+                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Returned</TableHead><TableHead className="text-right">Condition</TableHead></TableRow></TableHeader>
+                        <TableBody>{damagedHistory.length > 0 ? damagedHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}</TableBody>
+                    </Table></CardContent>
+                </Card>
             );
             default: return null;
         }
@@ -362,3 +371,5 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    

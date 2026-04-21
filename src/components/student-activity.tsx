@@ -14,7 +14,7 @@ import { ReturnConditionBadge } from "./return-condition-badge"
 type StudentActivityProps = {
     borrowHistory: BorrowHistory[]
     onReturn: (records: BorrowHistory[]) => void
-    view: 'borrowed' | 'requests' | 'reservations' | 'history'
+    view: 'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'
     onCancelReservation: (reservationId: string) => void
     onClaimReservation: (reservationId: string) => void
 }
@@ -96,6 +96,10 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
 
     const historyLog = borrowHistory
         .filter(h => h.status !== 'Active' && !(h.status==='Pending' && h.teacherId) && !(h.status==='Pending' && h.startTime) && !(h.status==='Approved' && !h.startTime) && !(h.status==='Reserved') && !h.reservationId)
+        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const issuesLog = borrowHistory
+        .filter(h => h.returnCondition === 'Defected' || h.returnCondition === 'Broken' || h.returnCondition === 'Lost')
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
@@ -336,6 +340,42 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
       )
     }
 
+    if (view === 'issues') {
+      return (
+        <Card id="issues-log" className="bg-card/80 scroll-mt-20">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 font-headline">
+                    <XCircle className="h-6 w-6" /> Damaged/Lost Items
+                </CardTitle>
+                <CardDescription>A log of items you returned with issues.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {issuesLog.length > 0 ? (
+                    <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+                        {issuesLog.map(record => (
+                            <div key={record.id} className="p-3 rounded-lg bg-black/20">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-semibold">{record.itemName}</p>
+                                        <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {record.returnCondition && <ReturnConditionBadge condition={record.returnCondition} />}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground text-center p-4">You have no damaged or lost item history.</p>
+                )}
+            </CardContent>
+        </Card>
+      )
+    }
+
 
     return null;
 }
+
+    

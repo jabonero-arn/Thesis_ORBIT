@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -48,7 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
 
 
-type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification';
+type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
@@ -226,6 +226,7 @@ export default function SupervisorDashboardPage() {
         { id: 'inventory', label: 'Department Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
+        { id: 'damaged', label: 'Damaged Items', icon: <AlertTriangle /> },
     ];
     
     const VerificationView = () => {
@@ -316,6 +317,8 @@ export default function SupervisorDashboardPage() {
     };
 
     const renderContent = () => {
+        const damagedHistory = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
+        
         switch (activeView) {
             case 'dashboard':
                  const totalItemTypes = departmentItems.length;
@@ -398,6 +401,17 @@ export default function SupervisorDashboardPage() {
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses for your department.</CardDescription></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{departmentHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'damaged':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader><CardTitle>Damaged & Lost Items</CardTitle><CardDescription>Log of all items returned with issues from your department.</CardDescription></CardHeader>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Returned</TableHead><TableHead className="text-right">Condition</TableHead></TableRow></TableHeader>
+                                <TableBody>{damagedHistory.length > 0 ? damagedHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}</TableBody>
+                            </Table></CardContent>
                         </Card>
                     </div>
                 );
@@ -634,3 +648,5 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
