@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -191,6 +191,21 @@ export default function SupervisorDashboardPage() {
         }
     }
     
+    const handleResolveIssue = async (transactionId: string) => {
+        if (!firestore) return;
+        try {
+            const docRef = doc(firestore, "borrowing_transactions", transactionId);
+            await updateDoc(docRef, { resolutionStatus: 'Resolved' });
+            toast({
+                title: "Issue Resolved",
+                description: "The item issue has been marked as resolved.",
+            });
+        } catch (error) {
+            console.error("Error resolving issue:", error);
+            toast({ variant: 'destructive', title: "Update Failed" });
+        }
+    }
+
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
     const getStatusBadge = (status: InventoryItem['status']) => {
@@ -408,10 +423,46 @@ export default function SupervisorDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Damaged & Lost Items</CardTitle><CardDescription>Log of all items returned with issues from your department.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Returned</TableHead><TableHead className="text-right">Condition</TableHead></TableRow></TableHeader>
-                                <TableBody>{damagedHistory.length > 0 ? damagedHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}</TableBody>
-                            </Table></CardContent>
+                            <CardHeader>
+                                <CardTitle>Damaged & Lost Items</CardTitle>
+                                <CardDescription>Log of all items returned with issues from your department. Mark them as resolved once addressed.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Student</TableHead>
+                                            <TableHead>Item</TableHead>
+                                            <TableHead>Date Returned</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {damagedHistory.length > 0 ? damagedHistory.map(h => (
+                                            <TableRow key={h.id}>
+                                                <TableCell>{h.studentName}</TableCell>
+                                                <TableCell>{h.itemName}</TableCell>
+                                                <TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                                <TableCell>
+                                                    {h.resolutionStatus === 'Resolved' 
+                                                        ? <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Resolved</Badge> 
+                                                        : (h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>)
+                                                    }
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {h.resolutionStatus !== 'Resolved' && (
+                                                        <Button size="sm" onClick={() => handleResolveIssue(h.id)}>
+                                                            <CheckCircle className="mr-2 h-4 w-4"/>
+                                                            Mark as Resolved
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No damaged or lost items found.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         </Card>
                     </div>
                 );
@@ -648,5 +699,3 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    

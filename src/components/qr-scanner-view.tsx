@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -320,7 +321,21 @@ export function QrScannerView() {
 
         for (const record of selectedReturnGroup.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Returned', returnCondition: condition });
+            const updatePayload: { 
+                status: 'Returned'; 
+                returnCondition: typeof condition;
+                resolutionStatus?: 'Pending';
+            } = { 
+                status: 'Returned', 
+                returnCondition: condition 
+            };
+            
+            if (condition !== 'Good') {
+                updatePayload.resolutionStatus = 'Pending';
+            }
+
+            batch.update(historyDocRef, updatePayload);
+
 
             if (condition === 'Good') {
                 itemQuantityIncrements.set(record.itemName, (itemQuantityIncrements.get(record.itemName) || 0) + 1);
