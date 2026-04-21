@@ -7,7 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, Edit, Trash, QrCode, Loader2, Menu,
-    Hourglass, PackageCheck
+    Hourglass, PackageCheck, LayoutGrid, List
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -26,9 +26,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { QrScannerView } from "@/components/qr-scanner-view"
 import { format } from "date-fns"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
+import { InventoryGrid } from "@/components/inventory-grid"
 
 type StaffView = 'scanner' | 'inventory' | 'transactions' | 'history';
 type TransactionSubView = 'reservations' | 'borrowed';
+type InventorySubView = 'grid' | 'table';
 
 export default function StaffDashboardPage() {
     const router = useRouter()
@@ -115,6 +117,7 @@ export default function StaffDashboardPage() {
     // View state
     const [activeView, setActiveView] = React.useState<StaffView>('scanner');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('reservations');
+    const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('grid');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
 
@@ -156,11 +159,22 @@ export default function StaffDashboardPage() {
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
             case 'inventory': return (
-                <Card className="bg-card/80"><CardHeader><CardTitle>Department Inventory</CardTitle><CardDescription>All items in the {assignedDepartment?.name} department.</CardDescription></CardHeader>
-                    <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
-                        <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell><TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
-                    </Table></CardContent>
-                </Card>
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    {inventorySubView === 'grid' ? (
+                        <InventoryGrid
+                            items={departmentItems}
+                            onItemSelect={() => {}}
+                            selectedItems={[]}
+                            isSelectionEnabled={false}
+                        />
+                    ) : (
+                        <Card className="bg-card/80"><CardHeader><CardTitle>Department Inventory</CardTitle><CardDescription>All items in the {assignedDepartment?.name} department.</CardDescription></CardHeader>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
+                                <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell><TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
+                            </Table></CardContent>
+                        </Card>
+                    )}
+                </div>
             );
             case 'transactions': return (
                  <div className="space-y-6">
@@ -189,6 +203,65 @@ export default function StaffDashboardPage() {
             default: return null;
         }
     }
+    
+    const mobileSidebarContent = (
+        <div className="flex flex-col h-full">
+            <div className="flex-1 overflow-y-auto">
+                <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Staff"}</div>
+                <div className="p-2 space-y-1">
+                    {navItems.map(item => (
+                      <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as StaffView)}>{item.icon} {item.label}</Button>
+                    ))}
+                </div>
+                
+                {activeView === 'inventory' && (
+                    <div className="p-2">
+                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEW OPTIONS</h2>
+                        <div className="space-y-1">
+                            <Button variant={inventorySubView === 'grid' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setInventorySubView('grid'); setIsMobileMenuOpen(false); }}>
+                                <LayoutGrid /> Grid View
+                            </Button>
+                            <Button variant={inventorySubView === 'table' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setInventorySubView('table'); setIsMobileMenuOpen(false); }}>
+                                <List /> Table View
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                
+                {activeView === 'transactions' && (
+                    <div className="p-2">
+                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
+                        <div className="space-y-1">
+                             <Button variant={transactionSubView === 'reservations' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setTransactionSubView('reservations'); setIsMobileMenuOpen(false); }}>
+                                <Hourglass /> Reservations
+                            </Button>
+                            <Button variant={transactionSubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setTransactionSubView('borrowed'); setIsMobileMenuOpen(false); }}>
+                                <PackageCheck /> Currently Borrowed
+                            </Button>
+                        </div>
+                    </div>
+                )}
+    
+            </div>
+            <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
+                <div className="flex items-center justify-between p-2">
+                    <UserProfileModal role="Staff">
+                        <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                          <Avatar className="h-8 w-8 flex-shrink-0">
+                              <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                          </Avatar>
+                          <div className="overflow-hidden">
+                            <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Staff"}</p>
+                            <p className="text-xs text-muted-foreground">Staff</p>
+                          </div>
+                        </div>
+                      </UserProfileModal>
+                  <UserNav role="Staff" />
+                </div>
+            </div>
+        </div>
+    );
 
      if (isUserLoading || isProfileLoading || !user) {
       return (
@@ -219,22 +292,33 @@ export default function StaffDashboardPage() {
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Staff"}</div>
                              <div className="py-4">
-                                {activeView === 'transactions' ? (
-                                     <>
-                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2>
-                                        <ul className="flex flex-col gap-1">
-                                            <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
-                                            <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                                        </ul>
-                                     </>
+                                <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                    {activeView === 'inventory' ? 'VIEW OPTIONS' : (activeView === 'transactions' ? 'QUEUES' : 'MENU')}
+                                </h2>
+
+                                {activeView === 'inventory' ? (
+                                    <ul className="flex flex-col gap-1">
+                                        <li>
+                                            <button onClick={() => setInventorySubView('grid')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'grid' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <LayoutGrid className="h-5 w-5" /> Grid View
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button onClick={() => setInventorySubView('table')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'table' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <List className="h-5 w-5" /> Table View
+                                            </button>
+                                        </li>
+                                    </ul>
+                                ) : activeView === 'transactions' ? (
+                                     <ul className="flex flex-col gap-1">
+                                        <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
+                                        <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
+                                    </ul>
                                 ) : (
-                                    <>
-                                        <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">MENU</h2>
-                                        <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
-                                            {navItems.find(i => i.id === activeView)?.icon}
-                                            {navItems.find(i => i.id === activeView)?.label}
-                                        </button>
-                                    </>
+                                    <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
+                                        {navItems.find(i => i.id === activeView)?.icon}
+                                        {navItems.find(i => i.id === activeView)?.label}
+                                    </button>
                                 )}
                              </div>
                         </div>
@@ -263,7 +347,7 @@ export default function StaffDashboardPage() {
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger>
                                 <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
-                                    {/* Mobile sidebar content would go here */}
+                                    {mobileSidebarContent}
                                 </SheetContent>
                             </Sheet>
                             {getHeaderContent()}
