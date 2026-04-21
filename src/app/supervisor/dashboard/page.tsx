@@ -205,12 +205,12 @@ export default function SupervisorDashboardPage() {
     };
 
     const VerificationHistoryView = () => {
-        const processedItems = departmentItems.filter(item => item.status === 'Available' || item.status === 'Inaccurate');
+        const processedItems = departmentItems.filter(item => item.status === 'Available' || item.status === 'Inaccurate' || item.status === 'Pending Receipt');
         return (
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                 <CardHeader>
                     <CardTitle>Verification History</CardTitle>
-                    <CardDescription>A log of items that have been verified or flagged as inaccurate.</CardDescription>
+                    <CardDescription>A log of items that are pending, received, or flagged as inaccurate.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -228,7 +228,11 @@ export default function SupervisorDashboardPage() {
                                     <TableCell className="font-medium">{item.name}</TableCell>
                                     <TableCell>{getItemChannelName(item.channelId)}</TableCell>
                                     <TableCell>{item.quantity}</TableCell>
-                                    <TableCell className="text-right">{getStatusBadge(item.status)}</TableCell>
+                                    <TableCell className="text-right">
+                                        {item.status === 'Available' && <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Received</Badge>}
+                                        {item.status === 'Pending Receipt' && <Badge variant="outline">Pending</Badge>}
+                                        {item.status === 'Inaccurate' && <Badge variant="destructive">Inaccurate</Badge>}
+                                    </TableCell>
                                 </TableRow>
                             )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No verification history.</TableCell></TableRow>}
                         </TableBody>
@@ -504,7 +508,3 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
-
-    
