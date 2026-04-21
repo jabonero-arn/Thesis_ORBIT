@@ -37,6 +37,8 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { InventoryGrid } from "@/components/inventory-grid"
 
 type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification';
 
@@ -154,7 +156,7 @@ export default function SupervisorDashboardPage() {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
         { id: 'verification', label: 'Pending Items', icon: <ClipboardCheck /> },
-        { id: 'inventory', label: 'Inventory', icon: <Package /> },
+        { id: 'inventory', label: 'Department Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
     ];
@@ -227,24 +229,40 @@ export default function SupervisorDashboardPage() {
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><div><CardTitle>Department Inventory</CardTitle><CardDescription>View all available items in your department.</CardDescription></div></CardHeader>
-                            <CardContent>
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {departmentItems.length > 0 ? departmentItems.map(item => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="font-medium">{item.name}</TableCell>
-                                                <TableCell>{getItemChannelName(item.channelId)}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
-                                                <TableCell>{getStatusBadge(item.status)}</TableCell>
-                                            </TableRow>
-                                        )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                        <Tabs defaultValue="grid" className="w-full">
+                            <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                                <TabsTrigger value="grid">Grid View</TabsTrigger>
+                                <TabsTrigger value="table">Table View</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="grid" className="mt-6">
+                                <InventoryGrid
+                                    items={departmentItems}
+                                    onItemSelect={() => {}}
+                                    selectedItems={[]}
+                                    isSelectionEnabled={false}
+                                />
+                            </TabsContent>
+                            <TabsContent value="table" className="mt-6">
+                                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                                    <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                                {departmentItems.length > 0 ? departmentItems.map(item => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                                        <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                        <TableCell>{item.quantity}</TableCell>
+                                                        <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                    </TableRow>
+                                                )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 );
             case 'transactions':
@@ -402,3 +420,5 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
