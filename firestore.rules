@@ -47,8 +47,8 @@ service cloud.firestore {
     function isStaff() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
     }
-    function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    function isSupervisor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid));
     }
      function isPrimaryCustodian() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_primary_custodian/$(request.auth.uid));
@@ -59,11 +59,11 @@ service cloud.firestore {
     // User Profile Rules
     // --------------------------------------------------------------------------------
     match /users/{userId} {
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isAdmin();
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
-      allow delete: if isAdmin();
+      allow get: if isOwner(userId) || isPrimaryCustodian();
+      allow list: if isPrimaryCustodian();
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isPrimaryCustodian();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isPrimaryCustodian();
+      allow delete: if isPrimaryCustodian();
     }
 
     // --------------------------------------------------------------------------------
@@ -71,22 +71,22 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /roles_teachers/{userId} {
       allow read: if false; // No client-side reads
-      allow create, delete: if isAdmin();
+      allow create, delete: if isPrimaryCustodian();
       allow update: if false;
     }
     match /roles_staff/{userId} {
       allow read: if false;
-      allow create, delete: if isAdmin();
+      allow create, delete: if isPrimaryCustodian();
       allow update: if false;
     }
-    match /roles_admin/{userId} {
+    match /roles_supervisor/{userId} {
       allow read: if false;
-      allow create, delete: if isAdmin(); // Only an Admin can make another Admin
+      allow create, delete: if isPrimaryCustodian();
       allow update: if false;
     }
     match /roles_primary_custodian/{userId} {
         allow read: if false;
-        allow create, delete: if isAdmin();
+        allow create, delete: if isPrimaryCustodian();
         allow update: if false;
     }
 
@@ -95,7 +95,7 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
      match /inventory_items/{itemId} {
         allow get, list: if isSignedIn();
-        allow create, update, delete: if isStaff() || isAdmin();
+        allow create, update, delete: if isStaff() || isSupervisor() || isPrimaryCustodian();
       }
 
     // --------------------------------------------------------------------------------
@@ -113,11 +113,11 @@ service cloud.firestore {
     // Borrowing Transaction Rules
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
-      allow get: if isStaff() || isOwner(resource.data.borrowerUserId) || isAdmin();
+      allow get: if isStaff() || isOwner(resource.data.borrowerUserId) || isPrimaryCustodian() || isSupervisor();
       allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data.borrowerUserId);
-      allow update: if (isStaff() && isExistingDoc()) || (isOwner(resource.data.borrowerUserId) && isExistingDoc()) || isAdmin();
-      allow delete: if isStaff() && isExistingDoc() || isAdmin();
+      allow update: if (isStaff() && isExistingDoc()) || (isOwner(resource.data.borrowerUserId) && isExistingDoc()) || isPrimaryCustodian() || isSupervisor();
+      allow delete: if isStaff() && isExistingDoc() || isPrimaryCustodian() || isSupervisor();
     }
   }
 }

@@ -18,9 +18,11 @@ import { Loader2 } from "lucide-react";
 import { firebaseConfig } from "@/firebase/config";
 import { initializeApp, deleteApp } from "firebase/app";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import { useFirestore } from "@/firebase";
-import { doc, writeBatch, serverTimestamp } from "firebase/firestore";
-import type { Role } from "@/lib/types";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
+import type { Role, Facility } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 
 type CreateUserFormProps = {
   open: boolean;
@@ -37,6 +39,14 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
   const [password, setPassword] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
 
+  const [assignedFacilityType, setAssignedFacilityType] = React.useState<'Office' | 'Laboratory' | ''>('');
+  const [assignedFacilityId, setAssignedFacilityId] = React.useState('');
+
+  const facilitiesQuery = useMemoFirebase(() =>
+    firestore ? collection(firestore, 'facilities') : null
+  , [firestore]);
+  const { data: facilities } = useCollection<Facility>(facilitiesQuery);
+
   React.useEffect(() => {
     if(!open) {
       // Reset form when dialog is closed
@@ -48,6 +58,8 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
     setDisplayName("");
     setEmail("");
     setPassword("");
+    setAssignedFacilityType('');
+    setAssignedFacilityId('');
     setIsLoading(false);
   }
 
@@ -61,6 +73,15 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       });
       return;
     }
+     if (roleToCreate === 'Supervisor' && (!assignedFacilityType || !assignedFacilityId)) {
+      toast({
+        variant: "destructive",
+        title: "Missing assignment",
+        description: "Please assign a facility for the Supervisor.",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     const tempAppName = `user-creation-${Date.now()}`;
@@ -85,17 +106,25 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       const batch = writeBatch(firestore);
 
       const userDocRef = doc(firestore, "users", newUser.uid);
-      batch.set(userDocRef, {
+      
+      const userProfileData: any = {
         id: newUser.uid,
         displayName: displayName,
         email: email,
         role: roleToCreate,
         passwordChangeRequired: true,
-      });
+      };
+
+      if (roleToCreate === 'Supervisor') {
+        userProfileData.assignedFacilityType = assignedFacilityType;
+        userProfileData.assignedFacilityId = assignedFacilityId;
+      }
+      
+      batch.set(userDocRef, userProfileData);
 
       let roleCollectionName = "";
       switch (roleToCreate) {
-          case "Admin": roleCollectionName = "roles_admin"; break;
+          case "Supervisor": roleCollectionName = "roles_supervisor"; break;
           case "Primary Custodian": roleCollectionName = "roles_primary_custodian"; break;
           case "Staff": roleCollectionName = "roles_staff"; break;
           case "Teacher": roleCollectionName = "roles_teachers"; break;
@@ -156,6 +185,41 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
                     <Label htmlFor="password">Temporary Password</Label>
                     <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Must be at least 6 characters" required />
                 </div>
+                {roleToCreate === 'Supervisor' && (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="facility-type">Facility Type</Label>
+                      <Select value={assignedFacilityType} onValueChange={(value: 'Office' | 'Laboratory') => {
+                        setAssignedFacilityType(value);
+                        setAssignedFacilityId('');
+                      }}>
+                        <SelectTrigger id="facility-type">
+                          <SelectValue placeholder="Select facility type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Office">Office</SelectItem>
+                          <SelectItem value="Laboratory">Laboratory</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {assignedFacilityType && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="facility-id">Assign Facility</Label>
+                        <Select value={assignedFacilityId} onValueChange={setAssignedFacilityId} required>
+                          <SelectTrigger id="facility-id">
+                            <SelectValue placeholder="Select a facility to assign" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {facilities?.filter(f => f.type === assignedFacilityType).map(facility => (
+                              <SelectItem key={facility.id} value={facility.id}>{facility.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </>
+                )}
             </div>
             <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
