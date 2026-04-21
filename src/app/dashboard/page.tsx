@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 
@@ -70,16 +70,11 @@ export default function Home() {
   }, [departments, selectedDepartmentId]);
 
   React.useEffect(() => {
-    if (selectedDepartmentId && !selectedChannelId) {
-        const dept = departments.find(d => d.id === selectedDepartmentId);
-        if (dept) {
-            const firstChannel = channels.find(c => c.departmentId === dept.id);
-            if (firstChannel) {
-                setSelectedChannelId(firstChannel.id);
-            }
-        }
+    if (selectedDepartmentId) {
+        const firstChannel = channels.find(c => c.departmentId === selectedDepartmentId);
+        setSelectedChannelId(firstChannel?.id ?? null);
     }
-  }, [selectedDepartmentId, selectedChannelId, channels, departments]);
+  }, [selectedDepartmentId, channels]);
   
   
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
@@ -272,10 +267,78 @@ export default function Home() {
     return <User />;
   }
 
-  if (isUserLoading || isProfileLoading || !user || !selectedDepartmentId || !selectedChannelId) {
+  if (isUserLoading || isProfileLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (departments.length === 0) {
+     return (
+       <div className="flex h-screen bg-[#1e2430]">
+        <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
+            <div className="flex flex-1">
+                 <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+                  <div className="p-2 mb-2"><Logo /></div>
+                  <div className="flex flex-col items-center gap-2 w-full">
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant={'ghost'} size="icon" className="h-12 w-12 rounded-lg" disabled>
+                                <Inbox />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center"><p>My Activity</p></TooltipContent>
+                    </Tooltip>
+                  </div>
+                 </div>
+                 <div className="w-64 flex-col bg-[#141821] p-2">
+                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                        No Departments
+                    </div>
+                 </div>
+            </div>
+            <div className="border-t border-border/50 bg-[#0e1015]">
+              <div className="flex items-center justify-between p-2">
+                   <UserProfileModal role="Student">
+                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                        <Avatar className="h-8 w-8 flex-shrink-0">
+                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                        </Avatar>
+                        <div className="overflow-hidden">
+                          <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                          <p className="text-xs text-muted-foreground">Student</p>
+                        </div>
+                    </div>
+                  </UserProfileModal>
+                  <UserNav role="Student" />
+              </div>
+            </div>
+        </div>
+         <main className="flex-1 flex flex-col h-screen">
+          <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+             <div className="flex items-center gap-2">
+                <Sheet>
+                  <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                  </SheetContent>
+                </Sheet>
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">No Labs Available</h1>
+            </div>
+          </header>
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex items-center justify-center">
+            <div className="text-center text-muted-foreground">
+                <PackageSearch className="mx-auto h-16 w-16" />
+                <h2 className="mt-4 text-xl font-semibold text-foreground">Nothing to see here yet!</h2>
+                <p className="mt-2">No laboratories have been set up by the administrator.</p>
+                <p>Please check back later.</p>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }
@@ -456,7 +519,7 @@ export default function Home() {
               {activeView === 'borrow' ? (
                 <div className="flex items-center gap-2">
                     <Hash className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name?.replace('#', '') || 'Select a Lab'}</h1>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
