@@ -97,7 +97,12 @@
         "startTime": { "type": "string" },
         "endTime": { "type": "string" },
         "borrowerUserId": { "type": "string" },
-        "reservationId": { "type": "string", "description": "A unique ID to group multiple items under a single reservation." }
+        "reservationId": { "type": "string", "description": "A unique ID to group multiple items under a single reservation." },
+        "returnCondition": {
+          "type": "string",
+          "enum": ["Good", "Defected", "Broken", "Lost"],
+          "description": "The condition of the item upon return."
+        }
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
     },

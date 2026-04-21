@@ -69,6 +69,7 @@ export type BorrowHistory = {
     groupNumber?: string;
     groupSubject?: string;
     groupMembers?: string;
+    returnCondition?: 'Good' | 'Defected' | 'Broken' | 'Lost';
 };
 
 export type CartItem = {

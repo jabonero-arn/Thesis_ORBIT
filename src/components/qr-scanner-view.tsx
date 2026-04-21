@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
 import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
 import { Html5Qrcode } from "html5-qrcode"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 
 
 type ScannedCompactCheckoutData = {
@@ -73,6 +75,7 @@ export function QrScannerView() {
   const [claimSessionInView, setClaimSessionInView] = React.useState<ClaimSession | null>(null);
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [returnCondition, setReturnCondition] = React.useState<'Good' | 'Defected' | 'Broken' | 'Lost' | ''>('');
   
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isScanning, setIsScanning] = React.useState(true);
@@ -84,6 +87,7 @@ export function QrScannerView() {
     setSessionInView(null);
     setClaimSessionInView(null);
     setSelectedReturnGroup(null);
+    setReturnCondition('');
     setIsScanning(true);
   };
   
@@ -301,30 +305,50 @@ export function QrScannerView() {
   }
 
 
-  const handleConfirmAllReturns = async () => {
-    if (!selectedReturnGroup || !firestore) return;
+  const handleConfirmAllReturns = async (condition: 'Good' | 'Defected' | 'Broken' | 'Lost' | '') => {
+    if (!selectedReturnGroup || !firestore || !condition) {
+        if (!condition) {
+            toast({ variant: 'destructive', title: 'Condition Required', description: 'Please select a return condition.' });
+        }
+        return;
+    };
+
     setIsProcessing(true);
     try {
         const batch = writeBatch(firestore);
         const itemQuantityIncrements = new Map<string, number>();
-        selectedReturnGroup.records.forEach(record => {
+
+        for (const record of selectedReturnGroup.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            batch.update(historyDocRef, { status: 'Returned' });
-            itemQuantityIncrements.set(record.itemName, (itemQuantityIncrements.get(record.itemName) || 0) + 1);
-        });
-        itemQuantityIncrements.forEach((quantityToIncrement, itemName) => {
-            const itemToUpdate = items.find(i => i.name === itemName);
-            if (itemToUpdate) {
-                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                const newQuantity = itemToUpdate.quantity + quantityToIncrement;
-                batch.update(itemDocRef, {
-                    quantity: newQuantity,
-                    status: newQuantity > 0 ? (itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status) : 'Borrowed'
-                });
+            batch.update(historyDocRef, { status: 'Returned', returnCondition: condition });
+
+            if (condition === 'Good') {
+                itemQuantityIncrements.set(record.itemName, (itemQuantityIncrements.get(record.itemName) || 0) + 1);
+            } else if (condition === 'Defected') {
+                const itemToUpdate = items.find(i => i.name === record.itemName);
+                if (itemToUpdate) {
+                    const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+                    batch.update(itemDocRef, { status: 'Inaccurate' });
+                }
             }
-        });
+        }
+
+        if (condition === 'Good') {
+            for (const [itemName, quantityToIncrement] of itemQuantityIncrements.entries()) {
+                const itemToUpdate = items.find(i => i.name === itemName);
+                if (itemToUpdate) {
+                    const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+                    const newQuantity = itemToUpdate.quantity + quantityToIncrement;
+                    batch.update(itemDocRef, {
+                        quantity: newQuantity,
+                        status: newQuantity > 0 ? (itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status) : 'Borrowed'
+                    });
+                }
+            }
+        }
+
         await batch.commit();
-        toast({ title: "Items Returned", description: `${selectedReturnGroup.records.length} item(s) from ${selectedReturnGroup.studentName} have been successfully returned.` });
+        toast({ title: "Items Returned", description: `${selectedReturnGroup.records.length} item(s) from ${selectedReturnGroup.studentName} have been processed with condition: ${condition}.` });
     } catch (e: any) {
         console.error(e);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not process returns. Please try again.' });
@@ -469,34 +493,34 @@ export function QrScannerView() {
         <DialogContent>
             <DialogHeader>
                 <DialogTitle className="font-headline">Confirm Return for {selectedReturnGroup?.studentName}</DialogTitle>
-                <DialogDescription>Review the items and confirm the return.</DialogDescription>
+                <DialogDescription>Review the items, select their condition, and confirm the return.</DialogDescription>
             </DialogHeader>
             {selectedReturnGroup && (
-                <div className="py-4 space-y-4">
-                    <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
-                        <Avatar className="h-12 w-12">
-                           <AvatarFallback>{selectedReturnGroup.studentName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-semibold">{selectedReturnGroup.studentName}</p>
-                            <p className="text-sm text-muted-foreground">Student</p>
-                        </div>
-                    </div>
+                <div className="py-4 space-y-6">
                     <div>
                         <h4 className="font-semibold mb-2">Items to Return ({selectedReturnGroup.records.length}):</h4>
-                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md max-h-60 overflow-y-auto">
+                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md max-h-40 overflow-y-auto">
                            {selectedReturnGroup.records.map(record => (
                                <li key={record.id}>{record.itemName}</li>
                            ))}
                         </ul>
                     </div>
+                     <div>
+                        <Label className="font-semibold">Return Condition</Label>
+                        <RadioGroup value={returnCondition} onValueChange={(value) => setReturnCondition(value as any)} className="mt-2 space-y-2">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Good" id="cond-good" /><Label htmlFor="cond-good">Good Condition (No issues)</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Defected" id="cond-defected" /><Label htmlFor="cond-defected">Defected (Minor damage, needs review)</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Broken" id="cond-broken" /><Label htmlFor="cond-broken">Completely Broken (Unusable)</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Lost" id="cond-lost" /><Label htmlFor="cond-lost">Item is Lost</Label></div>
+                        </RadioGroup>
+                    </div>
                 </div>
             )}
             <DialogFooter>
                 <Button variant="outline" onClick={() => setSelectedReturnGroup(null)} disabled={isProcessing}>Cancel</Button>
-                <Button onClick={handleConfirmAllReturns} disabled={isProcessing}>
+                <Button onClick={() => handleConfirmAllReturns(returnCondition)} disabled={isProcessing || !returnCondition}>
                     {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm All Returns
+                    Confirm Return
                 </Button>
             </DialogFooter>
         </DialogContent>

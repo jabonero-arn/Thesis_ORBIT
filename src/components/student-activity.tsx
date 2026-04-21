@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle, Minus, Plus, QrCode } from "lucide-react"
 import * as React from "react"
 import { format } from "date-fns"
+import { ReturnConditionBadge } from "./return-condition-badge"
 
 
 type StudentActivityProps = {
@@ -313,7 +314,9 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                     <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {getStatusBadge(record)}
+                                    {record.status === 'Returned' && record.returnCondition
+                                        ? <ReturnConditionBadge condition={record.returnCondition} />
+                                        : getStatusBadge(record)}
                                 </div>
                             </div>
                             {record.borrowingType === 'Group' && (
