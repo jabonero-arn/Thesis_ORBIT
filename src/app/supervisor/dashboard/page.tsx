@@ -8,7 +8,7 @@ import { doc, updateDoc } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List
 } from "lucide-react"
 import {
   Card,
@@ -37,7 +37,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { InventoryGrid } from "@/components/inventory-grid"
 
 type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification';
@@ -89,6 +88,7 @@ export default function SupervisorDashboardPage() {
 
     // View state
     const [activeView, setActiveView] = React.useState<SupervisorView>('verification');
+    const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table'>('grid');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Data Filtering
@@ -229,40 +229,33 @@ export default function SupervisorDashboardPage() {
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Tabs defaultValue="grid" className="w-full">
-                            <TabsList className="grid w-full grid-cols-2 max-w-sm">
-                                <TabsTrigger value="grid">Grid View</TabsTrigger>
-                                <TabsTrigger value="table">Table View</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="grid" className="mt-6">
-                                <InventoryGrid
-                                    items={departmentItems}
-                                    onItemSelect={() => {}}
-                                    selectedItems={[]}
-                                    isSelectionEnabled={false}
-                                />
-                            </TabsContent>
-                            <TabsContent value="table" className="mt-6">
-                                <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                                    <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
-                                    <CardContent>
-                                        <Table>
-                                            <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                                            <TableBody>
-                                                {departmentItems.length > 0 ? departmentItems.map(item => (
-                                                    <TableRow key={item.id}>
-                                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                                        <TableCell>{getItemChannelName(item.channelId)}</TableCell>
-                                                        <TableCell>{item.quantity}</TableCell>
-                                                        <TableCell>{getStatusBadge(item.status)}</TableCell>
-                                                    </TableRow>
-                                                )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
+                        {inventorySubView === 'grid' ? (
+                            <InventoryGrid
+                                items={departmentItems}
+                                onItemSelect={() => {}}
+                                selectedItems={[]}
+                                isSelectionEnabled={false}
+                            />
+                        ) : (
+                            <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                                <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                        <TableBody>
+                                            {departmentItems.length > 0 ? departmentItems.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                                    <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                </TableRow>
+                                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 );
             case 'transactions':
@@ -312,6 +305,19 @@ export default function SupervisorDashboardPage() {
                   <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon} {item.label}</Button>
                 ))}
             </div>
+            {activeView === 'inventory' && (
+                <div className="p-2">
+                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEW OPTIONS</h2>
+                    <div className="space-y-1">
+                        <Button variant={inventorySubView === 'grid' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setInventorySubView('grid'); setIsMobileMenuOpen(false); }}>
+                            <LayoutGrid /> Grid View
+                        </Button>
+                        <Button variant={inventorySubView === 'table' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setInventorySubView('table'); setIsMobileMenuOpen(false); }}>
+                            <List /> Table View
+                        </Button>
+                    </div>
+                </div>
+            )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
@@ -372,17 +378,34 @@ export default function SupervisorDashboardPage() {
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Supervisor"}</div>
                              <div className="py-4">
-                                 <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">MENU</h2>
-                                 <ul className="flex flex-col gap-1">
-                                    {navItems.map(item => (
-                                        <li key={item.id}>
-                                            <button onClick={() => handleViewChange(item.id as SupervisorView)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === item.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                {React.cloneElement(item.icon, {className: "h-5 w-5"})}
-                                                {item.label}
+                                <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
+                                    {activeView === 'inventory' ? 'VIEW OPTIONS' : 'MENU'}
+                                </h2>
+                                {activeView === 'inventory' ? (
+                                    <ul className="flex flex-col gap-1">
+                                        <li>
+                                            <button onClick={() => setInventorySubView('grid')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'grid' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <LayoutGrid className="h-5 w-5" /> Grid View
                                             </button>
                                         </li>
-                                    ))}
-                                 </ul>
+                                        <li>
+                                            <button onClick={() => setInventorySubView('table')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'table' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <List className="h-5 w-5" /> Table View
+                                            </button>
+                                        </li>
+                                    </ul>
+                                ) : (
+                                    <ul className="flex flex-col gap-1">
+                                        {navItems.filter(item => item.id === activeView).map(item => (
+                                            <li key={item.id}>
+                                                <button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}>
+                                                    {React.cloneElement(item.icon, {className: "h-5 w-5"})}
+                                                    {item.label}
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
                              </div>
                         </div>
                     </div>
