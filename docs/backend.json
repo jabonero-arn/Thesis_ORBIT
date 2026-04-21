@@ -76,9 +76,11 @@
         "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt", "Inaccurate"] },
         "imageUrl": { "type": "string", "format": "uri" },
         "imageHint": { "type": "string" },
-        "quantity": { "type": "number" }
+        "quantity": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the item was added by the custodian." },
+        "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the supervisor verified the item." }
       },
-      "required": ["name", "channelId", "status", "quantity", "description", "imageUrl", "imageHint"]
+      "required": ["name", "channelId", "status", "quantity", "description", "imageUrl", "imageHint", "createdAt"]
     },
     "BorrowHistory": {
       "title": "Borrow History",

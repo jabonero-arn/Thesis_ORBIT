@@ -115,7 +115,7 @@ export default function SupervisorDashboardPage() {
         if (!firestore) return;
         const itemDocRef = doc(firestore, "inventory_items", itemId);
         try {
-            await updateDoc(itemDocRef, { status: newStatus });
+            await updateDoc(itemDocRef, { status: newStatus, verifiedAt: new Date().toISOString() });
             toast({
                 title: `Item ${newStatus === 'Available' ? 'Confirmed' : 'Flagged'}`,
                 description: `The item status has been updated.`,
@@ -177,6 +177,7 @@ export default function SupervisorDashboardPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Date Added</TableHead>
                                 <TableHead>Quantity</TableHead>
                                 <TableHead>Assigned Room</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -186,6 +187,7 @@ export default function SupervisorDashboardPage() {
                             {pendingItems.length > 0 ? pendingItems.map(item => (
                                 <TableRow key={item.id}>
                                     <TableCell className="font-medium">{item.name}</TableCell>
+                                    <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                                     <TableCell>{item.quantity}</TableCell>
                                     <TableCell>{getItemChannelName(item.channelId)}</TableCell>
                                     <TableCell className="text-right space-x-2">
@@ -197,7 +199,7 @@ export default function SupervisorDashboardPage() {
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
+                            )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -218,24 +220,29 @@ export default function SupervisorDashboardPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Name</TableHead>
+                                <TableHead>Date</TableHead>
                                 <TableHead>Lab</TableHead>
                                 <TableHead>Quantity</TableHead>
                                 <TableHead className="text-right">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {processedItems.length > 0 ? processedItems.map(item => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.name}</TableCell>
-                                    <TableCell>{getItemChannelName(item.channelId)}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
-                                    <TableCell className="text-right">
-                                        {item.status === 'Available' && <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Received</Badge>}
-                                        {item.status === 'Pending Receipt' && <Badge variant="outline">Pending</Badge>}
-                                        {item.status === 'Inaccurate' && <Badge variant="destructive">Inaccurate</Badge>}
-                                    </TableCell>
-                                </TableRow>
-                            )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No verification history.</TableCell></TableRow>}
+                            {processedItems.length > 0 ? processedItems.map(item => {
+                                const dateToShow = item.status === 'Pending Receipt' ? item.createdAt : item.verifiedAt;
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                        <TableCell>{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
+                                        <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                        <TableCell>{item.quantity}</TableCell>
+                                        <TableCell className="text-right">
+                                            {item.status === 'Available' && <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Received</Badge>}
+                                            {item.status === 'Pending Receipt' && <Badge variant="outline">Pending</Badge>}
+                                            {item.status === 'Inaccurate' && <Badge variant="destructive">Inaccurate</Badge>}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            }) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No verification history.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </CardContent>

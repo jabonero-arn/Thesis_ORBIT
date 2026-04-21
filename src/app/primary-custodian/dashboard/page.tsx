@@ -47,6 +47,7 @@ import { ForcePasswordChangeDialog } from "@/components/force-password-change-di
 import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
 import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -177,7 +178,7 @@ export default function PrimaryCustodianDashboardPage() {
         const name = formData.get("name") as string;
         const quantity = parseInt(formData.get("quantity") as string, 10);
         
-        const itemData = {
+        const itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'verifiedAt'> = {
             name: name,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
@@ -196,11 +197,11 @@ export default function PrimaryCustodianDashboardPage() {
         try {
             if (editingItem) {
                 const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
-                await updateDoc(itemDocRef, itemData);
+                await updateDoc(itemDocRef, itemData as any);
                 toast({ title: "Item Updated", description: `${itemData.name} has been updated.` });
             } else {
                 const inventoryCollection = collection(firestore, "inventory_items");
-                await addDoc(inventoryCollection, itemData);
+                await addDoc(inventoryCollection, { ...itemData, createdAt: new Date().toISOString() });
                 toast({ title: "Item Added", description: `${itemData.name} is now pending receipt by the facility supervisor.` });
             }
             closeForm();
@@ -371,7 +372,7 @@ export default function PrimaryCustodianDashboardPage() {
                            <CardContent>
                                <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
                                    <TableBody>
-                                       {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
+                                       {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
                                    </TableBody>
                                </Table>
                            </CardContent>
@@ -383,7 +384,7 @@ export default function PrimaryCustodianDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{historyToDisplay.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{r.date}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{historyToDisplay.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
                         </Card>
                     </div>
                 );

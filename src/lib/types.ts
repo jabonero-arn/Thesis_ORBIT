@@ -47,6 +47,8 @@ export type InventoryItem = {
   imageUrl: string;
   imageHint: string;
   quantity: number;
+  createdAt?: string;
+  verifiedAt?: string;
 };
 
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
