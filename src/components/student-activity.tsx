@@ -146,37 +146,45 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                 const returnQuantity = selectedToReturn.get(firstRecord.itemName) || 0;
 
                                 return (
-                                    <div key={firstRecord.itemName} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                        <div className="flex items-center gap-4">
-                                            <div>
-                                                <p className="font-semibold">{firstRecord.itemName}</p>
-                                                <p className="text-sm text-muted-foreground">Quantity: {group.length}</p>
-                                                <p className="text-sm text-muted-foreground">Last borrowed: {format(new Date(firstRecord.date), 'MMM d, yyyy, h:mm a')}</p>
+                                    <div key={firstRecord.itemName} className="p-3 rounded-lg bg-black/20">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div>
+                                                    <p className="font-semibold">{firstRecord.itemName}</p>
+                                                    <p className="text-sm text-muted-foreground">Quantity: {group.length}</p>
+                                                    <p className="text-sm text-muted-foreground">Last borrowed: {format(new Date(firstRecord.date), 'MMM d, yyyy, h:mm a')}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="outline" 
+                                                        className="h-7 w-7" 
+                                                        onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, group.length)}
+                                                        disabled={returnQuantity <= 0}
+                                                    >
+                                                        <Minus className="h-4 w-4" />
+                                                    </Button>
+                                                    <span className="w-8 text-center font-bold text-lg">{returnQuantity}</span>
+                                                    <Button 
+                                                        size="icon" 
+                                                        variant="outline" 
+                                                        className="h-7 w-7" 
+                                                        onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, group.length)}
+                                                        disabled={returnQuantity >= group.length}
+                                                    >
+                                                        <Plus className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex items-center gap-1 flex-shrink-0">
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="outline" 
-                                                    className="h-7 w-7" 
-                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, group.length)}
-                                                    disabled={returnQuantity <= 0}
-                                                >
-                                                    <Minus className="h-4 w-4" />
-                                                </Button>
-                                                <span className="w-8 text-center font-bold text-lg">{returnQuantity}</span>
-                                                <Button 
-                                                    size="icon" 
-                                                    variant="outline" 
-                                                    className="h-7 w-7" 
-                                                    onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, group.length)}
-                                                    disabled={returnQuantity >= group.length}
-                                                >
-                                                    <Plus className="h-4 w-4" />
-                                                </Button>
+                                         {firstRecord.borrowingType === 'Group' && (
+                                            <div className="mt-2 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                                                <p><b>Group {firstRecord.groupNumber}</b> ({firstRecord.groupSubject})</p>
+                                                <p>Members: {firstRecord.groupMembers}</p>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -202,13 +210,15 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                     {requestHistory.length > 0 ? (
                         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                             {requestHistory.map(record => (
-                                <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                                    <div>
-                                        <p className="font-semibold">{record.itemName}</p>
-                                        <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {getStatusBadge(record)}
+                                <div key={record.id} className="p-3 rounded-lg bg-black/20">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="font-semibold">{record.itemName}</p>
+                                            <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {getStatusBadge(record)}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -237,6 +247,8 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                     const reservationId = group.records[0].reservationId;
                     if (!reservationId) return null;
                     
+                    const firstRecord = group.records[0];
+
                     return (
                         <div key={reservationId || index} className="p-4 rounded-lg bg-black/20 border border-border/50">
                             <div className="flex justify-between items-start">
@@ -251,6 +263,12 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                     <li key={record.id} className="text-sm">{record.itemName} (x{record.itemQuantity || 1})</li>
                                 ))}
                             </ul>
+                             {firstRecord.borrowingType === 'Group' && (
+                                <div className="mb-3 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                                    <p><b>Group {firstRecord.groupNumber}</b> ({firstRecord.groupSubject})</p>
+                                    <p>Members: {firstRecord.groupMembers}</p>
+                                </div>
+                            )}
                             <div className="flex justify-end gap-2 mt-2">
                                 {group.status === 'Pending' && (
                                     <Button size="sm" variant="destructive" onClick={() => onCancelReservation(reservationId)}>
@@ -288,14 +306,22 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
             {historyLog.length > 0 ? (
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
                     {historyLog.map(record => (
-                        <div key={record.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20">
-                            <div>
-                                <p className="font-semibold">{record.itemName}</p>
-                                <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
+                        <div key={record.id} className="p-3 rounded-lg bg-black/20">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="font-semibold">{record.itemName}</p>
+                                    <p className="text-sm text-muted-foreground">Date: {format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {getStatusBadge(record)}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {getStatusBadge(record)}
-                            </div>
+                            {record.borrowingType === 'Group' && (
+                                <div className="mt-2 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                                    <p><b>Group {record.groupNumber}</b> ({record.groupSubject})</p>
+                                    <p>Members: {record.groupMembers}</p>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>

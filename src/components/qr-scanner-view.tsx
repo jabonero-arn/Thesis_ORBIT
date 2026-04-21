@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore } from "@/firebase"
-import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
+import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firestore"
 import { Html5Qrcode } from "html5-qrcode"
 
 
@@ -20,6 +20,10 @@ type ScannedCompactCheckoutData = {
     u: string; // userId
     i: { id: string; q: number }[]; // items: id and quantity
     a: string[]; // approvalsToConsume
+    gType?: 'Individual' | 'Group';
+    gNum?: string;
+    gSub?: string;
+    gMem?: string;
 }
 
 type ScannedReturnData = {
@@ -39,6 +43,11 @@ type CheckoutSession = {
   items: { name: string; quantity: number}[];
   borrowerUserId: string;
   originalPayload: ScannedCompactCheckoutData;
+  groupInfo?: {
+      number: string;
+      subject: string;
+      members: string;
+  }
 }
 
 type ClaimSession = {
@@ -107,12 +116,22 @@ export function QrScannerView() {
 
             const displayItems = Array.from(itemMap.entries()).map(([name, quantity]) => ({ name, quantity }));
 
-            setSessionInView({
+            const session: CheckoutSession = {
                 borrowerUserId: payload.u,
                 studentName: student.displayName,
                 items: displayItems,
                 originalPayload: payload,
-            });
+            };
+
+            if (payload.gType === 'Group') {
+                session.groupInfo = {
+                    number: payload.gNum || '',
+                    subject: payload.gSub || '',
+                    members: payload.gMem || '',
+                }
+            }
+
+            setSessionInView(session);
         } else if (payload.t === 'r' && payload.ids) {
             const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && (h.status === 'Active' || h.status === 'Pending Return'));
             if (recordsToReturn.length === 0) {
@@ -247,6 +266,16 @@ export function QrScannerView() {
                     date: new Date().toISOString(),
                     status: 'Active',
                 };
+
+                if (originalPayload.gType === 'Group') {
+                    newRecord.borrowingType = 'Group';
+                    newRecord.groupNumber = originalPayload.gNum;
+                    newRecord.groupSubject = originalPayload.gSub;
+                    newRecord.groupMembers = originalPayload.gMem;
+                } else {
+                    newRecord.borrowingType = 'Individual';
+                }
+
                 batch.set(newDocRef, newRecord);
             }
         });
@@ -395,9 +424,19 @@ export function QrScannerView() {
                         </Avatar>
                         <div>
                             <p className="font-semibold">{sessionInView.studentName}</p>
-                            <p className="text-sm text-muted-foreground">Student</p>
+                            <p className="text-sm text-muted-foreground">{sessionInView.groupInfo ? 'Group' : 'Individual'} Borrower</p>
                         </div>
                     </div>
+                    {sessionInView.groupInfo && (
+                        <div>
+                            <h4 className="font-semibold mb-2">Group Details:</h4>
+                            <div className="text-sm space-y-1 bg-black/20 p-3 rounded-md">
+                                <p><span className="text-muted-foreground">Group Number:</span> {sessionInView.groupInfo.number}</p>
+                                <p><span className="text-muted-foreground">Subject:</span> {sessionInView.groupInfo.subject}</p>
+                                <p><span className="text-muted-foreground">Members:</span> {sessionInView.groupInfo.members}</p>
+                            </div>
+                        </div>
+                    )}
                     <div>
                         <h4 className="font-semibold mb-2">Items to Check Out ({sessionInView.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
                          {sessionInView.items.length > 0 ? (

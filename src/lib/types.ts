@@ -65,6 +65,10 @@ export type BorrowHistory = {
     startTime?: string;
     endTime?: string;
     reservationId?: string;
+    borrowingType?: 'Individual' | 'Group';
+    groupNumber?: string;
+    groupSubject?: string;
+    groupMembers?: string;
 };
 
 export type CartItem = {

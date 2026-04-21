@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dialog"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAppContext } from "@/context/app-context"
+import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
+import { Textarea } from "./ui/textarea"
 
 type CheckoutFlowProps = {
   items: CartItem[]
@@ -43,6 +45,11 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const [startTime, setStartTime] = React.useState<string>("14:00")
   const [endTime, setEndTime] = React.useState<string>("16:00")
   
+  const [borrowingType, setBorrowingType] = React.useState<'Individual' | 'Group'>('Individual');
+  const [groupNumber, setGroupNumber] = React.useState("");
+  const [groupSubject, setGroupSubject] = React.useState("");
+  const [groupMembers, setGroupMembers] = React.useState("");
+
   const [isLoading, setIsLoading] = React.useState(false)
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const [qrCodeData, setQrCodeData] = React.useState<string>("");
@@ -93,13 +100,30 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       }
     }
     
-    const checkoutPayload = {
+    const checkoutPayload: any = {
       t: 'c', // type: checkout
       u: user.uid,
       i: cartItems.map(({ item, quantity }) => ({ id: item.id, q: quantity })),
       a: approvalsToConsume,
     };
     
+    if (borrowingType === 'Group') {
+        if (!groupNumber || !groupSubject || !groupMembers) {
+            toast({
+                variant: "destructive",
+                title: "Missing Group Information",
+                description: "Please fill out all group details.",
+            });
+            return;
+        }
+        checkoutPayload.gType = 'Group';
+        checkoutPayload.gNum = groupNumber;
+        checkoutPayload.gSub = groupSubject;
+        checkoutPayload.gMem = groupMembers;
+    } else {
+        checkoutPayload.gType = 'Individual';
+    }
+
     setQrCodeData(JSON.stringify(checkoutPayload));
     setIsQrCodeOpen(true);
   }
@@ -123,6 +147,18 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
     
     setIsLoading(true);
+
+    if (borrowingType === 'Group') {
+        if (!groupNumber || !groupSubject || !groupMembers) {
+            toast({
+                variant: "destructive",
+                title: "Missing Group Information",
+                description: "Please fill out all group details.",
+            });
+            setIsLoading(false);
+            return;
+        }
+    }
 
     let hasConflict = false;
     for (const cartItem of cartItems) {
@@ -168,7 +204,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     const newHistoryRecords: Omit<BorrowHistory, 'id'>[] = [];
 
     cartItems.forEach(({ item, quantity }) => {
-        newHistoryRecords.push({
+        const record: Omit<BorrowHistory, 'id'> = {
             studentName: user.displayName!,
             itemName: item.name,
             itemQuantity: quantity,
@@ -178,7 +214,18 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             endTime: endTime,
             borrowerUserId: user.uid,
             reservationId: reservationId,
-        });
+        };
+
+        if (borrowingType === 'Group') {
+            record.borrowingType = 'Group';
+            record.groupNumber = groupNumber;
+            record.groupSubject = groupSubject;
+            record.groupMembers = groupMembers;
+        } else {
+            record.borrowingType = 'Individual';
+        }
+        
+        newHistoryRecords.push(record);
     });
     
     try {
@@ -259,6 +306,46 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         <Separator className="my-2 bg-border/50"/>
         
         <div className="space-y-4">
+             <div className="space-y-2">
+                <Label htmlFor="borrowing-type" className="font-medium">Borrowing Type</Label>
+                <RadioGroup
+                    id="borrowing-type"
+                    value={borrowingType}
+                    onValueChange={(value: 'Individual' | 'Group') => setBorrowingType(value)}
+                    className="flex space-x-4"
+                >
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Individual" id="individual" />
+                        <Label htmlFor="individual">Individual</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Group" id="group" />
+                        <Label htmlFor="group">Group</Label>
+                    </div>
+                </RadioGroup>
+            </div>
+
+            {borrowingType === 'Group' && (
+                <div className="grid gap-3 p-3 rounded-lg bg-black/20 border border-border/50">
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1">
+                            <Label htmlFor="group-number">Group Number</Label>
+                            <Input id="group-number" value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="e.g., 3" className="bg-input" />
+                        </div>
+                        <div className="grid gap-1">
+                            <Label htmlFor="group-subject">Subject</Label>
+                            <Input id="group-subject" value={groupSubject} onChange={e => setGroupSubject(e.target.value)} placeholder="e.g., CPE 101" className="bg-input" />
+                        </div>
+                    </div>
+                    <div className="grid gap-1">
+                        <Label htmlFor="group-members">Group Members</Label>
+                        <Textarea id="group-members" value={groupMembers} onChange={e => setGroupMembers(e.target.value)} placeholder="Enter names, separated by commas" className="bg-input" />
+                    </div>
+                </div>
+            )}
+            
+            <Separator className="my-2 bg-border/50"/>
+
             <div className="flex items-center justify-between">
                 <Label htmlFor="reservation-mode" className="font-medium">
                 {isReserve ? 'Reserve for Later' : 'Immediate Borrow'}

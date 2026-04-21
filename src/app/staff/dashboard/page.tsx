@@ -195,8 +195,8 @@ export default function StaffDashboardPage() {
             );
             case 'history': return (
                  <Card className="bg-card/80"><CardHeader><CardTitle>Transaction History</CardTitle><CardDescription>Complete log of all transactions for your department.</CardDescription></CardHeader>
-                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
-                        <TableBody>{departmentHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(h.status)}</TableCell></TableRow>)}</TableBody>
+                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
+                        <TableBody>{departmentHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{h.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {h.groupNumber} ({h.groupSubject})</p><p className="text-muted-foreground max-w-xs">{h.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(h.status)}</TableCell></TableRow>)}</TableBody>
                     </Table></CardContent>
                  </Card>
             );
