@@ -40,7 +40,7 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -144,21 +144,15 @@ export default function SupervisorDashboardPage() {
         }
 
         const formData = new FormData(event.currentTarget);
-        const quantity = parseInt(formData.get("quantity") as string, 10);
         
         const itemData: Partial<InventoryItem> = {
             name: formData.get("name") as string,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
-            quantity: quantity,
             status: formData.get("status") as InventoryItem['status'],
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${(formData.get("name") as string).replace(/\s/g, '-')}/600/400`,
             imageHint: (formData.get("name") as string).toLowerCase().split(' ').slice(0, 2).join(' ')
         };
-
-        if (quantity === 0 && itemData.status !== 'Borrowed') {
-            itemData.status = 'Borrowed';
-        }
 
         try {
             const itemDocRef = doc(firestore, "inventory_items", editingItem.id);
@@ -604,10 +598,6 @@ export default function SupervisorDashboardPage() {
                                 <Textarea id="description" name="description" defaultValue={editingItem?.description} required />
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="quantity">Quantity</Label>
-                                <Input id="quantity" name="quantity" type="number" defaultValue={editingItem?.quantity} required />
-                            </div>
-                            <div className="grid gap-2">
                                 <Label htmlFor="channelId">Specific Room</Label>
                                 <Select name="channelId" defaultValue={editingItem?.channelId} required>
                                     <SelectTrigger id="channelId"><SelectValue placeholder="Select a room..." /></SelectTrigger>
@@ -647,5 +637,7 @@ export default function SupervisorDashboardPage() {
     
 
 
+
+    
 
     
