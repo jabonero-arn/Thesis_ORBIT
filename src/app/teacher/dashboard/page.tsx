@@ -74,7 +74,7 @@ export default function TeacherDashboardPage() {
     }
     setShowPasswordChangeDialog(false);
 
-    const isProfileIncomplete = !userProfile || !userProfile.department || !userProfile.employeeId;
+    const isProfileIncomplete = !userProfile || !userProfile.employeeId;
     if (isProfileIncomplete) {
       setShowProfileDialog(true);
     } else {
@@ -89,7 +89,6 @@ export default function TeacherDashboardPage() {
           name: userProfile?.displayName || user.displayName || 'Teacher',
           role: 'Teacher',
           avatarUrl: user.photoURL || undefined,
-          department: userProfile?.department,
           employeeId: userProfile?.employeeId,
       }
   }, [user, userProfile]);
@@ -103,13 +102,13 @@ export default function TeacherDashboardPage() {
   const [selectedChannelId, setSelectedChannelId] = React.useState<string|null>(null);
 
   React.useEffect(() => {
-    if (!selectedDepartmentId && departments.length > 0) {
+    if (activeView === 'borrow' && !selectedDepartmentId && departments.length > 0) {
       setSelectedDepartmentId(departments[0].id);
     }
-  }, [departments, selectedDepartmentId]);
+  }, [departments, selectedDepartmentId, activeView]);
 
   React.useEffect(() => {
-    if (selectedDepartmentId && !selectedChannelId) {
+    if (activeView === 'borrow' && selectedDepartmentId && !selectedChannelId) {
         const dept = departments.find(d => d.id === selectedDepartmentId);
         if (dept) {
             const firstChannel = channels.find(c => c.departmentId === dept.id);
@@ -118,7 +117,7 @@ export default function TeacherDashboardPage() {
             }
         }
     }
-  }, [selectedDepartmentId, selectedChannelId, channels, departments]);
+  }, [selectedDepartmentId, selectedChannelId, channels, departments, activeView]);
 
 
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
@@ -380,37 +379,46 @@ export default function TeacherDashboardPage() {
     </div>
   );
 
-  const BorrowView = () => (
-    <>
-       <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
-            <div className="flex items-center gap-2">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden">
-                      <Menu />
-                      <span className="sr-only">Open Menu</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
-                    {mobileSidebarContent}
-                  </SheetContent>
-                </Sheet>
+  const BorrowView = () => {
+     if (isUserLoading || isProfileLoading || !teacherData || !selectedDepartmentId || !selectedChannelId) {
+        return (
+          <div className="flex h-full w-full items-center justify-center">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          </div>
+        );
+     }
+    return (
+        <>
+        <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                    <Hash className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                    <SheetTrigger asChild>
+                        <Button variant="ghost" size="icon" className="md:hidden">
+                        <Menu />
+                        <span className="sr-only">Open Menu</span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                        {mobileSidebarContent}
+                    </SheetContent>
+                    </Sheet>
+                    <div className="flex items-center gap-2">
+                        <Hash className="text-muted-foreground" />
+                        <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+                    </div>
                 </div>
+            </header>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                <InventoryGrid
+                    items={items}
+                    onItemSelect={handleItemSelect}
+                    selectedItems={selectedItems.map(ci => ci.item)}
+                    isTeacherView={true}
+                />
             </div>
-        </header>
-        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <InventoryGrid
-                items={items}
-                onItemSelect={handleItemSelect}
-                selectedItems={selectedItems.map(ci => ci.item)}
-                isTeacherView={true}
-            />
-        </div>
-    </>
-  );
+        </>
+    )
+  };
 
   const RequestsView = () => (
     <>
@@ -441,7 +449,7 @@ export default function TeacherDashboardPage() {
     </>
   );
 
-  if (isUserLoading || isProfileLoading || !teacherData || (activeView === 'borrow' && (!selectedDepartmentId || !selectedChannelId))) {
+  if (isUserLoading || isProfileLoading || !teacherData) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />

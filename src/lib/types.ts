@@ -14,7 +14,6 @@ export type User = {
   yearLevel?: string;
   
   // Teacher/Staff/Supervisor specific
-  department?: string;
   employeeId?: string;
   passwordChangeRequired?: boolean;
   assignedDepartmentId?: string;

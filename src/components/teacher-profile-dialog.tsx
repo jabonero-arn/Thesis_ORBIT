@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -24,15 +25,6 @@ type TeacherProfileDialogProps = {
   onOpenChange: (open: boolean) => void
 }
 
-const departments = [
-  "Science Department",
-  "Social Studies",
-  "English Department",
-  "College of Computer Studies",
-  "IT Services",
-  "Facilities Management",
-];
-
 export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialogProps) {
   const { user } = useUser()
   const auth = useAuth()
@@ -40,7 +32,6 @@ export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialo
   const { toast } = useToast()
 
   const [isLoading, setIsLoading] = React.useState(false)
-  const [department, setDepartment] = React.useState("")
   const [employeeId, setEmployeeId] = React.useState("")
   const [currentPassword, setCurrentPassword] = React.useState("")
   const [newPassword, setNewPassword] = React.useState("")
@@ -48,8 +39,8 @@ export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialo
 
   const handleSubmit = async () => {
     if (!user) return
-    if (!department || !employeeId) {
-      toast({ variant: "destructive", title: "Missing Information", description: "Please fill out your department and employee ID." })
+    if (!employeeId) {
+      toast({ variant: "destructive", title: "Missing Information", description: "Please fill out your employee ID." })
       return
     }
     if (newPassword && newPassword !== confirmNewPassword) {
@@ -74,7 +65,6 @@ export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialo
 
       // 2. Update Firestore profile
       const userProfile = {
-        department: department,
         employeeId: employeeId,
         role: "Teacher",
         displayName: user.displayName,
@@ -119,19 +109,6 @@ export function TeacherProfileDialog({ open, onOpenChange }: TeacherProfileDialo
           <DialogDescription>Please provide some additional information to finish setting up your account.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="department">Department</Label>
-            <Select value={department} onValueChange={setDepartment}>
-              <SelectTrigger id="department">
-                <SelectValue placeholder="Select your department" />
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map(dept => (
-                  <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="grid gap-2">
             <Label htmlFor="employeeId">Employee ID</Label>
             <Input id="employeeId" value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="EMP-12345" />

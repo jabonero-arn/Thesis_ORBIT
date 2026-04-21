@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -33,18 +34,9 @@ const shsStrands = [
     "HUMSS (Humanities and Social Sciences)",
     "GAS (General Academic Strand)",
     "TVL (Technical-Vocational-Livelihood)",
-];
+  ];
 const collegeYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
 const shsYearLevels = ["Grade 11", "Grade 12"];
-const departments = [
-  "Science Department",
-  "Social Studies",
-  "English Department",
-  "College of Computer Studies",
-  "IT Services",
-  "Facilities Management",
-];
-
 
 export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole }: EditProfileDialogProps) {
   const { user } = useUser();
@@ -62,7 +54,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
   const [courseOrStrand, setCourseOrStrand] = React.useState("");
   const [yearLevel, setYearLevel] = React.useState("");
   // Staff/Teacher fields
-  const [department, setDepartment] = React.useState("");
   const [employeeId, setEmployeeId] = React.useState("");
 
   // Password fields
@@ -79,7 +70,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
           setCourseOrStrand(userProfile.courseOrStrand || "");
           setYearLevel(userProfile.yearLevel || "");
       } else {
-          setDepartment(userProfile.department || "");
           setEmployeeId(userProfile.employeeId || "");
       }
     } else if (!open) {
@@ -129,7 +119,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
         updatedProfileData.courseOrStrand = courseOrStrand;
         updatedProfileData.yearLevel = yearLevel;
       } else {
-        updatedProfileData.department = department;
         updatedProfileData.employeeId = employeeId;
       }
       
@@ -202,15 +191,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
 
   const renderStaffFields = () => (
     <>
-      <div className="grid gap-2">
-        <Label htmlFor="edit-department">Department</Label>
-        <Select value={department} onValueChange={setDepartment}>
-          <SelectTrigger id="edit-department"><SelectValue placeholder="Select your department" /></SelectTrigger>
-          <SelectContent>
-            {departments.map(dept => ( <SelectItem key={dept} value={dept}>{dept}</SelectItem> ))}
-          </SelectContent>
-        </Select>
-      </div>
       <div className="grid gap-2">
         <Label htmlFor="edit-employeeId">Employee ID</Label>
         <Input id="edit-employeeId" value={employeeId} onChange={e => setEmployeeId(e.target.value)} />

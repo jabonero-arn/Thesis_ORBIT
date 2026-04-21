@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,11 +16,13 @@ import { doc } from "firebase/firestore"
 import { Edit } from "lucide-react"
 import { EditProfileDialog } from "./edit-profile-dialog"
 import type { User as UserType } from "@/lib/types"
+import { useAppContext } from "@/context/app-context"
 
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
   const { user } = useUser()
   const firestore = useFirestore()
+  const { departments } = useAppContext();
 
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
@@ -38,7 +41,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
   const idNumber = userProfile?.idNumber;
   const year = userProfile?.yearLevel;
   const course = userProfile?.courseOrStrand;
-  const department = userProfile?.department;
+  const departmentName = departments.find(d => d.id === userProfile?.assignedDepartmentId)?.name;
   const employeeId = userProfile?.employeeId;
 
   const handleEditClick = () => {
@@ -83,7 +86,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                       ) : (
                           <>
                               {employeeId && <div className="flex justify-between"><span className="text-gray-400">Employee ID</span><span className="font-mono text-white">{employeeId}</span></div>}
-                              {department && <div className="flex justify-between"><span className="text-gray-400">Department</span><span className="text-white">{department}</span></div>}
+                              {departmentName && <div className="flex justify-between"><span className="text-gray-400">Department</span><span className="text-white">{departmentName}</span></div>}
                               <div className="flex justify-between"><span className="text-gray-400">Role</span><span className="text-white">{displayRole}</span></div>
                           </>
                       )}
