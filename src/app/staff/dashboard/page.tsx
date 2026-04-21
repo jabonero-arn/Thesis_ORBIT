@@ -94,6 +94,8 @@ export default function StaffDashboardPage() {
                 const firstChannel = channels.find(c => c.departmentId === dept.id);
                 if (firstChannel) {
                     setSelectedChannelId(firstChannel.id);
+                } else {
+                    setSelectedChannelId(null); // Explicitly set to null if no channel found
                 }
             }
         }
@@ -460,6 +462,13 @@ export default function StaffDashboardPage() {
     const renderContent = () => {
         switch (activeView) {
             case 'borrow':
+                if (!selectedChannelId) {
+                    return (
+                        <div className="flex h-full w-full items-center justify-center">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                        </div>
+                    );
+                }
                 return (
                     <InventoryGrid 
                         items={filteredItems} 
@@ -508,10 +517,18 @@ export default function StaffDashboardPage() {
     
     const getHeaderContent = () => {
         if (activeView === 'borrow') {
+            if (!selectedChannel) {
+                return (
+                    <div className="flex items-center gap-2">
+                        <Hash className="text-muted-foreground" />
+                        <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Loading...</h1>
+                    </div>
+                )
+            }
             return (
                 <div className="flex items-center gap-2">
                     <Hash className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel.name.replace('#', '')}</h1>
                 </div>
             );
         }
@@ -611,7 +628,7 @@ export default function StaffDashboardPage() {
       </div>
     );
     
-    if (isUserLoading || !user || !selectedDepartmentId || !selectedChannelId) {
+    if (isUserLoading || isProfileLoading || !user) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
