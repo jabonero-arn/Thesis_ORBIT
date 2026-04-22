@@ -278,6 +278,7 @@ export default function Home() {
   
   if (departments.length === 0) {
      return (
+      <TooltipProvider>
        <div className="flex h-screen bg-[#1e2430]">
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
             <div className="flex flex-1">
@@ -341,6 +342,7 @@ export default function Home() {
           </div>
         </main>
       </div>
+      </TooltipProvider>
     );
   }
 
@@ -631,5 +633,7 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    
 
     
