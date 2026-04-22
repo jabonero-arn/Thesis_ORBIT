@@ -4,11 +4,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase, useCollection } from "@/firebase"
-import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { addDoc, collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, Checkbox
 } from "lucide-react"
 import {
   Card,
@@ -50,6 +50,8 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
+import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
+import { AssignMaterialsDialog } from "@/components/primary-custodian/assign-materials-dialog"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -73,7 +75,7 @@ type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'activityLogs' | '
 type DashboardSubView = 'overall' | string; // string is department prefix
 type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
-type VerificationSubView = 'queue' | 'provisioning';
+type VerificationSubView = 'queue' | 'provisioning' | 'assign';
 type ActivityLogSubView = 'approvals' | 'borrowing';
 
 
@@ -126,6 +128,8 @@ export default function HeadSupervisorDashboardPage() {
     const [isEditUserRoleOpen, setIsEditUserRoleOpen] = React.useState(false);
     const [userToEdit, setUserToEdit] = React.useState<UserType | null>(null);
 
+    const [selectedToAssign, setSelectedToAssign] = React.useState<string[]>([]);
+    const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
 
     // Data Filtering
     const dashboardItems = React.useMemo(() => {
@@ -164,6 +168,10 @@ export default function HeadSupervisorDashboardPage() {
         if (!formDepartmentContext) return [];
         return channels.filter(c => c.departmentId === formDepartmentContext.id);
     }, [formDepartmentContext, channels]);
+    
+    const unassignedItems = React.useMemo(() => {
+        return items.filter(item => !item.channelId && item.status === 'Available');
+    }, [items]);
 
 
     // Handlers
@@ -274,6 +282,48 @@ export default function HeadSupervisorDashboardPage() {
             toast({ variant: 'destructive', title: 'Update Failed' });
         }
     };
+
+    const handleToggleAllForAssignment = (checked: boolean) => {
+        if (checked) {
+            setSelectedToAssign(unassignedItems.map(item => item.id));
+        } else {
+            setSelectedToAssign([]);
+        }
+    };
+
+    const handleToggleAssignment = (itemId: string, checked: boolean) => {
+        setSelectedToAssign(prev => {
+            if (checked) {
+                return [...prev, itemId];
+            } else {
+                return prev.filter(id => id !== itemId);
+            }
+        });
+    };
+
+    const handleAssignItems = async (channelId: string) => {
+        if (!firestore || selectedToAssign.length === 0) return;
+        
+        const batch = writeBatch(firestore);
+        selectedToAssign.forEach(itemId => {
+            const itemDocRef = doc(firestore, "inventory_items", itemId);
+            batch.update(itemDocRef, { channelId });
+        });
+
+        try {
+            await batch.commit();
+            toast({
+                title: "Items Assigned",
+                description: `${selectedToAssign.length} item(s) have been assigned to the selected room.`
+            });
+            setSelectedToAssign([]);
+            setIsAssignDialogOpen(false);
+        } catch (error) {
+            console.error("Error assigning items:", error);
+            toast({ variant: "destructive", title: "Assignment Failed" });
+        }
+    };
+
     
     // Helper functions
     const getItemChannelName = (channelId?: string) => {
@@ -472,6 +522,57 @@ export default function HeadSupervisorDashboardPage() {
                                 <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
                             </Card>
                         )}
+                         {verificationSubView === 'assign' && (
+                            <Card className="bg-card/80">
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div>
+                                        <CardTitle>Assign Materials to Labs</CardTitle>
+                                        <CardDescription>Select verified, unassigned items and assign them to a room.</CardDescription>
+                                    </div>
+                                    <Button onClick={() => setIsAssignDialogOpen(true)} disabled={selectedToAssign.length === 0}>
+                                        Assign Selected ({selectedToAssign.length})
+                                    </Button>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead className="w-[50px]">
+                                                    <UiCheckbox 
+                                                        checked={selectedToAssign.length > 0 && selectedToAssign.length === unassignedItems.length}
+                                                        onCheckedChange={handleToggleAllForAssignment}
+                                                        aria-label="Select all for assignment"
+                                                    />
+                                                </TableHead>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Quantity</TableHead>
+                                                <TableHead>Date Verified</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {unassignedItems.length > 0 ? unassignedItems.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell>
+                                                        <UiCheckbox
+                                                            checked={selectedToAssign.includes(item.id)}
+                                                            onCheckedChange={(checked) => handleToggleAssignment(item.id, !!checked)}
+                                                            aria-label={`Select ${item.name}`}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="h-24 text-center">No unassigned items available.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                 );
             default: return null;
@@ -482,8 +583,8 @@ export default function HeadSupervisorDashboardPage() {
         const currentNavItem = navItems.find(item => item.id === activeView);
 
         if (activeView === 'verification') {
-            const label = verificationSubView === 'queue' ? 'Verification Queue' : 'Provisioning Log';
-            const icon = verificationSubView === 'queue' ? <ClipboardCheck /> : <HistoryIcon />;
+            const label = verificationSubView === 'queue' ? 'Verification Queue' : verificationSubView === 'provisioning' ? 'Provisioning Log' : 'Assign Materials';
+            const icon = verificationSubView === 'queue' ? <ClipboardCheck /> : verificationSubView === 'provisioning' ? <HistoryIcon /> : <Checkbox />;
              return (
                 <div className="flex items-center gap-2">
                     <div className="text-muted-foreground">{icon}</div>
@@ -528,6 +629,7 @@ export default function HeadSupervisorDashboardPage() {
                 <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VERIFICATION</h2><ul className="flex flex-col gap-1">
                     <li><button onClick={() => {setVerificationSubView('queue'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
                     <li><button onClick={() => {setVerificationSubView('provisioning'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
+                    <li><button onClick={() => {setVerificationSubView('assign'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Checkbox className="h-5 w-5"/>Assign Materials</button></li>
                 </ul></div>
             )}
             {activeView === 'activityLogs' && (
@@ -564,6 +666,7 @@ export default function HeadSupervisorDashboardPage() {
                                 <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Verification</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
                                     <li><button onClick={() => setVerificationSubView('queue')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
                                     <li><button onClick={() => setVerificationSubView('provisioning')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
+                                    <li><button onClick={() => setVerificationSubView('assign')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Checkbox className="h-5 w-5"/>Assign Materials</button></li>
                                 </ul></div></>
                              )}
                               {activeView === 'activityLogs' && (
@@ -628,8 +731,15 @@ export default function HeadSupervisorDashboardPage() {
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
                 <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
+                <AssignMaterialsDialog
+                    open={isAssignDialogOpen}
+                    onOpenChange={setIsAssignDialogOpen}
+                    onAssign={handleAssignItems}
+                />
 
             </div>
         </TooltipProvider>
     )
 }
+
+    
