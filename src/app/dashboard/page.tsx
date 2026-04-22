@@ -143,35 +143,36 @@ export default function Home() {
     }
 
     const isApproved = approvedForBorrowItemNames.has(item.name);
+
+    // Primary conditions for adding an item to the cart
+    const isAvailable = item.status === "Available" && item.quantity > 0;
+    const isApprovedAndLocked = item.status === "Locked" && isApproved && item.quantity > 0;
+    // This case handles data inconsistencies where an item is borrowed but still has stock.
+    const isBorrowableInconsistency = item.status === "Borrowed" && item.quantity > 0;
     
-    // Case 1: Item is "Available" (or in a faulty "Borrowed" state with stock) and has stock
-    if ((item.status === "Available" || (item.status === "Borrowed" && item.quantity > 0)) && item.quantity > 0) {
+    if (isAvailable || isApprovedAndLocked || isBorrowableInconsistency) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
+        if (isApprovedAndLocked) {
+            toast({
+                title: "Approved Item Added",
+                description: `"${item.name}" has been added to your cart.`,
+            });
+        }
         return;
     }
 
-    // Case 2: Item was "Locked" but is now approved by a teacher, and has stock
-    if (isApproved && item.quantity > 0) {
-        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
-        toast({
-            title: "Approved Item Added",
-            description: `"${item.name}" has been added to your cart.`,
-        });
-        return;
-    }
-
-    // Case 3: Item is "Locked" and not yet approved
+    // Condition to request approval for a locked item
     if (item.status === "Locked" && !isApproved) {
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
         return;
     }
     
-    // Case 4: Any other unavailable case (borrowed with zero stock, etc.)
+    // All other cases are unavailable. Show a more descriptive toast.
     toast({
         variant: "destructive",
         title: "Item Unavailable",
-        description: `"${item.name}" is not available for borrowing at this time.`,
+        description: `"${item.name}" is not available for borrowing at this time. Its current status is: ${item.status}.`,
     });
   }
 
