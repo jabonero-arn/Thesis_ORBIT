@@ -1,5 +1,5 @@
 
-export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Primary Custodian";
+export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor";
 
 export type User = {
   id: string;

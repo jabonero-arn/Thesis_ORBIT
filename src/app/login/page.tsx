@@ -75,7 +75,7 @@ export default function LoginPage() {
           return;
       }
 
-      // Convert URL role (e.g., 'primary-custodian') to DB role (e.g., 'Primary Custodian')
+      // Convert URL role (e.g., 'head-supervisor') to DB role (e.g., 'Head Supervisor')
       const targetRole = role ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : "";
 
       // Check if the user's role matches the role they're trying to log in as
@@ -104,7 +104,7 @@ export default function LoginPage() {
           redirectPath = "/supervisor/dashboard";
       } else if (role === "staff") {
           redirectPath = "/staff/dashboard";
-      } else if (role === "primary-custodian") {
+      } else if (role === "head-supervisor") {
           redirectPath = "/primary-custodian/dashboard";
       }
 

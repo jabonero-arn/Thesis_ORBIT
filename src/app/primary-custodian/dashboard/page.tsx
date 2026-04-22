@@ -53,7 +53,7 @@ import { ReturnConditionBadge } from "@/components/return-condition-badge"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
-    { id: 'Primary Custodian', name: 'Primary Custodian', icon: <Crown /> },
+    { id: 'Head Supervisor', name: 'Head Supervisor', icon: <Crown /> },
     { id: 'Supervisor', name: 'Supervisor', icon: <Shield /> },
     { id: 'Staff', name: 'Staff', icon: <ClipboardList /> },
     { id: 'Teacher', name: 'Teacher', icon: <BookUser /> },
@@ -73,7 +73,7 @@ type DashboardSubView = 'overall' | string; // string is department prefix
 type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
 
-export default function PrimaryCustodianDashboardPage() {
+export default function HeadSupervisorDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
@@ -89,7 +89,7 @@ export default function PrimaryCustodianDashboardPage() {
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
-        router.push("/login?role=primary-custodian")
+        router.push("/login?role=head-supervisor")
       }
     }, [user, isUserLoading, router])
 
@@ -106,7 +106,7 @@ export default function PrimaryCustodianDashboardPage() {
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
     const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
-    const [usersSubView, setUsersSubView] = React.useState<'all' | 'Primary Custodian' | 'Supervisor' | 'Staff' | 'Teacher' | 'Student'>('all');
+    const [usersSubView, setUsersSubView] = React.useState<'all' | 'Head Supervisor' | 'Supervisor' | 'Staff' | 'Teacher' | 'Student'>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
     const [isFormOpen, setIsFormOpen] = React.useState(false);
@@ -435,7 +435,7 @@ export default function PrimaryCustodianDashboardPage() {
                                             return (
                                                 <TableRow key={u.id}>
                                                     <TableCell className="font-medium">{u.displayName}</TableCell>
-                                                    <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                                                    <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Head Supervisor') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
                                                     <TableCell>{departmentName}</TableCell>
                                                     <TableCell className="text-right">
                                                         {canEdit && (
@@ -525,19 +525,19 @@ export default function PrimaryCustodianDashboardPage() {
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
               <div className="flex items-center justify-between p-2">
-                  <UserProfileModal role="Primary Custodian">
+                  <UserProfileModal role="Head Supervisor">
                       <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                           <Avatar className="h-8 w-8 flex-shrink-0">
                               <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                              <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback>
                           </Avatar>
                           <div className="overflow-hidden">
-                              <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Primary Custodian"}</p>
-                              <p className="text-xs text-muted-foreground">Primary Custodian</p>
+                              <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p>
+                              <p className="text-xs text-muted-foreground">Head Supervisor</p>
                           </div>
                       </div>
                   </UserProfileModal>
-                  <UserNav role="Primary Custodian" />
+                  <UserNav role="Head Supervisor" />
               </div>
           </div>
       </div>
@@ -644,19 +644,19 @@ export default function PrimaryCustodianDashboardPage() {
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]">
                          <div className="flex items-center justify-between p-2">
-                             <UserProfileModal role="Primary Custodian">
+                             <UserProfileModal role="Head Supervisor">
                                  <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
                                      <Avatar className="h-8 w-8 flex-shrink-0">
                                          <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback>
                                      </Avatar>
                                      <div className="overflow-hidden">
-                                         <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Primary Custodian"}</p>
-                                         <p className="text-xs text-muted-foreground">Primary Custodian</p>
+                                         <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p>
+                                         <p className="text-xs text-muted-foreground">Head Supervisor</p>
                                      </div>
                                  </div>
                              </UserProfileModal>
-                             <UserNav role="Primary Custodian" />
+                             <UserNav role="Head Supervisor" />
                          </div>
                     </div>
                 </div>
@@ -721,7 +721,7 @@ export default function PrimaryCustodianDashboardPage() {
                 <CreateUserForm 
                     open={isCreateUserOpen} 
                     onOpenChange={setIsCreateUserOpen} 
-                    roleToCreate={usersSubView as Exclude<Role, "Student" | "Primary Custodian">}
+                    roleToCreate={usersSubView as Exclude<Role, "Student" | "Head Supervisor">}
                 />
                 
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />

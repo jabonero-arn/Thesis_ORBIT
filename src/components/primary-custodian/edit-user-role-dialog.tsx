@@ -26,7 +26,7 @@ type EditUserRoleDialogProps = {
   user: UserType | null;
 };
 
-const editableRoles: Exclude<Role, "Student" | "Primary Custodian" | "Teacher">[] = ["Supervisor", "Staff"];
+const editableRoles: Exclude<Role, "Student" | "Head Supervisor" | "Teacher">[] = ["Supervisor", "Staff"];
 
 export function EditUserRoleDialog({ open, onOpenChange, user }: EditUserRoleDialogProps) {
   const { toast } = useToast();

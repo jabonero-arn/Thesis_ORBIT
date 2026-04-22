@@ -51,8 +51,8 @@ service cloud.firestore {
     function isSupervisor() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid));
     }
-     function isPrimaryCustodian() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_primary_custodian/$(request.auth.uid));
+     function isHeadSupervisor() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid));
     }
 
 
@@ -60,11 +60,11 @@ service cloud.firestore {
     // User Profile Rules
     // --------------------------------------------------------------------------------
     match /users/{userId} {
-      allow get: if isOwner(userId) || isPrimaryCustodian();
-      allow list: if isPrimaryCustodian();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isPrimaryCustodian();
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isPrimaryCustodian();
-      allow delete: if isPrimaryCustodian();
+      allow get: if isOwner(userId) || isHeadSupervisor();
+      allow list: if isHeadSupervisor();
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isHeadSupervisor();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isHeadSupervisor();
+      allow delete: if isHeadSupervisor();
     }
 
     // --------------------------------------------------------------------------------
@@ -72,22 +72,22 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /roles_teachers/{userId} {
       allow read: if false; // No client-side reads
-      allow create, delete: if isPrimaryCustodian();
+      allow create, delete: if isHeadSupervisor();
       allow update: if false;
     }
     match /roles_staff/{userId} {
       allow read: if false;
-      allow create, delete: if isPrimaryCustodian();
+      allow create, delete: if isHeadSupervisor();
       allow update: if false;
     }
     match /roles_supervisor/{userId} {
       allow read: if false;
-      allow create, delete: if isPrimaryCustodian();
+      allow create, delete: if isHeadSupervisor();
       allow update: if false;
     }
-    match /roles_primary_custodian/{userId} {
+    match /roles_head_supervisor/{userId} {
         allow read: if false;
-        allow create, delete: if isPrimaryCustodian();
+        allow create, delete: if isHeadSupervisor();
         allow update: if false;
     }
     
@@ -96,11 +96,11 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /departments/{departmentId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isPrimaryCustodian();
+      allow create, update, delete: if isHeadSupervisor();
     }
     match /channels/{channelId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isPrimaryCustodian();
+      allow create, update, delete: if isHeadSupervisor();
     }
 
     // --------------------------------------------------------------------------------
@@ -108,9 +108,9 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
      match /inventory_items/{itemId} {
         allow get, list: if isSignedIn();
-        allow create: if isPrimaryCustodian();
-        allow delete: if isPrimaryCustodian() || isSupervisor();
-        allow update: if isStaff() || isSupervisor() || isPrimaryCustodian();
+        allow create: if isHeadSupervisor();
+        allow delete: if isHeadSupervisor() || isSupervisor();
+        allow update: if isStaff() || isSupervisor() || isHeadSupervisor();
       }
 
     // --------------------------------------------------------------------------------
@@ -128,11 +128,11 @@ service cloud.firestore {
     // Borrowing Transaction Rules
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
-      allow get: if isStaff() || isOwner(resource.data.borrowerUserId) || isPrimaryCustodian() || isSupervisor();
+      allow get: if isStaff() || isOwner(resource.data.borrowerUserId) || isHeadSupervisor() || isSupervisor();
       allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data.borrowerUserId);
-      allow update: if (isStaff() && isExistingDoc()) || (isOwner(resource.data.borrowerUserId) && isExistingDoc()) || isPrimaryCustodian() || isSupervisor();
-      allow delete: if isStaff() && isExistingDoc() || isPrimaryCustodian() || isSupervisor();
+      allow update: if (isStaff() && isExistingDoc()) || (isOwner(resource.data.borrowerUserId) && isExistingDoc()) || isHeadSupervisor() || isSupervisor();
+      allow delete: if isStaff() && isExistingDoc() || isHeadSupervisor() || isSupervisor();
     }
   }
 }

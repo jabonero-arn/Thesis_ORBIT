@@ -27,7 +27,7 @@
             "Teacher",
             "Staff",
             "Supervisor",
-            "Primary Custodian"
+            "Head Supervisor"
           ]
         },
         "idNumber": {
@@ -198,11 +198,11 @@
       },
       "description": "Grants a user the 'Supervisor' role."
     },
-    "/roles_primary_custodian/{userId}": {
+    "/roles_head_supervisor/{userId}": {
       "schema": {
         "$ref": "#/entities/RoleFlag"
       },
-      "description": "Grants a user the 'Primary Custodian' role."
+      "description": "Grants a user the 'Head Supervisor' role."
     },
     "/departments/{departmentId}": {
         "schema": { "$ref": "#/entities/Department" },
