@@ -106,7 +106,7 @@ export default function LoginPage() {
           redirectPath = "/staff/dashboard";
       } else if (role === "head-supervisor") {
           redirectPath = "/primary-custodian/dashboard";
-      } else if (role === "primary-custodian") {
+      } else if (role === "property-custodian") {
           redirectPath = "/materials-dashboard";
       }
 

@@ -53,8 +53,8 @@ import { ReturnConditionBadge } from "@/components/return-condition-badge"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
+    { id: 'Property Custodian', name: 'Property Custodian', icon: <Building /> },
     { id: 'Head Supervisor', name: 'Head Supervisor', icon: <Crown /> },
-    { id: 'Primary Custodian', name: 'Primary Custodian', icon: <Building /> },
     { id: 'Supervisor', name: 'Supervisor', icon: <Shield /> },
     { id: 'Staff', name: 'Staff', icon: <ClipboardList /> },
     { id: 'Teacher', name: 'Teacher', icon: <BookUser /> },
@@ -389,7 +389,7 @@ export default function HeadSupervisorDashboardPage() {
                                             return (
                                                 <TableRow key={u.id}>
                                                     <TableCell className="font-medium">{u.displayName}</TableCell>
-                                                    <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Head Supervisor' || u.role === 'Primary Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
+                                                    <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Head Supervisor' || u.role === 'Property Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
                                                     <TableCell>{departmentName}</TableCell>
                                                     <TableCell className="text-right">
                                                         {canEdit && (

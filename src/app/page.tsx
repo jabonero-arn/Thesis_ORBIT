@@ -17,14 +17,14 @@ import { Badge } from "@/components/ui/badge"
 export default function RoleSelectionPage() {
   const roles = [
      {
+      name: "Property Custodian",
+      href: "/login?role=property-custodian",
+      icon: <Warehouse className="mr-2 h-5 w-5" />,
+    },
+    {
       name: "Head Supervisor",
       href: "/login?role=head-supervisor",
       icon: <Crown className="mr-2 h-5 w-5" />,
-    },
-    {
-      name: "Primary Custodian",
-      href: "/login?role=primary-custodian",
-      icon: <Warehouse className="mr-2 h-5 w-5" />,
     },
     {
       name: "Supervisor",
@@ -66,8 +66,8 @@ export default function RoleSelectionPage() {
               Laboratory Materials Borrowing and Management
             </CardTitle>
              <div className="flex flex-wrap gap-2 pt-2">
+                <Badge variant="secondary">Property Custodian</Badge>
                 <Badge variant="secondary">Head Supervisor</Badge>
-                <Badge variant="secondary">Primary Custodian</Badge>
                 <Badge variant="secondary">Supervisor</Badge>
                 <Badge variant="secondary">Staff</Badge>
                 <Badge variant="secondary">Teacher</Badge>

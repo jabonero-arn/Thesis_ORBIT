@@ -44,7 +44,7 @@ import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
 import { format } from "date-fns"
 
-export default function PrimaryCustodianDashboardPage() {
+export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
@@ -57,7 +57,7 @@ export default function PrimaryCustodianDashboardPage() {
     
     React.useEffect(() => {
       if (!isUserLoading && !user) {
-        router.push("/login?role=primary-custodian")
+        router.push("/login?role=property-custodian")
       }
     }, [user, isUserLoading, router])
 
@@ -174,7 +174,7 @@ export default function PrimaryCustodianDashboardPage() {
                 ))}
             </div>
           </div>
-          <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Primary Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Primary Custodian"}</p><p className="text-xs text-muted-foreground">Primary Custodian</p></div></div></UserProfileModal><UserNav role="Primary Custodian" /></div></div>
+          <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
       </div>
     );
     
@@ -197,7 +197,7 @@ export default function PrimaryCustodianDashboardPage() {
                             <div className="py-4"><ul className="flex flex-col gap-1"><li><button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white"><Warehouse className="h-5 w-5" />Material Provisioning</button></li></ul></div>
                         </div>
                     </div>
-                     <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Primary Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Primary Custodian"}</p><p className="text-xs text-muted-foreground">Primary Custodian</p></div></div></UserProfileModal><UserNav role="Primary Custodian" /></div></div>
+                     <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
                 </div>
 
                 <main className="flex-1 flex flex-col h-screen">

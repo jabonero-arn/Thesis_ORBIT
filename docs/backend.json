@@ -27,8 +27,8 @@
             "Teacher",
             "Staff",
             "Supervisor",
-            "Head Supervisor",
-            "Primary Custodian"
+            "Property Custodian",
+            "Head Supervisor"
           ]
         },
         "idNumber": {
@@ -211,11 +211,11 @@
       },
       "description": "Grants a user the 'Head Supervisor' role."
     },
-    "/roles_primary_custodian/{userId}": {
+    "/roles_property_custodian/{userId}": {
       "schema": {
         "$ref": "#/entities/RoleFlag"
       },
-      "description": "Grants a user the 'Primary Custodian' role."
+      "description": "Grants a user the 'Property Custodian' role."
     },
     "/departments/{departmentId}": {
         "schema": { "$ref": "#/entities/Department" },

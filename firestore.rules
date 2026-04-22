@@ -54,8 +54,8 @@ service cloud.firestore {
      function isHeadSupervisor() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid));
     }
-    function isPrimaryCustodian() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_primary_custodian/$(request.auth.uid));
+    function isPropertyCustodian() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
 
 
@@ -93,7 +93,7 @@ service cloud.firestore {
         allow create, delete: if isHeadSupervisor();
         allow update: if false;
     }
-    match /roles_primary_custodian/{userId} {
+    match /roles_property_custodian/{userId} {
         allow read: if false;
         allow create, delete: if isHeadSupervisor();
         allow update: if false;
@@ -116,7 +116,7 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
      match /inventory_items/{itemId} {
         allow get, list: if isSignedIn();
-        allow create: if isPrimaryCustodian();
+        allow create: if isPropertyCustodian();
         allow delete: if isHeadSupervisor() || isSupervisor();
         allow update: if isStaff() || isSupervisor() || isHeadSupervisor();
       }
