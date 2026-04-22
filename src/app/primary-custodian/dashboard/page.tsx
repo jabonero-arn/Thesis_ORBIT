@@ -8,7 +8,7 @@ import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestor
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck
 } from "lucide-react"
 import {
   Card,
@@ -74,7 +74,8 @@ type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'activityLogs' | '
 type DashboardSubView = 'overall' | string; // string is department prefix
 type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
-type ActivityLogSubView = 'provisioning' | 'approvals' | 'borrowing';
+type VerificationSubView = 'queue' | 'provisioning';
+type ActivityLogSubView = 'approvals' | 'borrowing';
 
 
 export default function HeadSupervisorDashboardPage() {
@@ -109,7 +110,8 @@ export default function HeadSupervisorDashboardPage() {
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
-    const [activityLogSubView, setActivityLogSubView] = React.useState<ActivityLogSubView>('provisioning');
+    const [verificationSubView, setVerificationSubView] = React.useState<VerificationSubView>('queue');
+    const [activityLogSubView, setActivityLogSubView] = React.useState<ActivityLogSubView>('approvals');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -309,7 +311,7 @@ export default function HeadSupervisorDashboardPage() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'verification', label: 'Verification Queue', icon: <ClipboardList /> },
+        { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'activityLogs', label: 'Activity Logs', icon: <HistoryIcon /> },
@@ -385,15 +387,9 @@ export default function HeadSupervisorDashboardPage() {
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Tabs defaultValue={activityLogSubView} onValueChange={(v) => setActivityLogSubView(v as ActivityLogSubView)}>
                             <TabsList className="mb-4">
-                                <TabsTrigger value="provisioning">Provisioning (Property Custodian)</TabsTrigger>
                                 <TabsTrigger value="approvals">Approvals (Teachers)</TabsTrigger>
                                 <TabsTrigger value="borrowing">All Borrowing</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="provisioning">
-                                <Card className="bg-card/80"><CardHeader><CardTitle>Provisioning Log</CardTitle><CardDescription>History of all items added to the inventory.</CardDescription></CardHeader>
-                                    <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                                </Card>
-                            </TabsContent>
                              <TabsContent value="approvals">
                                  <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
                                     <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
@@ -452,27 +448,40 @@ export default function HeadSupervisorDashboardPage() {
                  const pendingItems = items.filter(i => i.status === 'Pending Receipt');
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80">
-                            <CardHeader><CardTitle>Pending Item Verification</CardTitle><CardDescription>Confirm receipt of new items provisioned by the Property Custodian.</CardDescription></CardHeader>
-                            <CardContent>
-                                <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Date Added</TableHead><TableHead>Quantity</TableHead><TableHead>Assigned Room</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {pendingItems.length > 0 ? pendingItems.map(item => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="font-medium">{item.name}</TableCell>
-                                                <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
-                                                <TableCell>{getItemChannelName(item.channelId)}</TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}><Check className="mr-2 h-4 w-4"/> Confirm</Button>
-                                                    <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}><X className="mr-2 h-4 w-4"/> Inaccurate</Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
+                        <Tabs defaultValue={verificationSubView} onValueChange={(v) => setVerificationSubView(v as VerificationSubView)}>
+                            <TabsList className="mb-4">
+                                <TabsTrigger value="queue">Verification Queue</TabsTrigger>
+                                <TabsTrigger value="provisioning">Provisioning Log</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="queue">
+                                <Card className="bg-card/80">
+                                    <CardHeader><CardTitle>Pending Item Verification</CardTitle><CardDescription>Confirm receipt of new items provisioned by the Property Custodian.</CardDescription></CardHeader>
+                                    <CardContent>
+                                        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Date Added</TableHead><TableHead>Quantity</TableHead><TableHead>Assigned Room</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                            <TableBody>
+                                                {pendingItems.length > 0 ? pendingItems.map(item => (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell className="font-medium">{item.name}</TableCell>
+                                                        <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                        <TableCell>{item.quantity}</TableCell>
+                                                        <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                        <TableCell className="text-right space-x-2">
+                                                            <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}><Check className="mr-2 h-4 w-4"/> Confirm</Button>
+                                                            <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}><X className="mr-2 h-4 w-4"/> Inaccurate</Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="provisioning">
+                                <Card className="bg-card/80"><CardHeader><CardTitle>Provisioning Log</CardTitle><CardDescription>History of all items added to the inventory.</CardDescription></CardHeader>
+                                    <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 );
             default: return null;
@@ -502,6 +511,18 @@ export default function HeadSupervisorDashboardPage() {
             {activeView === 'inventory' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => {setInventorySubView('inaccurate'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-2" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div>)}
             {activeView === 'transactions' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div>)}
             {activeView === 'users' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => {setUsersSubView(role.id as any); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{role.icon}{role.name}</button></li>))}</ul></div>)}
+            {activeView === 'verification' && (
+                <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VERIFICATION</h2><ul className="flex flex-col gap-1">
+                    <li><button onClick={() => {setVerificationSubView('queue'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
+                    <li><button onClick={() => {setVerificationSubView('provisioning'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
+                </ul></div>
+            )}
+            {activeView === 'activityLogs' && (
+                <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ACTIVITY</h2><ul className="flex flex-col gap-1">
+                    <li><button onClick={() => {setActivityLogSubView('approvals'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'approvals' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
+                    <li><button onClick={() => {setActivityLogSubView('borrowing'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'borrowing' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageOpen className="h-5 w-5"/>All Borrowing</button></li>
+                </ul></div>
+            )}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p><p className="text-xs text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>
       </div>
@@ -526,7 +547,18 @@ export default function HeadSupervisorDashboardPage() {
                              {activeView === 'inventory' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Inventory Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => setInventorySubView('inaccurate')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-4" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div></>)}
                              {activeView === 'transactions' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div></>)}
                              {activeView === 'users' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">User Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => setUsersSubView(role.id as any)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(role.icon, {className: "h-5 w-5"})}{role.name}</button></li>))}</ul></div></>)}
-                             {(activeView === 'verification' || activeView === 'activityLogs') && (<div className="p-4 font-headline text-lg font-bold border-b border-border/50">{activeView === 'verification' ? 'Verification' : 'Activity Logs'}</div>)}
+                             {activeView === 'verification' && (
+                                <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Verification</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
+                                    <li><button onClick={() => setVerificationSubView('queue')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
+                                    <li><button onClick={() => setVerificationSubView('provisioning')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
+                                </ul></div></>
+                             )}
+                              {activeView === 'activityLogs' && (
+                                <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Activity Logs</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LOGS</h2><ul className="flex flex-col gap-1">
+                                    <li><button onClick={() => setActivityLogSubView('approvals')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'approvals' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
+                                    <li><button onClick={() => setActivityLogSubView('borrowing')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'borrowing' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageOpen className="h-5 w-5"/>All Borrowing</button></li>
+                                </ul></div></>
+                             )}
                         </div>
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p><p className="text-xs text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>
