@@ -8,7 +8,7 @@ import { addDoc, collection, doc, updateDoc, deleteDoc, writeBatch } from "fireb
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, Checkbox
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare
 } from "lucide-react"
 import {
   Card,
@@ -584,7 +584,7 @@ export default function HeadSupervisorDashboardPage() {
 
         if (activeView === 'verification') {
             const label = verificationSubView === 'queue' ? 'Verification Queue' : verificationSubView === 'provisioning' ? 'Provisioning Log' : 'Assign Materials';
-            const icon = verificationSubView === 'queue' ? <ClipboardCheck /> : verificationSubView === 'provisioning' ? <HistoryIcon /> : <Checkbox />;
+            const icon = verificationSubView === 'queue' ? <ClipboardCheck /> : verificationSubView === 'provisioning' ? <HistoryIcon /> : <CheckSquare />;
              return (
                 <div className="flex items-center gap-2">
                     <div className="text-muted-foreground">{icon}</div>
@@ -629,7 +629,7 @@ export default function HeadSupervisorDashboardPage() {
                 <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VERIFICATION</h2><ul className="flex flex-col gap-1">
                     <li><button onClick={() => {setVerificationSubView('queue'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
                     <li><button onClick={() => {setVerificationSubView('provisioning'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
-                    <li><button onClick={() => {setVerificationSubView('assign'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Checkbox className="h-5 w-5"/>Assign Materials</button></li>
+                    <li><button onClick={() => {setVerificationSubView('assign'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><CheckSquare className="h-5 w-5"/>Assign Materials</button></li>
                 </ul></div>
             )}
             {activeView === 'activityLogs' && (
@@ -666,7 +666,7 @@ export default function HeadSupervisorDashboardPage() {
                                 <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Verification</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
                                     <li><button onClick={() => setVerificationSubView('queue')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'queue' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><ClipboardCheck className="h-5 w-5"/>Verification Queue</button></li>
                                     <li><button onClick={() => setVerificationSubView('provisioning')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'provisioning' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5"/>Provisioning Log</button></li>
-                                    <li><button onClick={() => setVerificationSubView('assign')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Checkbox className="h-5 w-5"/>Assign Materials</button></li>
+                                    <li><button onClick={() => setVerificationSubView('assign')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${verificationSubView === 'assign' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><CheckSquare className="h-5 w-5"/>Assign Materials</button></li>
                                 </ul></div></>
                              )}
                               {activeView === 'activityLogs' && (
@@ -741,5 +741,3 @@ export default function HeadSupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
