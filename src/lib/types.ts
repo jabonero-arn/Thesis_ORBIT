@@ -1,5 +1,6 @@
 
-export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor";
+
+export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Primary Custodian";
 
 export type User = {
   id: string;
@@ -48,6 +49,7 @@ export type InventoryItem = {
   quantity: number;
   createdAt?: string;
   verifiedAt?: string;
+  inaccuracyReason?: string;
 };
 
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';

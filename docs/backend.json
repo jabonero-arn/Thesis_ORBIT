@@ -27,7 +27,8 @@
             "Teacher",
             "Staff",
             "Supervisor",
-            "Head Supervisor"
+            "Head Supervisor",
+            "Primary Custodian"
           ]
         },
         "idNumber": {
@@ -78,7 +79,8 @@
         "imageHint": { "type": "string" },
         "quantity": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the item was added by the custodian." },
-        "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the supervisor verified the item." }
+        "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the supervisor verified the item." },
+        "inaccuracyReason": { "type": "string", "description": "Reason for the item being marked as inaccurate." }
       },
       "required": ["name", "channelId", "status", "quantity", "description", "imageUrl", "imageHint", "createdAt"]
     },
@@ -102,6 +104,11 @@
           "type": "string",
           "enum": ["Good", "Defected", "Broken", "Lost"],
           "description": "The condition of the item upon return."
+        },
+        "resolutionStatus": {
+          "type": "string",
+          "enum": ["Pending", "Resolved"],
+          "description": "The resolution status of a damaged/lost item report."
         }
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
@@ -203,6 +210,12 @@
         "$ref": "#/entities/RoleFlag"
       },
       "description": "Grants a user the 'Head Supervisor' role."
+    },
+    "/roles_primary_custodian/{userId}": {
+      "schema": {
+        "$ref": "#/entities/RoleFlag"
+      },
+      "description": "Grants a user the 'Primary Custodian' role."
     },
     "/departments/{departmentId}": {
         "schema": { "$ref": "#/entities/Department" },

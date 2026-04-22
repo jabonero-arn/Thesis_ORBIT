@@ -123,6 +123,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       switch (roleToCreate) {
           case "Supervisor": roleCollectionName = "roles_supervisor"; break;
           case "Head Supervisor": roleCollectionName = "roles_head_supervisor"; break;
+          case "Primary Custodian": roleCollectionName = "roles_primary_custodian"; break;
           case "Staff": roleCollectionName = "roles_staff"; break;
           case "Teacher": roleCollectionName = "roles_teachers"; break;
       }
