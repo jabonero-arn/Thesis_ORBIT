@@ -20,48 +20,36 @@ import type { Department, Channel } from "@/lib/types";
 type AssignMaterialsDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAssign: (channelId: string) => void;
+  onAssign: (departmentId: string) => void;
 };
 
 export function AssignMaterialsDialog({ open, onOpenChange, onAssign }: AssignMaterialsDialogProps) {
-  const { departments, channels } = useAppContext();
+  const { departments } = useAppContext();
   const { toast } = useToast();
   
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState('');
-  const [selectedChannelId, setSelectedChannelId] = React.useState('');
-  
-  const dialogChannels = React.useMemo(() => {
-    if (!selectedDepartmentId) return [];
-    return channels.filter(c => c.departmentId === selectedDepartmentId);
-  }, [selectedDepartmentId, channels]);
-
-  React.useEffect(() => {
-    // Reset channel when department changes
-    setSelectedChannelId('');
-  }, [selectedDepartmentId]);
 
   React.useEffect(() => {
       if(!open) {
           setSelectedDepartmentId('');
-          setSelectedChannelId('');
       }
   }, [open]);
 
   const handleConfirm = () => {
-    if (!selectedChannelId) {
-        toast({ variant: "destructive", title: "Please select a room." });
+    if (!selectedDepartmentId) {
+        toast({ variant: "destructive", title: "Please select a department." });
         return;
     }
-    onAssign(selectedChannelId);
+    onAssign(selectedDepartmentId);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Assign to Laboratory</DialogTitle>
+          <DialogTitle>Assign to Department</DialogTitle>
           <DialogDescription>
-            Select the department and the specific room to assign the selected materials to.
+            Select the department to assign the selected materials to.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -78,25 +66,12 @@ export function AssignMaterialsDialog({ open, onOpenChange, onAssign }: AssignMa
                     </SelectContent>
                 </Select>
             </div>
-             <div className="grid gap-2">
-                <Label htmlFor="assign-channel">Specific Room</Label>
-                <Select value={selectedChannelId} onValueChange={setSelectedChannelId} disabled={!selectedDepartmentId}>
-                    <SelectTrigger id="assign-channel">
-                        <SelectValue placeholder="Select a room..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {dialogChannels.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name.replace(/#/g, '')}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleConfirm} disabled={!selectedChannelId}>
+          <Button type="button" onClick={handleConfirm} disabled={!selectedDepartmentId}>
             Confirm Assignment
           </Button>
         </DialogFooter>

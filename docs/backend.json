@@ -73,6 +73,7 @@
       "properties": {
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "departmentId": { "type": "string" },
         "channelId": { "type": "string" },
         "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt", "Inaccurate"] },
         "imageUrl": { "type": "string", "format": "uri" },

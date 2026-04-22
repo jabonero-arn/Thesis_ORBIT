@@ -4,7 +4,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
@@ -46,9 +46,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
+import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
+import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
 
 
-type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged';
+type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
@@ -103,13 +105,19 @@ export default function SupervisorDashboardPage() {
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
 
+    const [selectedForRoomAssignment, setSelectedForRoomAssignment] = React.useState<string[]>([]);
+    const [isAssignRoomDialogOpen, setIsAssignRoomDialogOpen] = React.useState(false);
+
 
     // Data Filtering
     const departmentItems = React.useMemo(() => {
         if (!assignedDepartmentId) return [];
-        const assignedChannelIds = new Set(assignedChannels.map(c => c.id));
-        return items.filter(item => item.channelId && assignedChannelIds.has(item.channelId));
-    }, [items, assignedChannels, assignedDepartmentId]);
+        return items.filter(item => item.departmentId === assignedDepartmentId);
+    }, [items, assignedDepartmentId]);
+
+    const itemsToAssign = React.useMemo(() => {
+        return departmentItems.filter(item => !item.channelId);
+    }, [departmentItems]);
 
     const departmentHistory = React.useMemo(() => {
         const itemNamesInDept = new Set(departmentItems.map(i => i.name));
@@ -206,6 +214,47 @@ export default function SupervisorDashboardPage() {
         }
     }
 
+    const handleToggleAllForRoomAssignment = (checked: boolean) => {
+        if (checked) {
+            setSelectedForRoomAssignment(itemsToAssign.map(item => item.id));
+        } else {
+            setSelectedForRoomAssignment([]);
+        }
+    };
+
+    const handleToggleRoomAssignment = (itemId: string, checked: boolean) => {
+        setSelectedForRoomAssignment(prev => {
+            if (checked) {
+                return [...prev, itemId];
+            } else {
+                return prev.filter(id => id !== itemId);
+            }
+        });
+    };
+
+    const handleAssignToRoom = async (channelId: string) => {
+        if (!firestore || selectedForRoomAssignment.length === 0) return;
+        
+        const batch = writeBatch(firestore);
+        selectedForRoomAssignment.forEach(itemId => {
+            const itemDocRef = doc(firestore, "inventory_items", itemId);
+            batch.update(itemDocRef, { channelId });
+        });
+
+        try {
+            await batch.commit();
+            toast({
+                title: "Items Assigned to Room",
+                description: `${selectedForRoomAssignment.length} item(s) have been assigned.`
+            });
+            setSelectedForRoomAssignment([]);
+            setIsAssignRoomDialogOpen(false);
+        } catch (error) {
+            console.error("Error assigning items to room:", error);
+            toast({ variant: "destructive", title: "Assignment Failed" });
+        }
+    };
+
     // Helper functions
     const getItemChannelName = (channelId?: string) => {
         if (!channelId) return "Unassigned";
@@ -241,6 +290,7 @@ export default function SupervisorDashboardPage() {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
         { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
+        { id: 'assignment', label: 'Material Assignment', icon: <PackageCheck /> },
         { id: 'inventory', label: 'Department Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
@@ -359,24 +409,78 @@ export default function SupervisorDashboardPage() {
                         {verificationSubView === 'pending' ? <VerificationView /> : <VerificationHistoryView />}
                     </div>
                 );
+            case 'assignment':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>Assign Materials to a Room</CardTitle>
+                                    <CardDescription>Select materials assigned to your department and place them in a specific room.</CardDescription>
+                                </div>
+                                <Button onClick={() => setIsAssignRoomDialogOpen(true)} disabled={selectedForRoomAssignment.length === 0}>
+                                    Assign Selected ({selectedForRoomAssignment.length}) to Room
+                                </Button>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[50px]">
+                                                <UiCheckbox 
+                                                    checked={selectedForRoomAssignment.length > 0 && selectedForRoomAssignment.length === itemsToAssign.length}
+                                                    onCheckedChange={handleToggleAllForRoomAssignment}
+                                                    aria-label="Select all for room assignment"
+                                                />
+                                            </TableHead>
+                                            <TableHead>Name</TableHead>
+                                            <TableHead>Quantity</TableHead>
+                                            <TableHead>Date Verified</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {itemsToAssign.length > 0 ? itemsToAssign.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell>
+                                                    <UiCheckbox
+                                                        checked={selectedForRoomAssignment.includes(item.id)}
+                                                        onCheckedChange={(checked) => handleToggleRoomAssignment(item.id, !!checked)}
+                                                        aria-label={`Select ${item.name}`}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} className="h-24 text-center">No materials awaiting room assignment.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         {inventorySubView === 'grid' ? (
                             <InventoryGrid
-                                items={departmentItems}
+                                items={departmentItems.filter(item => item.channelId)}
                                 onItemSelect={() => {}}
                                 selectedItems={[]}
                                 isSelectionEnabled={false}
                             />
                         ) : (
                             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                                <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department.</CardDescription></div></CardHeader>
+                                <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department's rooms.</CardDescription></div></CardHeader>
                                 <CardContent>
                                     <Table>
                                         <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
-                                            {departmentItems.length > 0 ? departmentItems.map(item => {
+                                            {departmentItems.filter(item => item.channelId).length > 0 ? departmentItems.filter(item => item.channelId).map(item => {
                                                 const dateToShow = item.verifiedAt || item.createdAt;
                                                 return (
                                                 <TableRow key={item.id}>
@@ -697,6 +801,13 @@ export default function SupervisorDashboardPage() {
                         </form>
                     </DialogContent>
                 </Dialog>
+                
+                <AssignRoomDialog
+                    open={isAssignRoomDialogOpen}
+                    onOpenChange={setIsAssignRoomDialogOpen}
+                    onAssign={handleAssignToRoom}
+                    channels={assignedChannels}
+                />
 
             </div>
         </TooltipProvider>

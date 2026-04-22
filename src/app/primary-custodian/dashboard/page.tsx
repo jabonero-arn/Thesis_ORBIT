@@ -170,7 +170,7 @@ export default function HeadSupervisorDashboardPage() {
     }, [formDepartmentContext, channels]);
     
     const unassignedItems = React.useMemo(() => {
-        return items.filter(item => !item.channelId && item.status === 'Available');
+        return items.filter(item => !item.departmentId && item.status === 'Available');
     }, [items]);
 
 
@@ -301,20 +301,20 @@ export default function HeadSupervisorDashboardPage() {
         });
     };
 
-    const handleAssignItems = async (channelId: string) => {
+    const handleAssignItems = async (departmentId: string) => {
         if (!firestore || selectedToAssign.length === 0) return;
         
         const batch = writeBatch(firestore);
         selectedToAssign.forEach(itemId => {
             const itemDocRef = doc(firestore, "inventory_items", itemId);
-            batch.update(itemDocRef, { channelId });
+            batch.update(itemDocRef, { departmentId });
         });
 
         try {
             await batch.commit();
             toast({
                 title: "Items Assigned",
-                description: `${selectedToAssign.length} item(s) have been assigned to the selected room.`
+                description: `${selectedToAssign.length} item(s) have been assigned to the selected department.`
             });
             setSelectedToAssign([]);
             setIsAssignDialogOpen(false);
@@ -526,8 +526,8 @@ export default function HeadSupervisorDashboardPage() {
                             <Card className="bg-card/80">
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <div>
-                                        <CardTitle>Assign Materials to Labs</CardTitle>
-                                        <CardDescription>Select verified, unassigned items and assign them to a room.</CardDescription>
+                                        <CardTitle>Assign Materials to Department</CardTitle>
+                                        <CardDescription>Select verified, unassigned items and assign them to a department.</CardDescription>
                                     </div>
                                     <Button onClick={() => setIsAssignDialogOpen(true)} disabled={selectedToAssign.length === 0}>
                                         Assign Selected ({selectedToAssign.length})
