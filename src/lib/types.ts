@@ -42,7 +42,7 @@ export type InventoryItem = {
   id: string;
   name: string;
   description: string;
-  channelId: string;
+  channelId?: string;
   status: ItemStatus;
   imageUrl: string;
   imageHint: string;

@@ -56,7 +56,7 @@ export default function StaffDashboardPage() {
     const departmentItems = React.useMemo(() => {
         if (!assignedDepartmentId) return [];
         const assignedChannelIds = new Set(assignedChannels.map(c => c.id));
-        return items.filter(item => assignedChannelIds.has(item.channelId));
+        return items.filter(item => item.channelId && assignedChannelIds.has(item.channelId));
     }, [items, assignedChannels, assignedDepartmentId]);
 
     const departmentHistory = React.useMemo(() => {
@@ -371,5 +371,3 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    

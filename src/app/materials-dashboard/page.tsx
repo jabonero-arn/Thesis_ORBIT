@@ -70,14 +70,13 @@ export default function PropertyCustodianDashboardPage() {
     const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall'); // 'overall' or dept prefix
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
-    const [formDepartmentId, setFormDepartmentId] = React.useState<string | null>(null);
-
+    
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
         const deptId = departments?.find(d => d.prefix === dashboardSubView)?.id;
         if (!deptId) return [];
         const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
-        return items.filter(item => channelIds.includes(item.channelId));
+        return items.filter(item => item.channelId && channelIds.includes(item.channelId));
     }, [items, dashboardSubView, departments, channels]);
 
     const dashboardHistory = React.useMemo(() => {
@@ -99,7 +98,6 @@ export default function PropertyCustodianDashboardPage() {
         const itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'verifiedAt'> = {
             name: name,
             description: formData.get("description") as string,
-            channelId: formData.get("channelId") as string,
             quantity: parseInt(formData.get("quantity") as string, 10),
             status: 'Pending Receipt',
             imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
@@ -123,10 +121,12 @@ export default function PropertyCustodianDashboardPage() {
 
     const closeForm = () => {
         setIsFormOpen(false);
-        setFormDepartmentId(null);
     }
     
-    const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getItemChannelName = (channelId?: string) => {
+        if (!channelId) return "Unassigned";
+        return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    }
     
     const getStatusBadge = (item: InventoryItem) => {
         const tooltipContent = item.inaccuracyReason ? <TooltipContent><p>{item.inaccuracyReason}</p></TooltipContent> : null;
@@ -320,28 +320,12 @@ export default function PropertyCustodianDashboardPage() {
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Add New Material</DialogTitle>
-                            <DialogDescription>Fill in the details for the new material. It will be added to the inventory pending verification by the relevant supervisor.</DialogDescription>
+                            <DialogDescription>Fill in the details for the new material. It will be added to the inventory pending verification by the Head Supervisor.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" required/></div>
                             <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" required/></div>
                             <div className="grid gap-2"><Label htmlFor="quantity">Initial Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={1} required/></div>
-                           
-                            <div className="grid gap-2">
-                               <Label htmlFor="departmentId-form">Department</Label>
-                               <Select onValueChange={(value) => setFormDepartmentId(value)} required>
-                                   <SelectTrigger id="departmentId-form"><SelectValue placeholder="Select a department..." /></SelectTrigger>
-                                   <SelectContent>{departments.map(d => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}</SelectContent>
-                               </Select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="channelId">Specific Room</Label>
-                                <Select name="channelId" required disabled={!formDepartmentId}>
-                                    <SelectTrigger id="channelId"><SelectValue placeholder="Select a room..." /></SelectTrigger>
-                                    <SelectContent>{channels.filter(c => c.departmentId === formDepartmentId).map(c => (<SelectItem key={c.id} value={c.id}>{c.name.replace(/#/g, '')}</SelectItem>))}</SelectContent>
-                                </Select>
-                            </div>
-
                             <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL (Optional)</Label><Input id="imageUrl" name="imageUrl" placeholder="https://..."/></div>
                             <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">Add Material</Button></DialogFooter>
                         </form>

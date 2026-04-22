@@ -108,7 +108,7 @@ export default function SupervisorDashboardPage() {
     const departmentItems = React.useMemo(() => {
         if (!assignedDepartmentId) return [];
         const assignedChannelIds = new Set(assignedChannels.map(c => c.id));
-        return items.filter(item => assignedChannelIds.has(item.channelId));
+        return items.filter(item => item.channelId && assignedChannelIds.has(item.channelId));
     }, [items, assignedChannels, assignedDepartmentId]);
 
     const departmentHistory = React.useMemo(() => {
@@ -207,7 +207,10 @@ export default function SupervisorDashboardPage() {
     }
 
     // Helper functions
-    const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getItemChannelName = (channelId?: string) => {
+        if (!channelId) return "Unassigned";
+        return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    }
     const getStatusBadge = (status: InventoryItem['status']) => {
         const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;

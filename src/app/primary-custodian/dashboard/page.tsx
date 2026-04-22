@@ -132,7 +132,7 @@ export default function HeadSupervisorDashboardPage() {
         if (dashboardSubView === 'overall') return items;
         const deptId = departments?.find(d => d.prefix === dashboardSubView)?.id;
         const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
-        return deptId ? items.filter(item => channelIds.includes(item.channelId)) : [];
+        return deptId ? items.filter(item => item.channelId && channelIds.includes(item.channelId)) : [];
     }, [items, dashboardSubView, departments, channels]);
 
     const dashboardHistory = React.useMemo(() => {
@@ -148,7 +148,7 @@ export default function HeadSupervisorDashboardPage() {
         if (inventorySubView === 'all') return items;
         const deptId = departments?.find(d => d.prefix === inventorySubView)?.id;
         const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
-        return deptId ? items.filter(item => channelIds.includes(item.channelId)) : [];
+        return deptId ? items.filter(item => item.channelId && channelIds.includes(item.channelId)) : [];
     }, [items, inventorySubView, departments, channels]);
 
     const approvalLogItems = React.useMemo(() => {
@@ -218,8 +218,8 @@ export default function HeadSupervisorDashboardPage() {
     }
     
     const openEditForm = (item: InventoryItem) => {
-        const itemChannel = channels.find(c => c.id === item.channelId);
-        const itemDept = departments?.find(d => d.id === itemChannel?.departmentId);
+        const itemChannel = item.channelId ? channels.find(c => c.id === item.channelId) : undefined;
+        const itemDept = itemChannel ? departments?.find(d => d.id === itemChannel.departmentId) : undefined;
         setFormDepartmentContext(itemDept || null);
         setEditingItem(item);
         setFormStatus(item.status);
@@ -276,7 +276,10 @@ export default function HeadSupervisorDashboardPage() {
     };
     
     // Helper functions
-    const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getItemChannelName = (channelId?: string) => {
+      if (!channelId) return "Unassigned";
+      return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown"
+    };
     const getTeacherName = (teacherId: string) => allUsers.find(u => u.id === teacherId)?.displayName || "Unknown Teacher";
     
     const getStatusBadge = (item: InventoryItem) => {

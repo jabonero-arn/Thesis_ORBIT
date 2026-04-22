@@ -82,7 +82,7 @@
         "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the supervisor verified the item." },
         "inaccuracyReason": { "type": "string", "description": "Reason for the item being marked as inaccurate." }
       },
-      "required": ["name", "channelId", "status", "quantity", "description", "imageUrl", "imageHint", "createdAt"]
+      "required": ["name", "status", "quantity", "description", "imageUrl", "imageHint", "createdAt"]
     },
     "BorrowHistory": {
       "title": "Borrow History",
