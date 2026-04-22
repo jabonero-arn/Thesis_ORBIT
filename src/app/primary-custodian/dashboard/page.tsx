@@ -8,7 +8,7 @@ import { addDoc, collection, doc, updateDoc, deleteDoc } from "firebase/firestor
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X
 } from "lucide-react"
 import {
   Card,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department, ItemStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -50,6 +50,7 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -69,10 +70,12 @@ const getDeptIcon = (prefix: string) => {
 }
 
 
-type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'users';
+type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'activityLogs' | 'users' | 'verification';
 type DashboardSubView = 'overall' | string; // string is department prefix
 type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
 type TransactionSubView = 'borrowed';
+type ActivityLogSubView = 'provisioning' | 'approvals' | 'borrowing';
+
 
 export default function HeadSupervisorDashboardPage() {
     const router = useRouter()
@@ -106,7 +109,7 @@ export default function HeadSupervisorDashboardPage() {
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('all');
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('borrowed');
-    const [historySubView, setHistorySubView] = React.useState<DashboardSubView>('overall');
+    const [activityLogSubView, setActivityLogSubView] = React.useState<ActivityLogSubView>('provisioning');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
@@ -147,17 +150,10 @@ export default function HeadSupervisorDashboardPage() {
         return deptId ? items.filter(item => channelIds.includes(item.channelId)) : [];
     }, [items, inventorySubView, departments, channels]);
 
-    const historyToDisplay = React.useMemo(() => {
-        if (historySubView === 'overall') return borrowHistory;
-        
-        const deptId = departments?.find(d => d.prefix === historySubView)?.id;
-        if (!deptId) return borrowHistory;
-
-        const channelIds = channels.filter(c => c.departmentId === deptId).map(c => c.id);
-        const itemNamesInDept = new Set(items.filter(item => channelIds.includes(item.channelId)).map(i => i.name));
-        return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, items, historySubView, departments, channels]);
-
+    const approvalLogItems = React.useMemo(() => {
+        return borrowHistory.filter(h => h.teacherId);
+    }, [borrowHistory]);
+    
     const usersToDisplay = React.useMemo(() => {
         if (usersSubView === 'all') return allUsers;
         return allUsers.filter(user => user.role === usersSubView);
@@ -253,8 +249,34 @@ export default function HeadSupervisorDashboardPage() {
         }
     }
     
+     const handleVerificationAction = async (itemId: string, newStatus: 'Available' | 'Inaccurate') => {
+        if (!firestore) return;
+        const itemDocRef = doc(firestore, "inventory_items", itemId);
+        try {
+            const updatePayload: { status: 'Available' | 'Inaccurate'; verifiedAt: string; inaccuracyReason?: string } = {
+                status: newStatus,
+                verifiedAt: new Date().toISOString(),
+            };
+
+            if (newStatus === 'Inaccurate') {
+                 // For now, let's use a generic reason. A dialog could be added later.
+                updatePayload.inaccuracyReason = "Flagged during initial verification.";
+            }
+
+            await updateDoc(itemDocRef, updatePayload);
+            toast({
+                title: `Item ${newStatus === 'Available' ? 'Confirmed' : 'Flagged'}`,
+                description: `The item status has been updated.`,
+            });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        }
+    };
+    
     // Helper functions
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getTeacherName = (teacherId: string) => allUsers.find(u => u.id === teacherId)?.displayName || "Unknown Teacher";
     
     const getStatusBadge = (item: InventoryItem) => {
         const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
@@ -287,9 +309,10 @@ export default function HeadSupervisorDashboardPage() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
+        { id: 'verification', label: 'Verification Queue', icon: <ClipboardList /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
-        { id: 'history', label: 'History', icon: <HistoryIcon /> },
+        { id: 'activityLogs', label: 'Activity Logs', icon: <HistoryIcon /> },
         { id: 'users', label: 'Users', icon: <Users /> },
     ];
     
@@ -357,13 +380,31 @@ export default function HeadSupervisorDashboardPage() {
                         </Card>
                     </div>
                 );
-            case 'history':
+            case 'activityLogs':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{historyToDisplay.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                        </Card>
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Tabs defaultValue={activityLogSubView} onValueChange={(v) => setActivityLogSubView(v as ActivityLogSubView)}>
+                            <TabsList className="mb-4">
+                                <TabsTrigger value="provisioning">Provisioning (Property Custodian)</TabsTrigger>
+                                <TabsTrigger value="approvals">Approvals (Teachers)</TabsTrigger>
+                                <TabsTrigger value="borrowing">All Borrowing</TabsTrigger>
+                            </TabsList>
+                            <TabsContent value="provisioning">
+                                <Card className="bg-card/80"><CardHeader><CardTitle>Provisioning Log</CardTitle><CardDescription>History of all items added to the inventory.</CardDescription></CardHeader>
+                                    <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                                </Card>
+                            </TabsContent>
+                             <TabsContent value="approvals">
+                                 <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
+                                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                                </Card>
+                            </TabsContent>
+                            <TabsContent value="borrowing">
+                                <Card className="bg-card/80"><CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
+                                <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                                </Card>
+                            </TabsContent>
+                        </Tabs>
                     </div>
                 );
             case 'users':
@@ -407,6 +448,33 @@ export default function HeadSupervisorDashboardPage() {
                         </Card>
                     </div>
                 );
+             case 'verification':
+                 const pendingItems = items.filter(i => i.status === 'Pending Receipt');
+                return (
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80">
+                            <CardHeader><CardTitle>Pending Item Verification</CardTitle><CardDescription>Confirm receipt of new items provisioned by the Property Custodian.</CardDescription></CardHeader>
+                            <CardContent>
+                                <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Date Added</TableHead><TableHead>Quantity</TableHead><TableHead>Assigned Room</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {pendingItems.length > 0 ? pendingItems.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="font-medium">{item.name}</TableCell>
+                                                <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}><Check className="mr-2 h-4 w-4"/> Confirm</Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}><X className="mr-2 h-4 w-4"/> Inaccurate</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
             default: return null;
         }
     };
@@ -433,7 +501,6 @@ export default function HeadSupervisorDashboardPage() {
             {activeView === 'dashboard' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div>)}
             {activeView === 'inventory' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => {setInventorySubView('inaccurate'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-2" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div>)}
             {activeView === 'transactions' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div>)}
-            {activeView === 'history' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setHistorySubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setHistorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div>)}
             {activeView === 'users' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => {setUsersSubView(role.id as any); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{role.icon}{role.name}</button></li>))}</ul></div>)}
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p><p className="text-xs text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>
@@ -457,9 +524,9 @@ export default function HeadSupervisorDashboardPage() {
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              {activeView === 'dashboard' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Dashboard View</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div></>)}
                              {activeView === 'inventory' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Inventory Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => setInventorySubView('inaccurate')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-4" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div></>)}
-                            {activeView === 'transactions' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div></>)}
-                            {activeView === 'history' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">History Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setHistorySubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setHistorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${historySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div></>)}
-                            {activeView === 'users' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">User Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => setUsersSubView(role.id as any)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(role.icon, {className: "h-5 w-5"})}{role.name}</button></li>))}</ul></div></>)}
+                             {activeView === 'transactions' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div></>)}
+                             {activeView === 'users' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">User Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => setUsersSubView(role.id as any)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(role.icon, {className: "h-5 w-5"})}{role.name}</button></li>))}</ul></div></>)}
+                             {(activeView === 'verification' || activeView === 'activityLogs') && (<div className="p-4 font-headline text-lg font-bold border-b border-border/50">{activeView === 'verification' ? 'Verification' : 'Activity Logs'}</div>)}
                         </div>
                     </div>
                      <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'H'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Head Supervisor"}</p><p className="text-xs text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>

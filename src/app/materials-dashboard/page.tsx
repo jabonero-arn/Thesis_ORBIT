@@ -127,12 +127,28 @@ export default function PropertyCustodianDashboardPage() {
     }
     
     const getItemChannelName = (channelId: string) => channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    
     const getStatusBadge = (item: InventoryItem) => {
-        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
-        const badge = <Badge variant={variants[item.status] || "default"}>{item.status}</Badge>;
+        const tooltipContent = item.inaccuracyReason ? <TooltipContent><p>{item.inaccuracyReason}</p></TooltipContent> : null;
+        let badge: JSX.Element;
 
-        if (item.status === 'Inaccurate' && item.inaccuracyReason) {
-            return (<Tooltip><TooltipTrigger>{badge}</TooltipTrigger><TooltipContent><p>{item.inaccuracyReason}</p></TooltipContent></Tooltip>);
+        if (item.status === 'Pending Receipt') {
+            badge = <Badge variant="outline">Pending Verification</Badge>;
+        } else if (item.status === 'Inaccurate') {
+            badge = <Badge variant="destructive">Inaccurate</Badge>;
+        } else {
+            badge = <Badge variant="secondary">Received</Badge>;
+        }
+
+        if (tooltipContent) {
+            return (
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        {badge}
+                    </TooltipTrigger>
+                    {tooltipContent}
+                </Tooltip>
+            );
         }
         return badge;
     }
@@ -335,5 +351,3 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
