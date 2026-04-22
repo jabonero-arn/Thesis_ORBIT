@@ -50,7 +50,6 @@ import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -384,23 +383,17 @@ export default function HeadSupervisorDashboardPage() {
                 );
             case 'activityLogs':
                 return (
-                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Tabs defaultValue={activityLogSubView} onValueChange={(v) => setActivityLogSubView(v as ActivityLogSubView)}>
-                            <TabsList className="mb-4">
-                                <TabsTrigger value="approvals">Approvals (Teachers)</TabsTrigger>
-                                <TabsTrigger value="borrowing">All Borrowing</TabsTrigger>
-                            </TabsList>
-                             <TabsContent value="approvals">
-                                 <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
-                                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                                </Card>
-                            </TabsContent>
-                            <TabsContent value="borrowing">
-                                <Card className="bg-card/80"><CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
-                                <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        {activityLogSubView === 'approvals' && (
+                            <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
+                                <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            </Card>
+                        )}
+                        {activityLogSubView === 'borrowing' && (
+                            <Card className="bg-card/80"><CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            </Card>
+                        )}
                     </div>
                 );
             case 'users':
@@ -447,41 +440,35 @@ export default function HeadSupervisorDashboardPage() {
              case 'verification':
                  const pendingItems = items.filter(i => i.status === 'Pending Receipt');
                 return (
-                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Tabs defaultValue={verificationSubView} onValueChange={(v) => setVerificationSubView(v as VerificationSubView)}>
-                            <TabsList className="mb-4">
-                                <TabsTrigger value="queue">Verification Queue</TabsTrigger>
-                                <TabsTrigger value="provisioning">Provisioning Log</TabsTrigger>
-                            </TabsList>
-                            <TabsContent value="queue">
-                                <Card className="bg-card/80">
-                                    <CardHeader><CardTitle>Pending Item Verification</CardTitle><CardDescription>Confirm receipt of new items provisioned by the Property Custodian.</CardDescription></CardHeader>
-                                    <CardContent>
-                                        <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Date Added</TableHead><TableHead>Quantity</TableHead><TableHead>Assigned Room</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                            <TableBody>
-                                                {pendingItems.length > 0 ? pendingItems.map(item => (
-                                                    <TableRow key={item.id}>
-                                                        <TableCell className="font-medium">{item.name}</TableCell>
-                                                        <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                        <TableCell>{item.quantity}</TableCell>
-                                                        <TableCell>{getItemChannelName(item.channelId)}</TableCell>
-                                                        <TableCell className="text-right space-x-2">
-                                                            <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}><Check className="mr-2 h-4 w-4"/> Confirm</Button>
-                                                            <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}><X className="mr-2 h-4 w-4"/> Inaccurate</Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
-                                            </TableBody>
-                                        </Table>
-                                    </CardContent>
-                                </Card>
-                            </TabsContent>
-                            <TabsContent value="provisioning">
-                                <Card className="bg-card/80"><CardHeader><CardTitle>Provisioning Log</CardTitle><CardDescription>History of all items added to the inventory.</CardDescription></CardHeader>
-                                    <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                                </Card>
-                            </TabsContent>
-                        </Tabs>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        {verificationSubView === 'queue' && (
+                            <Card className="bg-card/80">
+                                <CardHeader><CardTitle>Pending Item Verification</CardTitle><CardDescription>Confirm receipt of new items provisioned by the Property Custodian.</CardDescription></CardHeader>
+                                <CardContent>
+                                    <Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Date Added</TableHead><TableHead>Quantity</TableHead><TableHead>Assigned Room</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                        <TableBody>
+                                            {pendingItems.length > 0 ? pendingItems.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell className="font-medium">{item.name}</TableCell>
+                                                    <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                    <TableCell className="text-right space-x-2">
+                                                        <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}><Check className="mr-2 h-4 w-4"/> Confirm</Button>
+                                                        <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(item.id, 'Inaccurate')}><X className="mr-2 h-4 w-4"/> Inaccurate</Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No items pending verification.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {verificationSubView === 'provisioning' && (
+                            <Card className="bg-card/80"><CardHeader><CardTitle>Provisioning Log</CardTitle><CardDescription>History of all items added to the inventory.</CardDescription></CardHeader>
+                                <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{[...items].sort((a,b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime()).map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.createdAt ? format(new Date(i.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell>{i.verifiedAt ? format(new Date(i.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell><TableCell className="text-right">{getStatusBadge(i)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            </Card>
+                        )}
                     </div>
                 );
             default: return null;
@@ -490,6 +477,29 @@ export default function HeadSupervisorDashboardPage() {
     
     const getHeaderContent = () => {
         const currentNavItem = navItems.find(item => item.id === activeView);
+
+        if (activeView === 'verification') {
+            const label = verificationSubView === 'queue' ? 'Verification Queue' : 'Provisioning Log';
+            const icon = verificationSubView === 'queue' ? <ClipboardCheck /> : <HistoryIcon />;
+             return (
+                <div className="flex items-center gap-2">
+                    <div className="text-muted-foreground">{icon}</div>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{label}</h1>
+                </div>
+             );
+        }
+        
+        if (activeView === 'activityLogs') {
+             const label = activityLogSubView === 'approvals' ? 'Approvals (Teachers)' : 'All Borrowing';
+             const icon = activityLogSubView === 'approvals' ? <Users /> : <PackageOpen />;
+              return (
+                <div className="flex items-center gap-2">
+                    <div className="text-muted-foreground">{icon}</div>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{label}</h1>
+                </div>
+             );
+        }
+
         return (
             <div className="flex items-center gap-2">
                 {currentNavItem?.icon && <div className="text-muted-foreground">{currentNavItem.icon}</div>}
