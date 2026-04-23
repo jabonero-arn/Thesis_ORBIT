@@ -41,7 +41,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
       if (newMap.has(channelId)) {
         newMap.delete(channelId);
       } else {
-        newMap.set(channelId, "");
+        newMap.set(channelId, ""); // Initialize with empty subject
       }
       return newMap;
     });
@@ -50,7 +50,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   const handleSubjectChange = (channelId: string, subject: string) => {
     setLabRequests(prev => {
         const newMap = new Map(prev);
-        newMap.set(channelId, subject);
+        newMap.set(channelId, subject); // Update subject
         return newMap;
     });
   }
