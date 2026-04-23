@@ -4,9 +4,8 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { addDoc, collection, doc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, PlusCircle, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass
+    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle
 } from "lucide-react"
 import {
   Card,
@@ -28,24 +27,18 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, User as UserType, Department } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { InventoryItem, User as UserType } from "@/lib/types"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { format } from "date-fns"
+import { AddMaterialsForm } from "@/components/materials-custodian/add-materials-form"
 
 export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
-    const { toast } = useToast()
     const { items, departments, channels, borrowHistory } = useAppContext();
     const firestore = useFirestore();
 
@@ -66,10 +59,9 @@ export default function PropertyCustodianDashboardPage() {
         }
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
-    const [activeView, setActiveView] = React.useState<'dashboard' | 'materials'>('dashboard');
+    const [activeView, setActiveView] = React.useState<'dashboard' | 'add-materials' | 'outgoing-items'>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall'); // 'overall' or dept prefix
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-    const [isFormOpen, setIsFormOpen] = React.useState(false);
     
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
@@ -85,44 +77,6 @@ export default function PropertyCustodianDashboardPage() {
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, dashboardItems]);
 
-    const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!firestore) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
-            return;
-        }
-
-        const formData = new FormData(event.currentTarget);
-        const name = formData.get("name") as string;
-        
-        const itemData: Omit<InventoryItem, 'id' | 'createdAt' | 'verifiedAt'> = {
-            name: name,
-            description: formData.get("description") as string,
-            quantity: parseInt(formData.get("quantity") as string, 10),
-            status: 'Pending Receipt',
-            imageUrl: formData.get("imageUrl") as string || `https://picsum.photos/seed/${name.replace(/\s/g, '-')}/600/400`,
-            imageHint: name.toLowerCase().split(' ').slice(0, 2).join(' ')
-        };
-        
-        try {
-            const inventoryCollection = collection(firestore, "inventory_items");
-            await addDoc(inventoryCollection, { ...itemData, createdAt: new Date().toISOString() });
-            toast({ title: "Item Added", description: `${itemData.name} is now pending receipt by the facility supervisor.` });
-            closeForm();
-        } catch (e) {
-            console.error(e);
-            toast({ variant: "destructive", title: "Error", description: "Could not save the item." });
-        }
-    }
-
-    const openAddForm = () => {
-        setIsFormOpen(true);
-    }
-
-    const closeForm = () => {
-        setIsFormOpen(false);
-    }
-    
     const getItemChannelName = (channelId?: string) => {
         if (!channelId) return "Unassigned";
         return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
@@ -155,7 +109,8 @@ export default function PropertyCustodianDashboardPage() {
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'materials', label: 'Material Provisioning', icon: <Warehouse /> },
+        { id: 'add-materials', label: 'Add Materials', icon: <PlusCircle /> },
+        { id: 'outgoing-items', label: 'Outgoing Items', icon: <Warehouse /> },
     ];
     
     const getDeptIcon = (prefix: string) => {
@@ -182,13 +137,18 @@ export default function PropertyCustodianDashboardPage() {
                         </div>
                     </div>
                 );
-            case 'materials':
+            case 'add-materials':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <AddMaterialsForm onSubmissionSuccess={() => setActiveView('outgoing-items')} />
+                    </div>
+                );
+            case 'outgoing-items':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>Material Provisioning</CardTitle><CardDescription>Add new materials to the inventory and monitor their verification status.</CardDescription></div>
-                                <Button onClick={openAddForm}><PlusCircle className="mr-2 h-4 w-4" /> Add New Material</Button>
+                            <CardHeader>
+                                <div><CardTitle>Outgoing Items</CardTitle><CardDescription>Monitor the verification status of materials you have provisioned.</CardDescription></div>
                             </CardHeader>
                             <CardContent>
                                 <Table>
@@ -272,7 +232,7 @@ export default function PropertyCustodianDashboardPage() {
                         </div>
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                                {activeView === 'dashboard' ? 'Dashboard View' : 'Materials'}
+                                {activeView === 'dashboard' ? 'Dashboard View' : activeView === 'add-materials' ? 'Add Materials' : 'Outgoing Items'}
                             </div>
                             {activeView === 'dashboard' && (
                                 <div className="py-4">
@@ -285,12 +245,17 @@ export default function PropertyCustodianDashboardPage() {
                                     </ul>
                                 </div>
                             )}
-                             {activeView === 'materials' && (
+                             {(activeView === 'add-materials' || activeView === 'outgoing-items') && (
                                 <div className="py-4">
                                     <ul className="flex flex-col gap-1">
                                         <li>
-                                            <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
-                                                <Warehouse className="h-5 w-5" />Material Provisioning
+                                            <button onClick={() => setActiveView('add-materials')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === 'add-materials' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <PlusCircle className="h-5 w-5" />Add Materials
+                                            </button>
+                                        </li>
+                                         <li>
+                                            <button onClick={() => setActiveView('outgoing-items')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === 'outgoing-items' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                <Warehouse className="h-5 w-5" />Outgoing Items
                                             </button>
                                         </li>
                                     </ul>
@@ -315,22 +280,6 @@ export default function PropertyCustodianDashboardPage() {
                     </header>
                     {renderContent()}
                 </main>
-
-                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Add New Material</DialogTitle>
-                            <DialogDescription>Fill in the details for the new material. It will be added to the inventory pending verification by the Head Supervisor.</DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2"><Label htmlFor="name">Item Name</Label><Input id="name" name="name" required/></div>
-                            <div className="grid gap-2"><Label htmlFor="description">Description</Label><Textarea id="description" name="description" required/></div>
-                            <div className="grid gap-2"><Label htmlFor="quantity">Initial Quantity</Label><Input id="quantity" name="quantity" type="number" defaultValue={1} required/></div>
-                            <div className="grid gap-2"><Label htmlFor="imageUrl">Image URL (Optional)</Label><Input id="imageUrl" name="imageUrl" placeholder="https://..."/></div>
-                            <DialogFooter><Button type="button" variant="outline" onClick={closeForm}>Cancel</Button><Button type="submit">Add Material</Button></DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
             </div>
         </TooltipProvider>
     )
