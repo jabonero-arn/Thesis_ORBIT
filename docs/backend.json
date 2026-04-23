@@ -62,6 +62,10 @@
         "assignedDepartmentId": {
             "type": "string",
             "description": "The ID of the specific department a Supervisor is assigned to."
+        },
+        "hasCompletedLabSetup": {
+          "type": "boolean",
+          "description": "Indicates if a teacher has completed the initial lab selection setup."
         }
       },
       "required": ["id", "displayName", "email", "role"]

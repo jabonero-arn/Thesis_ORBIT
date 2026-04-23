@@ -3,11 +3,10 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useAuth, useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
+import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
-import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, KeyRound } from "lucide-react"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import Link from "next/link"
 import { format } from "date-fns"
 
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
@@ -30,10 +29,10 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
+import { LabSelectionDialog } from "@/components/teacher/lab-selection-dialog"
 
 export default function TeacherDashboardPage() {
   const router = useRouter()
@@ -43,6 +42,7 @@ export default function TeacherDashboardPage() {
   const { items: allItems, borrowHistory, departments, channels } = useAppContext();
   
   const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
+  const [showLabSelectionDialog, setShowLabSelectionDialog] = React.useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -58,17 +58,17 @@ export default function TeacherDashboardPage() {
   }, [user, isUserLoading, router])
 
   React.useEffect(() => {
-    if (isUserLoading || isProfileLoading || !user) {
+    if (isUserLoading || isProfileLoading || !user || !userProfile) {
       return;
     }
-    if (!user) {
-        return;
-    }
 
-    if (userProfile?.passwordChangeRequired) {
+    if (userProfile.passwordChangeRequired) {
       setShowPasswordChangeDialog(true);
+    } else if (userProfile.hasCompletedLabSetup === false) {
+      setShowLabSelectionDialog(true);
     } else {
       setShowPasswordChangeDialog(false);
+      setShowLabSelectionDialog(false);
     }
   }, [user, userProfile, isUserLoading, isProfileLoading]);
 
@@ -452,6 +452,10 @@ export default function TeacherDashboardPage() {
       <ForcePasswordChangeDialog
         open={showPasswordChangeDialog}
         onSuccess={() => setShowPasswordChangeDialog(false)}
+      />
+      <LabSelectionDialog
+        open={showLabSelectionDialog}
+        onFinished={() => setShowLabSelectionDialog(false)}
       />
       <div className="flex h-screen bg-[#1e2430]">
         {/* Combined Sidebar */}

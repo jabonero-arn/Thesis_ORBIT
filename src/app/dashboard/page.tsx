@@ -31,7 +31,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, departments, channels } = useAppContext();
+  const { items: allItems, borrowHistory, departments, channels, allUsers, channelAccessRequests } = useAppContext();
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -39,17 +39,22 @@ export default function Home() {
   }, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
 
-  const teachersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'users'), where('role', '==', 'Teacher'));
-  }, [firestore]);
-
-  const { data: teacherUsers } = useCollection<{ id: string, displayName: string }>(teachersQuery);
-
   const teachersForDialog = React.useMemo(() => {
-      if (!teacherUsers) return [];
-      return teacherUsers.map(t => ({ id: t.id, name: t.displayName }));
-  }, [teacherUsers]);
+      if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
+      
+      // Find approved teacher IDs for the selected lab
+      const approvedTeacherIds = new Set(
+          channelAccessRequests
+              .filter(req => req.channelId === selectedChannelId && req.status === 'approved')
+              .map(req => req.teacherId)
+      );
+  
+      // Filter all users to get the teacher objects
+      return allUsers
+          .filter(user => user.role === 'Teacher' && approvedTeacherIds.has(user.id))
+          .map(t => ({ id: t.id, name: t.displayName }));
+  
+  }, [selectedChannelId, channelAccessRequests, allUsers]);
 
   React.useEffect(() => {
     if (!isUserLoading && !user) {
@@ -633,7 +638,3 @@ export default function Home() {
     </TooltipProvider>
   )
 }
-
-    
-
-    

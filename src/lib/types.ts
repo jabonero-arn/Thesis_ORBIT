@@ -18,6 +18,7 @@ export type User = {
   employeeId?: string;
   passwordChangeRequired?: boolean;
   assignedDepartmentId?: string;
+  hasCompletedLabSetup?: boolean;
 
   // This is not in Firestore, can be added from auth user if needed for display
   avatarUrl?: string;
