@@ -35,26 +35,6 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   const [labRequests, setLabRequests] = React.useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = React.useState(false);
   
-  const handleToggleChannel = (channelId: string) => {
-    setLabRequests(prev => {
-      const newMap = new Map(prev);
-      if (newMap.has(channelId)) {
-        newMap.delete(channelId);
-      } else {
-        newMap.set(channelId, ""); // Initialize with empty subject
-      }
-      return newMap;
-    });
-  };
-  
-  const handleSubjectChange = (channelId: string, subject: string) => {
-    setLabRequests(prev => {
-        const newMap = new Map(prev);
-        newMap.set(channelId, subject); // Update subject
-        return newMap;
-    });
-  }
-
   React.useEffect(() => {
     if (!open) {
       resetForm();
@@ -66,13 +46,34 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
+  const handleToggleDepartment = (departmentId: string) => {
+    setLabRequests(prev => {
+        const newMap = new Map(prev);
+        if (newMap.has(departmentId)) {
+            newMap.delete(departmentId);
+        } else {
+            newMap.set(departmentId, ""); // Add with empty subject
+        }
+        return newMap;
+    });
+  };
+  
+  const handleSubjectChange = (departmentId: string, subject: string) => {
+    setLabRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(departmentId, subject);
+        return newMap;
+    });
+  }
+
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const validRequests = new Map<string, string>();
-    for (const [channelId, subject] of labRequests.entries()) {
+    for (const [departmentId, subject] of labRequests.entries()) {
         if (subject.trim() !== "") {
-            validRequests.set(channelId, subject);
+            validRequests.set(departmentId, subject);
         }
     }
 
@@ -80,7 +81,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: "Please select at least one lab and provide a subject/purpose for it.",
+        description: "Please select at least one department and provide a subject/purpose for it.",
       });
       return;
     }
@@ -90,23 +91,27 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
         const batch = writeBatch(firestore);
         const requestsCollection = collection(firestore, 'channel_access_requests');
         const now = new Date().toISOString();
+        let totalChannelsRequested = 0;
 
-        validRequests.forEach((subject, channelId) => {
-            const channel = channels.find(c => c.id === channelId);
-            if (!channel) return;
-            const department = departments.find(d => d.id === channel.departmentId);
+        validRequests.forEach((subject, departmentId) => {
+            const department = departments.find(d => d.id === departmentId);
             if (!department) return;
 
-            const newRequestRef = doc(requestsCollection);
-            batch.set(newRequestRef, {
-                teacherId: user.uid,
-                teacherName: user.displayName || 'Unknown Teacher',
-                channelId: channelId,
-                channelName: channel.name,
-                departmentId: department.id,
-                subject: subject,
-                status: 'pending',
-                requestedAt: now,
+            const channelsInDept = channels.filter(c => c.departmentId === departmentId);
+            totalChannelsRequested += channelsInDept.length;
+            
+            channelsInDept.forEach(channel => {
+                const newRequestRef = doc(requestsCollection);
+                batch.set(newRequestRef, {
+                    teacherId: user.uid,
+                    teacherName: user.displayName || 'Unknown Teacher',
+                    channelId: channel.id,
+                    channelName: channel.name,
+                    departmentId: department.id,
+                    subject: subject,
+                    status: 'pending',
+                    requestedAt: now,
+                });
             });
         });
 
@@ -114,7 +119,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
 
         toast({
             title: "Request Sent",
-            description: `Your access requests for ${validRequests.size} lab(s) have been sent.`
+            description: `Your access requests for ${totalChannelsRequested} lab(s) have been sent.`
         });
         onOpenChange(false);
     } catch (error: any) {
@@ -135,49 +140,38 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
         <DialogHeader>
           <DialogTitle>Request Laboratory Access</DialogTitle>
           <DialogDescription>
-            Select the labs you need access to and provide the reason (e.g., subject name) for each.
+            Select the departments you need access to and provide the reason (e.g., subject name).
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
-                 {departments.map(dept => {
-                    const deptChannels = channels.filter(c => c.departmentId === dept.id);
-                    if (deptChannels.length === 0) return null;
-                    return (
-                        <div key={dept.id} className="space-y-3">
-                            <h3 className="font-semibold text-lg mb-2">{dept.name}</h3>
-                            <div className="pl-2 space-y-4">
-                                {deptChannels.map(channel => (
-                                    <div key={channel.id} className="space-y-2">
-                                        <div className="flex items-center space-x-2">
-                                            <Checkbox 
-                                                id={`req-ch-${channel.id}`} 
-                                                checked={labRequests.has(channel.id)}
-                                                onCheckedChange={() => handleToggleChannel(channel.id)}
-                                            />
-                                            <Label htmlFor={`req-ch-${channel.id}`} className="cursor-pointer font-medium">
-                                                {channel.name.replace('#', '')}
-                                            </Label>
-                                        </div>
-                                        {labRequests.has(channel.id) && (
-                                            <div className="pl-6">
-                                                <Label htmlFor={`req-subj-${channel.id}`} className="text-xs text-muted-foreground">Subject / Purpose</Label>
-                                                <Input 
-                                                    id={`req-subj-${channel.id}`}
-                                                    value={labRequests.get(channel.id) || ''}
-                                                    onChange={(e) => handleSubjectChange(channel.id, e.target.value)}
-                                                    placeholder="e.g., Embedded Systems 101" 
-                                                    required
-                                                    className="h-8"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                 {departments.map(dept => (
+                    <div key={dept.id} className="space-y-3">
+                         <div className="flex items-center space-x-2">
+                            <Checkbox 
+                                id={`req-dept-${dept.id}`} 
+                                checked={labRequests.has(dept.id)}
+                                onCheckedChange={() => handleToggleDepartment(dept.id)}
+                            />
+                            <Label htmlFor={`req-dept-${dept.id}`} className="cursor-pointer font-semibold text-lg">
+                                {dept.name}
+                            </Label>
                         </div>
-                    );
-                })}
+                        {labRequests.has(dept.id) && (
+                            <div className="pl-8">
+                                 <Label htmlFor={`req-subj-${dept.id}`} className="text-xs text-muted-foreground">Subject / Purpose for all labs in {dept.name}</Label>
+                                <Input 
+                                    id={`req-subj-${dept.id}`}
+                                    value={labRequests.get(dept.id) || ''}
+                                    onChange={(e) => handleSubjectChange(dept.id, e.target.value)}
+                                    placeholder="e.g., Embedded Systems 101" 
+                                    required
+                                    className="h-9"
+                                />
+                            </div>
+                        )}
+                    </div>
+                ))}
             </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
