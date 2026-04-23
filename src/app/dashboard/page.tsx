@@ -39,6 +39,12 @@ export default function Home() {
   }, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
 
+  const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
+
+  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null);
+
   const teachersForDialog = React.useMemo(() => {
       if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
       
@@ -62,12 +68,6 @@ export default function Home() {
     }
   }, [user, isUserLoading, router])
 
-  const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
-  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
-
-  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null)
-  
   React.useEffect(() => {
     if (!selectedDepartmentId && departments.length > 0) {
       setSelectedDepartmentId(departments[0].id);
@@ -638,3 +638,5 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    
