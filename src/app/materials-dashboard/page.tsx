@@ -249,16 +249,14 @@ export default function PropertyCustodianDashboardPage() {
                              {(activeView === 'add-materials' || activeView === 'outgoing-items') && (
                                 <div className="py-4">
                                     <ul className="flex flex-col gap-1">
-                                        <li>
-                                            <button onClick={() => setActiveView('add-materials')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === 'add-materials' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                <PlusCircle className="h-5 w-5" />Add Materials
-                                            </button>
-                                        </li>
-                                         <li>
-                                            <button onClick={() => setActiveView('outgoing-items')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activeView === 'outgoing-items' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                <Warehouse className="h-5 w-5" />Outgoing Items
-                                            </button>
-                                        </li>
+                                        {navItems.filter(item => item.id === activeView).map(item => (
+                                            <li key={item.id}>
+                                                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
+                                                    {React.cloneElement(item.icon, { className: "h-5 w-5" })}
+                                                    {item.label}
+                                                </button>
+                                            </li>
+                                        ))}
                                     </ul>
                                 </div>
                              )}
@@ -285,5 +283,3 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    
