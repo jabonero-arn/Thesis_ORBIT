@@ -16,10 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import type { Department, Channel } from "@/lib/types";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { collection, addDoc, writeBatch, doc } from "firebase/firestore";
 import { useAppContext } from "@/context/app-context";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 type RequestLabAccessDialogProps = {
@@ -33,65 +32,75 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   const firestore = useFirestore();
   const { departments, channels } = useAppContext();
 
-  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState('');
-  const [selectedChannelId, setSelectedChannelId] = React.useState('');
+  const [selectedChannels, setSelectedChannels] = React.useState<Set<string>>(new Set());
   const [subject, setSubject] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   
-  const availableChannels = React.useMemo(() => {
-    if (!selectedDepartmentId) return [];
-    return channels.filter(c => c.departmentId === selectedDepartmentId);
-  }, [channels, selectedDepartmentId]);
+  const handleToggleChannel = (channelId: string) => {
+    setSelectedChannels(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(channelId)) {
+        newSet.delete(channelId);
+      } else {
+        newSet.add(channelId);
+      }
+      return newSet;
+    });
+  };
 
   React.useEffect(() => {
     if (!open) {
       resetForm();
     }
   }, [open]);
-  
-   React.useEffect(() => {
-    setSelectedChannelId('');
-  }, [selectedDepartmentId]);
 
   const resetForm = () => {
-    setSelectedDepartmentId('');
-    setSelectedChannelId('');
+    setSelectedChannels(new Set());
     setSubject('');
     setIsLoading(false);
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selectedChannelId || !subject || !user || !firestore || !selectedDepartmentId) {
+    if (selectedChannels.size === 0 || !subject || !user || !firestore) {
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: "Please fill out all fields.",
+        description: "Please select at least one lab and provide a subject/purpose.",
       });
       return;
     }
     setIsLoading(true);
 
     try {
-        const selectedChannel = channels.find(c => c.id === selectedChannelId);
-        if (!selectedChannel) throw new Error("Selected channel not found.");
+        const batch = writeBatch(firestore);
+        const requestsCollection = collection(firestore, 'channel_access_requests');
+        const now = new Date().toISOString();
 
-        const accessRequest = {
-            teacherId: user.uid,
-            teacherName: user.displayName || 'Unknown Teacher',
-            channelId: selectedChannelId,
-            channelName: selectedChannel.name,
-            departmentId: selectedDepartmentId,
-            subject: subject,
-            status: 'pending',
-            requestedAt: new Date().toISOString(),
-        }
+        selectedChannels.forEach(channelId => {
+            const channel = channels.find(c => c.id === channelId);
+            if (!channel) return;
+            const department = departments.find(d => d.id === channel.departmentId);
+            if (!department) return;
 
-        await addDoc(collection(firestore, 'channel_access_requests'), accessRequest);
+            const newRequestRef = doc(requestsCollection);
+            batch.set(newRequestRef, {
+                teacherId: user.uid,
+                teacherName: user.displayName || 'Unknown Teacher',
+                channelId: channelId,
+                channelName: channel.name,
+                departmentId: department.id,
+                subject: subject,
+                status: 'pending',
+                requestedAt: now,
+            });
+        });
+
+        await batch.commit();
 
         toast({
             title: "Request Sent",
-            description: `Your request to access ${selectedChannel.name.replace('#','')} has been sent for approval.`
+            description: `Your access requests for ${selectedChannels.size} lab(s) have been sent.`
         });
         onOpenChange(false);
     } catch (error: any) {
@@ -99,7 +108,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
        toast({
         variant: "destructive",
         title: "Request Failed",
-        description: error.message || "Could not send your request.",
+        description: error.message || "Could not send your request(s).",
       });
     } finally {
       setIsLoading(false);
@@ -108,41 +117,50 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Request Laboratory Access</DialogTitle>
           <DialogDescription>
-            Select the lab you need access to and provide the reason (e.g., subject name).
+            Select the labs you need access to and provide the reason (e.g., subject name).
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-                 <div className="grid gap-2">
-                    <Label htmlFor="req-department">Department</Label>
-                    <Select value={selectedDepartmentId} onValueChange={setSelectedDepartmentId} required>
-                      <SelectTrigger id="req-department"><SelectValue placeholder="Select a department..." /></SelectTrigger>
-                      <SelectContent>{departments.map(d => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}</SelectContent>
-                    </Select>
-                </div>
-                 <div className="grid gap-2">
-                    <Label htmlFor="req-channel">Laboratory / Room</Label>
-                    <Select value={selectedChannelId} onValueChange={setSelectedChannelId} required disabled={!selectedDepartmentId}>
-                      <SelectTrigger id="req-channel"><SelectValue placeholder="Select a room..." /></SelectTrigger>
-                      <SelectContent>{availableChannels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name.replace('#','')}</SelectItem>))}</SelectContent>
-                    </Select>
-                </div>
-                <div className="grid gap-2">
+            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
+                <div className="grid gap-2 px-1">
                     <Label htmlFor="req-subject">Subject / Purpose</Label>
                     <Input id="req-subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g., Embedded Systems 101" required />
                 </div>
+                 {departments.map(dept => {
+                    const deptChannels = channels.filter(c => c.departmentId === dept.id);
+                    if (deptChannels.length === 0) return null;
+                    return (
+                        <div key={dept.id}>
+                            <h3 className="font-semibold text-lg mb-2">{dept.name}</h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {deptChannels.map(channel => (
+                                    <div key={channel.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent/50">
+                                        <Checkbox 
+                                            id={`req-ch-${channel.id}`} 
+                                            checked={selectedChannels.has(channel.id)}
+                                            onCheckedChange={() => handleToggleChannel(channel.id)}
+                                        />
+                                        <Label htmlFor={`req-ch-${channel.id}`} className="cursor-pointer">
+                                            {channel.name.replace('#', '')}
+                                        </Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
             <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading || selectedChannels.size === 0}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit Request
+                    Submit Request(s)
                 </Button>
             </DialogFooter>
         </form>
