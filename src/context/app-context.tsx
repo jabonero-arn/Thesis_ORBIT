@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import type { InventoryItem, BorrowHistory, User, Department, Channel } from '@/lib/types';
+import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -13,6 +13,7 @@ type AppContextType = {
   allUsers: User[];
   departments: Department[];
   channels: Channel[];
+  channelAccessRequests: ChannelAccessRequest[];
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -48,6 +49,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     firestore ? query(collection(firestore, 'channels'), orderBy('name', 'asc')) : null
   , [firestore]);
   const { data: channelsData } = useCollection<Omit<Channel, 'id'>>(channelsQuery);
+
+  const accessRequestsQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'channel_access_requests'), orderBy('requestedAt', 'desc')) : null
+  , [firestore]);
+  const { data: accessRequestsData } = useCollection<Omit<ChannelAccessRequest, 'id'>>(accessRequestsQuery);
 
 
   // This ref is to prevent the effect from running multiple times for the same set of cancellations
@@ -107,7 +113,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     allUsers: usersData || [],
     departments: departmentsData || [],
     channels: channelsData || [],
-  }), [itemsData, historyData, usersData, departmentsData, channelsData]);
+    channelAccessRequests: accessRequestsData || [],
+  }), [itemsData, historyData, usersData, departmentsData, channelsData, accessRequestsData]);
 
   return (
     <AppContext.Provider value={value}>

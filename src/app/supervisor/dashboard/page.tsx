@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, ChannelAccessRequest, ChannelAccessRequestStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -50,13 +50,13 @@ import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
 
 
-type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment';
+type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, channels, departments } = useAppContext();
+    const { items, borrowHistory, channels, departments, channelAccessRequests } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -98,7 +98,7 @@ export default function SupervisorDashboardPage() {
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
     // View state
-    const [activeView, setActiveView] = React.useState<SupervisorView>('verification');
+    const [activeView, setActiveView] = React.useState<SupervisorView>('accessRequests');
     const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table'>('table');
     const [verificationSubView, setVerificationSubView] = React.useState<'pending' | 'history'>('pending');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -123,6 +123,10 @@ export default function SupervisorDashboardPage() {
         const itemNamesInDept = new Set(departmentItems.map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, departmentItems]);
+
+    const pendingAccessRequests = React.useMemo(() => {
+        return channelAccessRequests.filter(req => req.departmentId === assignedDepartmentId && req.status === 'pending');
+    }, [channelAccessRequests, assignedDepartmentId]);
 
     // Handlers
     const handleViewChange = (view: SupervisorView) => {
@@ -255,6 +259,21 @@ export default function SupervisorDashboardPage() {
         }
     };
 
+    const handleAccessRequest = async (requestId: string, newStatus: ChannelAccessRequestStatus) => {
+        if (!firestore) return;
+        try {
+            const docRef = doc(firestore, 'channel_access_requests', requestId);
+            await updateDoc(docRef, { status: newStatus });
+            toast({
+                title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+                description: `The access request has been updated.`,
+            });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        }
+    };
+
     // Helper functions
     const getItemChannelName = (channelId?: string) => {
         if (!channelId) return "Unassigned";
@@ -290,6 +309,7 @@ export default function SupervisorDashboardPage() {
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
         { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
+        { id: 'accessRequests', label: 'Access Requests', icon: <KeyRound /> },
         { id: 'assignment', label: 'Material Assignment', icon: <PackageCheck /> },
         { id: 'inventory', label: 'Department Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
@@ -407,6 +427,48 @@ export default function SupervisorDashboardPage() {
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         {verificationSubView === 'pending' ? <VerificationView /> : <VerificationHistoryView />}
+                    </div>
+                );
+            case 'accessRequests':
+                 return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader>
+                                <CardTitle>Teacher Lab Access Requests</CardTitle>
+                                <CardDescription>Approve or deny requests from teachers to access labs in your department.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Teacher</TableHead>
+                                            <TableHead>Requested Lab</TableHead>
+                                            <TableHead>Subject/Purpose</TableHead>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingAccessRequests.length > 0 ? pendingAccessRequests.map(req => (
+                                            <TableRow key={req.id}>
+                                                <TableCell>{req.teacherName}</TableCell>
+                                                <TableCell>{req.channelName.replace('#','')}</TableCell>
+                                                <TableCell>{req.subject}</TableCell>
+                                                <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="h-24 text-center">No pending access requests.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
                     </div>
                 );
             case 'assignment':

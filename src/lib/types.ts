@@ -54,6 +54,19 @@ export type InventoryItem = {
 };
 
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
+export type ChannelAccessRequestStatus = 'pending' | 'approved' | 'denied';
+
+export type ChannelAccessRequest = {
+    id: string;
+    teacherId: string;
+    teacherName: string;
+    channelId: string;
+    channelName: string;
+    departmentId: string;
+    subject: string;
+    status: ChannelAccessRequestStatus;
+    requestedAt: string;
+}
 
 export type BorrowHistory = {
     id: string;

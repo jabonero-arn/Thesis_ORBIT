@@ -162,6 +162,22 @@
         "departmentId",
         "description"
       ]
+    },
+    "ChannelAccessRequest": {
+        "title": "Channel Access Request",
+        "description": "A teacher's request to gain access to a specific laboratory.",
+        "type": "object",
+        "properties": {
+            "teacherId": { "type": "string" },
+            "teacherName": { "type": "string" },
+            "channelId": { "type": "string" },
+            "channelName": { "type": "string" },
+            "departmentId": { "type": "string" },
+            "subject": { "type": "string", "description": "The subject or reason for the access request." },
+            "status": { "type": "string", "enum": ["pending", "approved", "denied"] },
+            "requestedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["teacherId", "teacherName", "channelId", "channelName", "departmentId", "subject", "status", "requestedAt"]
     }
   },
   "auth": {
@@ -227,6 +243,10 @@
         "$ref": "#/entities/Channel"
       },
       "description": "Stores the list of rooms/laboratories within departments."
+    },
+    "/channel_access_requests/{requestId}": {
+        "schema": { "$ref": "#/entities/ChannelAccessRequest" },
+        "description": "Stores teachers' requests for lab access."
     }
   }
 }

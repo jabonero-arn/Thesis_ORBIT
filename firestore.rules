@@ -57,6 +57,9 @@ service cloud.firestore {
     function isPropertyCustodian() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
+    function getSupervisorAssignedDept() {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId;
+    }
 
 
     // --------------------------------------------------------------------------------
@@ -109,6 +112,15 @@ service cloud.firestore {
     match /channels/{channelId} {
       allow read: if isSignedIn();
       allow create, update, delete: if isHeadSupervisor();
+    }
+     // --------------------------------------------------------------------------------
+    // Teacher Access Request Rules
+    // --------------------------------------------------------------------------------
+    match /channel_access_requests/{requestId} {
+        allow create: if isTeacher() && isOwner(request.resource.data.teacherId);
+        allow list, get: if isOwner(resource.data.teacherId) || isSupervisor();
+        allow update: if isSupervisor() && request.resource.data.keys().hasOnly(['status']);
+        allow delete: if false;
     }
 
     // --------------------------------------------------------------------------------

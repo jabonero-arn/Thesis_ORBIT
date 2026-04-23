@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useAuth, useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
-import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, KeyRound } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { format } from "date-fns"
@@ -33,7 +33,6 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
-import { TeacherProfileDialog } from "@/components/teacher-profile-dialog"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
 export default function TeacherDashboardPage() {
@@ -44,7 +43,6 @@ export default function TeacherDashboardPage() {
   const { items: allItems, borrowHistory, departments, channels } = useAppContext();
   
   const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
-  const [showProfileDialog, setShowProfileDialog] = React.useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -69,16 +67,8 @@ export default function TeacherDashboardPage() {
 
     if (userProfile?.passwordChangeRequired) {
       setShowPasswordChangeDialog(true);
-      setShowProfileDialog(false);
-      return; 
-    }
-    setShowPasswordChangeDialog(false);
-
-    const isProfileIncomplete = !userProfile || !userProfile.employeeId;
-    if (isProfileIncomplete) {
-      setShowProfileDialog(true);
     } else {
-      setShowProfileDialog(false);
+      setShowPasswordChangeDialog(false);
     }
   }, [user, userProfile, isUserLoading, isProfileLoading]);
 
@@ -463,7 +453,6 @@ export default function TeacherDashboardPage() {
         open={showPasswordChangeDialog}
         onSuccess={() => setShowPasswordChangeDialog(false)}
       />
-      <TeacherProfileDialog open={showProfileDialog} onOpenChange={setShowProfileDialog} />
       <div className="flex h-screen bg-[#1e2430]">
         {/* Combined Sidebar */}
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
