@@ -32,21 +32,28 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   const firestore = useFirestore();
   const { departments, channels } = useAppContext();
 
-  const [selectedChannels, setSelectedChannels] = React.useState<Set<string>>(new Set());
-  const [subject, setSubject] = React.useState('');
+  const [labRequests, setLabRequests] = React.useState<Map<string, string>>(new Map());
   const [isLoading, setIsLoading] = React.useState(false);
   
   const handleToggleChannel = (channelId: string) => {
-    setSelectedChannels(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(channelId)) {
-        newSet.delete(channelId);
+    setLabRequests(prev => {
+      const newMap = new Map(prev);
+      if (newMap.has(channelId)) {
+        newMap.delete(channelId);
       } else {
-        newSet.add(channelId);
+        newMap.set(channelId, "");
       }
-      return newSet;
+      return newMap;
     });
   };
+  
+  const handleSubjectChange = (channelId: string, subject: string) => {
+    setLabRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(channelId, subject);
+        return newMap;
+    });
+  }
 
   React.useEffect(() => {
     if (!open) {
@@ -55,18 +62,25 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   }, [open]);
 
   const resetForm = () => {
-    setSelectedChannels(new Set());
-    setSubject('');
+    setLabRequests(new Map());
     setIsLoading(false);
   }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (selectedChannels.size === 0 || !subject || !user || !firestore) {
+
+    const validRequests = new Map<string, string>();
+    for (const [channelId, subject] of labRequests.entries()) {
+        if (subject.trim() !== "") {
+            validRequests.set(channelId, subject);
+        }
+    }
+
+    if (validRequests.size === 0 || !user || !firestore) {
       toast({
         variant: "destructive",
         title: "Missing fields",
-        description: "Please select at least one lab and provide a subject/purpose.",
+        description: "Please select at least one lab and provide a subject/purpose for it.",
       });
       return;
     }
@@ -77,7 +91,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
         const requestsCollection = collection(firestore, 'channel_access_requests');
         const now = new Date().toISOString();
 
-        selectedChannels.forEach(channelId => {
+        validRequests.forEach((subject, channelId) => {
             const channel = channels.find(c => c.id === channelId);
             if (!channel) return;
             const department = departments.find(d => d.id === channel.departmentId);
@@ -100,7 +114,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
 
         toast({
             title: "Request Sent",
-            description: `Your access requests for ${selectedChannels.size} lab(s) have been sent.`
+            description: `Your access requests for ${validRequests.size} lab(s) have been sent.`
         });
         onOpenChange(false);
     } catch (error: any) {
@@ -121,32 +135,43 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
         <DialogHeader>
           <DialogTitle>Request Laboratory Access</DialogTitle>
           <DialogDescription>
-            Select the labs you need access to and provide the reason (e.g., subject name).
+            Select the labs you need access to and provide the reason (e.g., subject name) for each.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
             <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
-                <div className="grid gap-2 px-1">
-                    <Label htmlFor="req-subject">Subject / Purpose</Label>
-                    <Input id="req-subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g., Embedded Systems 101" required />
-                </div>
                  {departments.map(dept => {
                     const deptChannels = channels.filter(c => c.departmentId === dept.id);
                     if (deptChannels.length === 0) return null;
                     return (
-                        <div key={dept.id}>
+                        <div key={dept.id} className="space-y-3">
                             <h3 className="font-semibold text-lg mb-2">{dept.name}</h3>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="pl-2 space-y-4">
                                 {deptChannels.map(channel => (
-                                    <div key={channel.id} className="flex items-center space-x-2 p-2 rounded-md hover:bg-accent/50">
-                                        <Checkbox 
-                                            id={`req-ch-${channel.id}`} 
-                                            checked={selectedChannels.has(channel.id)}
-                                            onCheckedChange={() => handleToggleChannel(channel.id)}
-                                        />
-                                        <Label htmlFor={`req-ch-${channel.id}`} className="cursor-pointer">
-                                            {channel.name.replace('#', '')}
-                                        </Label>
+                                    <div key={channel.id} className="space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`req-ch-${channel.id}`} 
+                                                checked={labRequests.has(channel.id)}
+                                                onCheckedChange={() => handleToggleChannel(channel.id)}
+                                            />
+                                            <Label htmlFor={`req-ch-${channel.id}`} className="cursor-pointer font-medium">
+                                                {channel.name.replace('#', '')}
+                                            </Label>
+                                        </div>
+                                        {labRequests.has(channel.id) && (
+                                            <div className="pl-6">
+                                                <Label htmlFor={`req-subj-${channel.id}`} className="text-xs text-muted-foreground">Subject / Purpose</Label>
+                                                <Input 
+                                                    id={`req-subj-${channel.id}`}
+                                                    value={labRequests.get(channel.id) || ''}
+                                                    onChange={(e) => handleSubjectChange(channel.id, e.target.value)}
+                                                    placeholder="e.g., Embedded Systems 101" 
+                                                    required
+                                                    className="h-8"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -158,7 +183,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
                     Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading || selectedChannels.size === 0}>
+                <Button type="submit" disabled={isLoading || labRequests.size === 0}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Submit Request(s)
                 </Button>
