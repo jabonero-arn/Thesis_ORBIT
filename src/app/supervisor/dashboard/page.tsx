@@ -48,6 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
 import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
+import { Switch } from "@/components/ui/switch"
 
 
 type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests';
@@ -202,6 +203,25 @@ export default function SupervisorDashboardPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not remove the item.' });
         }
     }
+
+    const handleVisibilityChange = async (item: InventoryItem, isVisible: boolean) => {
+        if (!firestore) return;
+        const itemDocRef = doc(firestore, 'inventory_items', item.id);
+        try {
+            await updateDoc(itemDocRef, { isVisibleToStudents: isVisible });
+            toast({
+                title: "Visibility Updated",
+                description: `${item.name} is now ${isVisible ? 'visible' : 'hidden'} to students.`,
+            });
+        } catch (error) {
+            console.error("Error updating visibility:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: 'Could not update item visibility.'
+            });
+        }
+    };
     
     const handleResolveIssue = async (transactionId: string) => {
         if (!firestore) return;
@@ -540,7 +560,7 @@ export default function SupervisorDashboardPage() {
                                 <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department's rooms.</CardDescription></div></CardHeader>
                                 <CardContent>
                                     <Table>
-                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Visibility</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
                                             {departmentItems.filter(item => item.channelId).length > 0 ? departmentItems.filter(item => item.channelId).map(item => {
                                                 const dateToShow = item.verifiedAt || item.createdAt;
@@ -550,13 +570,20 @@ export default function SupervisorDashboardPage() {
                                                     <TableCell>{getItemChannelName(item.channelId)}</TableCell>
                                                     <TableCell>{item.quantity}</TableCell>
                                                     <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                    <TableCell>
+                                                        <Switch
+                                                            checked={item.isVisibleToStudents !== false}
+                                                            onCheckedChange={(checked) => handleVisibilityChange(item, checked)}
+                                                            aria-label="Toggle student visibility"
+                                                        />
+                                                    </TableCell>
                                                     <TableCell>{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                                                     <TableCell className="text-right space-x-2">
                                                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
                                                         <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the item.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                                                     </TableCell>
                                                 </TableRow>
-                                            )}) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No items found.</TableCell></TableRow>}
+                                            )}) : <TableRow><TableCell colSpan={7} className="h-24 text-center">No items found.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>

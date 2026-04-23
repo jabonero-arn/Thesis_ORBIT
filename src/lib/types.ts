@@ -52,6 +52,7 @@ export type InventoryItem = {
   createdAt?: string;
   verifiedAt?: string;
   inaccuracyReason?: string;
+  isVisibleToStudents?: boolean;
 };
 
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';

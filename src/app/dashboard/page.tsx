@@ -126,7 +126,7 @@ export default function Home() {
   }
 
   const items = React.useMemo(
-    () => allItems.filter((item) => item.channelId === selectedChannelId),
+    () => allItems.filter((item) => item.channelId === selectedChannelId && item.isVisibleToStudents !== false),
     [allItems, selectedChannelId]
   )
   

@@ -85,7 +85,8 @@
         "quantity": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp when the item was added by the custodian." },
         "verifiedAt": { "type": "string", "format": "date-time", "description": "Timestamp when the supervisor verified the item." },
-        "inaccuracyReason": { "type": "string", "description": "Reason for the item being marked as inaccurate." }
+        "inaccuracyReason": { "type": "string", "description": "Reason for the item being marked as inaccurate." },
+        "isVisibleToStudents": { "type": "boolean", "description": "If true, the item is visible to students in the borrowing interface." }
       },
       "required": ["name", "status", "quantity", "description", "imageUrl", "imageHint", "createdAt"]
     },
