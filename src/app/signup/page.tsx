@@ -28,12 +28,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useAppContext } from "@/context/app-context"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SignUpPage() {
   const router = useRouter()
   const { toast } = useToast()
   const auth = useAuth()
   const firestore = useFirestore()
+  const { departments } = useAppContext();
 
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -42,27 +45,16 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [educationLevel, setEducationLevel] = React.useState<"college" | "shs" | "">("");
   const [idNumber, setIdNumber] = React.useState("");
-  const [courseOrStrand, setCourseOrStrand] = React.useState("");
-  const [yearLevel, setYearLevel] = React.useState("");
+  const [selectedDepartments, setSelectedDepartments] = React.useState<string[]>([]);
 
 
-  const collegeCourses = [
-    "BS in Information Technology",
-    "BS in Electronics Engineering",
-    "BS in Computer Engineering",
-    "BS in Industrial Engineering",
-  ];
-
-  const shsStrands = [
-    "STEM (Science, Technology, Engineering, and Mathematics)",
-    "ABM (Accountancy, Business, and Management)",
-    "HUMSS (Humanities and Social Sciences)",
-    "GAS (General Academic Strand)",
-    "TVL (Technical-Vocational-Livelihood)",
-  ];
-
-  const collegeYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
-  const shsYearLevels = ["Grade 11", "Grade 12"];
+  const handleDepartmentChange = (departmentId: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(departmentId) 
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId]
+    );
+  };
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -99,8 +91,7 @@ export default function SignUpPage() {
             role: "Student",
             idNumber: idNumber,
             educationLevel: educationLevel,
-            courseOrStrand: courseOrStrand,
-            yearLevel: yearLevel,
+            departmentIds: selectedDepartments,
         };
 
         const userDocRef = doc(firestore, "users", user.uid);
@@ -168,11 +159,7 @@ export default function SignUpPage() {
             </div>
              <div className="grid gap-2">
                 <Label htmlFor="education-level">Education Level</Label>
-                <Select onValueChange={(value: "college" | "shs") => {
-                    setEducationLevel(value);
-                    setCourseOrStrand("");
-                    setYearLevel("");
-                }} required>
+                <Select onValueChange={(value: "college" | "shs") => setEducationLevel(value)} required>
                     <SelectTrigger id="education-level">
                         <SelectValue placeholder="Select education level" />
                     </SelectTrigger>
@@ -183,36 +170,25 @@ export default function SignUpPage() {
                 </Select>
             </div>
 
-            {educationLevel && (
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="course-strand">{educationLevel === 'college' ? 'Course' : 'Strand'}</Label>
-                        <Select name="course-strand" required value={courseOrStrand} onValueChange={setCourseOrStrand}>
-                            <SelectTrigger id="course-strand">
-                                <SelectValue placeholder={`Select ${educationLevel === 'college' ? 'course' : 'strand'}`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(educationLevel === 'college' ? collegeCourses : shsStrands).map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="year-level">Year Level</Label>
-                        <Select name="year-level" required value={yearLevel} onValueChange={setYearLevel}>
-                            <SelectTrigger id="year-level">
-                                <SelectValue placeholder="Select year level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {(educationLevel === 'college' ? collegeYearLevels : shsYearLevels).map(option => (
-                                    <SelectItem key={option} value={option}>{option}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-            )}
+            <div className="grid gap-2">
+              <Label>Departments</Label>
+              <p className="text-sm text-muted-foreground">Select the departments relevant to your subjects.</p>
+              <div className="space-y-2 rounded-md border p-4 max-h-40 overflow-y-auto">
+                  {departments.map(dept => (
+                      <div key={dept.id} className="flex items-center space-x-2">
+                          <Checkbox
+                              id={`dept-${dept.id}`}
+                              onCheckedChange={() => handleDepartmentChange(dept.id)}
+                              checked={selectedDepartments.includes(dept.id)}
+                          />
+                          <Label htmlFor={`dept-${dept.id}`} className="font-normal cursor-pointer">
+                              {dept.name}
+                          </Label>
+                      </div>
+                  ))}
+              </div>
+            </div>
+            
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="Enter your email" required value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -224,7 +200,7 @@ export default function SignUpPage() {
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required maxLength={20} />
+                <Input id="confirm-password" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} required maxLength={20} />
                 </div>
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>

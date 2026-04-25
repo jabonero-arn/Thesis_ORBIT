@@ -51,8 +51,11 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
   const avatarUrl = user?.photoURL || `https://avatar.vercel.sh/${user?.email}`;
   
   const idNumber = userProfile?.idNumber;
-  const year = userProfile?.yearLevel;
-  const course = userProfile?.courseOrStrand;
+  const studentDepartmentNames = userProfile?.departmentIds
+    ?.map(id => departments.find(d => d.id === id)?.name)
+    .filter(Boolean)
+    .join(', ');
+
   const departmentName = departments.find(d => d.id === userProfile?.assignedDepartmentId)?.name;
   const employeeId = userProfile?.employeeId;
 
@@ -84,17 +87,6 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
       });
     }
   };
-
-  const getStatusBadge = (status: ChannelAccessRequestStatus) => {
-    switch (status) {
-        case 'pending':
-            return <Badge variant="outline">Pending</Badge>;
-        case 'approved':
-            return <Badge variant="secondary" className="bg-green-800/80 text-green-300">Approved</Badge>;
-        case 'denied':
-            return <Badge variant="destructive">Denied</Badge>;
-    }
-  }
 
   const TeacherLabRequests = () => (
       <div className="mt-4">
@@ -190,8 +182,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                       {displayRole === 'Student' ? (
                           <>
                               {idNumber && <div className="flex justify-between"><span className="text-gray-400">ID Number</span><span className="font-mono text-white">{idNumber}</span></div>}
-                              {course && <div className="flex justify-between"><span className="text-gray-400">Course</span><span className="text-white">{course}</span></div>}
-                              {year && <div className="flex justify-between"><span className="text-gray-400">Year Level</span><span className="text-white">{year}</span></div>}
+                              {studentDepartmentNames && <div className="flex justify-between gap-4"><span className="text-gray-400">Departments</span><span className="text-white text-right">{studentDepartmentNames}</span></div>}
                           </>
                       ) : (
                           <>

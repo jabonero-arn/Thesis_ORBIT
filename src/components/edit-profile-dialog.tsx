@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { User as UserType } from "@/lib/types"
+import { useAppContext } from "@/context/app-context"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type EditProfileDialogProps = {
   open: boolean;
@@ -21,28 +23,12 @@ type EditProfileDialogProps = {
   displayRole: string;
 };
 
-// Re-using options from signup page
-const collegeCourses = [
-    "BS in Information Technology",
-    "BS in Electronics Engineering",
-    "BS in Computer Engineering",
-    "BS in Industrial Engineering",
-  ];
-const shsStrands = [
-    "STEM (Science, Technology, Engineering, and Mathematics)",
-    "ABM (Accountancy, Business, and Management)",
-    "HUMSS (Humanities and Social Sciences)",
-    "GAS (General Academic Strand)",
-    "TVL (Technical-Vocational-Livelihood)",
-  ];
-const collegeYearLevels = ["1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year"];
-const shsYearLevels = ["Grade 11", "Grade 12"];
-
 export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole }: EditProfileDialogProps) {
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { departments } = useAppContext();
 
   const [isLoading, setIsLoading] = React.useState(false);
   
@@ -51,8 +37,7 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
   // Student fields
   const [educationLevel, setEducationLevel] = React.useState("");
   const [idNumber, setIdNumber] = React.useState("");
-  const [courseOrStrand, setCourseOrStrand] = React.useState("");
-  const [yearLevel, setYearLevel] = React.useState("");
+  const [selectedDepartments, setSelectedDepartments] = React.useState<string[]>([]);
   // Staff/Teacher fields
   const [employeeId, setEmployeeId] = React.useState("");
 
@@ -67,8 +52,7 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
       if (displayRole === 'Student') {
           setIdNumber(userProfile.idNumber || "");
           setEducationLevel(userProfile.educationLevel || "");
-          setCourseOrStrand(userProfile.courseOrStrand || "");
-          setYearLevel(userProfile.yearLevel || "");
+          setSelectedDepartments(userProfile.departmentIds || []);
       } else {
           setEmployeeId(userProfile.employeeId || "");
       }
@@ -79,6 +63,14 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
         setConfirmNewPassword("");
     }
   }, [userProfile, open, displayRole]);
+  
+  const handleDepartmentChange = (departmentId: string) => {
+    setSelectedDepartments(prev => 
+      prev.includes(departmentId) 
+        ? prev.filter(id => id !== departmentId)
+        : [...prev, departmentId]
+    );
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -116,8 +108,7 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
       if (displayRole === 'Student') {
         updatedProfileData.idNumber = idNumber;
         updatedProfileData.educationLevel = educationLevel as 'college' | 'shs';
-        updatedProfileData.courseOrStrand = courseOrStrand;
-        updatedProfileData.yearLevel = yearLevel;
+        updatedProfileData.departmentIds = selectedDepartments;
       } else {
         updatedProfileData.employeeId = employeeId;
       }
@@ -151,7 +142,7 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
       </div>
       <div className="grid gap-2">
           <Label htmlFor="edit-education-level">Education Level</Label>
-          <Select value={educationLevel} onValueChange={(value: "college" | "shs") => { setEducationLevel(value); setCourseOrStrand(""); setYearLevel(""); }}>
+          <Select value={educationLevel} onValueChange={(value: "college" | "shs") => { setEducationLevel(value); }}>
               <SelectTrigger id="edit-education-level"><SelectValue placeholder="Select education level" /></SelectTrigger>
               <SelectContent>
                   <SelectItem value="college">College</SelectItem>
@@ -159,33 +150,23 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
               </SelectContent>
           </Select>
       </div>
-
-      {educationLevel && (
-          <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                  <Label htmlFor="edit-course-strand">{educationLevel === 'college' ? 'Course' : 'Strand'}</Label>
-                  <Select value={courseOrStrand} onValueChange={setCourseOrStrand}>
-                      <SelectTrigger id="edit-course-strand"><SelectValue placeholder={`Select ${educationLevel === 'college' ? 'course' : 'strand'}`} /></SelectTrigger>
-                      <SelectContent>
-                          {(educationLevel === 'college' ? collegeCourses : shsStrands).map(option => (
-                              <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              </div>
-              <div className="grid gap-2">
-                  <Label htmlFor="edit-year-level">Year Level</Label>
-                  <Select value={yearLevel} onValueChange={setYearLevel}>
-                      <SelectTrigger id="edit-year-level"><SelectValue placeholder="Select year level" /></SelectTrigger>
-                      <SelectContent>
-                          {(educationLevel === 'college' ? collegeYearLevels : shsYearLevels).map(option => (
-                              <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              </div>
-          </div>
-      )}
+      <div className="grid gap-2">
+        <Label>Departments</Label>
+        <div className="space-y-2 rounded-md border p-4 max-h-40 overflow-y-auto">
+            {departments.map(dept => (
+                <div key={dept.id} className="flex items-center space-x-2">
+                    <Checkbox
+                        id={`edit-dept-${dept.id}`}
+                        onCheckedChange={() => handleDepartmentChange(dept.id)}
+                        checked={selectedDepartments.includes(dept.id)}
+                    />
+                    <Label htmlFor={`edit-dept-${dept.id}`} className="font-normal cursor-pointer">
+                        {dept.name}
+                    </Label>
+                </div>
+            ))}
+        </div>
+      </div>
     </>
   );
 

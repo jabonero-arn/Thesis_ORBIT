@@ -39,13 +39,12 @@
           "type": "string",
           "description": "Student's education level (college or shs)."
         },
-        "courseOrStrand": {
-          "type": "string",
-          "description": "Student's course or strand."
-        },
-        "yearLevel": {
-          "type": "string",
-          "description": "Student's year level."
+        "departmentIds": {
+            "type": "array",
+            "description": "The IDs of the departments the student is associated with.",
+            "items": {
+                "type": "string"
+            }
         },
         "department": {
           "type": "string",

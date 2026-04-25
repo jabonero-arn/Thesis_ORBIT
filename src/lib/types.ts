@@ -11,8 +11,7 @@ export type User = {
   // Student specific
   idNumber?: string;
   educationLevel?: string;
-  courseOrStrand?: string;
-  yearLevel?: string;
+  departmentIds?: string[];
   
   // Teacher/Staff/Supervisor specific
   employeeId?: string;
