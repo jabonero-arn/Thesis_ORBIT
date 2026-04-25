@@ -521,7 +521,7 @@ export default function Home() {
                                 ))}
                             </div>
                         </div>
-                        <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
+                        <div className="mt-auto border-t border-border/50 bg-[#0e1015] pb-6">
                           <div className="flex items-center justify-between p-2">
                               <UserProfileModal role="Student">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
