@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
-import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2 } from "lucide-react"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, Building } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 
@@ -88,20 +88,28 @@ export default function TeacherDashboardPage() {
   const [requestSubView, setRequestSubView] = React.useState<RequestSubView>('pending');
 
   const approvedChannelsInfo = React.useMemo(() => {
-    if (!user || !channelAccessRequests) return { approvedChannelIds: new Set<string>(), approvedDepartmentIds: new Set<string>() };
+    if (!user || !channelAccessRequests || !channels || !departments) return { approvedChannelIds: new Set<string>(), approvedDepartmentIds: new Set<string>() };
     
+    // 1. Get approved channel IDs from requests.
     const approvedReqs = channelAccessRequests.filter(req => req.teacherId === user.uid && req.status === 'approved');
-    
     const approvedChannelIds = new Set(approvedReqs.map(req => req.channelId));
+
+    // 2. Add Engineering Office channel ID.
+    const engineeringOffice = channels.find(c => c.name.toLowerCase().includes('engineering office'));
+    if (engineeringOffice) {
+        approvedChannelIds.add(engineeringOffice.id);
+    }
+    
+    // 3. From the final set of channel IDs, derive the department IDs.
     const approvedDepartmentIds = new Set<string>();
     channels.forEach(channel => {
-        if(approvedChannelIds.has(channel.id)) {
+        if (approvedChannelIds.has(channel.id)) {
             approvedDepartmentIds.add(channel.departmentId);
         }
     });
 
     return { approvedChannelIds, approvedDepartmentIds };
-  }, [user, channelAccessRequests, channels]);
+  }, [user, channelAccessRequests, channels, departments]);
 
   const teacherDepartments = React.useMemo(() => {
     if (!departments) return [];
@@ -337,6 +345,7 @@ export default function TeacherDashboardPage() {
     if (prefix.startsWith('comp')) return <Cpu />;
     if (prefix.startsWith('chem')) return <FlaskConical />;
     if (prefix.startsWith('robo')) return <Cog />;
+    if (prefix.startsWith('eng')) return <Building />;
     return <UserIcon />;
   }
 
