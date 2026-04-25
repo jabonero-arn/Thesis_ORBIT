@@ -191,7 +191,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                                 <div className="flex items-center gap-2">
                                     {getStatusBadge(req.status)}
                                     <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" disabled={req.status === 'approved'}>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </AlertDialogTrigger>
@@ -287,3 +287,5 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
     </>
   )
 }
+
+    
