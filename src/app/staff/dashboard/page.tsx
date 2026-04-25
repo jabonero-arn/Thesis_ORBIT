@@ -37,7 +37,7 @@ export default function StaffDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, departments, channels, studentDepartmentAccessRequests } = useAppContext();
+    const { items, borrowHistory, departments, channels, studentDepartmentAccessRequests, allUsers } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -182,43 +182,47 @@ export default function StaffDashboardPage() {
 
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
-            case 'accessRequests': return (
-                <Card className="bg-card/80">
-                    <CardHeader>
-                        <CardTitle>Student Department Access</CardTitle>
-                        <CardDescription>Approve or deny student requests to access your department's materials.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Department</TableHead>
-                                    <TableHead>Date Requested</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
-                                    <TableRow key={req.id}>
-                                        <TableCell>{req.studentName}</TableCell>
-                                        <TableCell>{req.departmentName}</TableCell>
-                                        <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
-                                            <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
-                                        </TableCell>
-                                    </TableRow>
-                                )) : (
+            case 'accessRequests': 
+                const getTeacherName = (teacherId: string) => allUsers.find(u => u.id === teacherId)?.displayName || 'N/A';
+                return (
+                    <Card className="bg-card/80">
+                        <CardHeader>
+                            <CardTitle>Student Department Access</CardTitle>
+                            <CardDescription>Approve or deny student requests to access your department's materials.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">No pending student requests.</TableCell>
+                                        <TableHead>Student</TableHead>
+                                        <TableHead>Subject</TableHead>
+                                        <TableHead>Teacher</TableHead>
+                                        <TableHead>Date Requested</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            );
+                                </TableHeader>
+                                <TableBody>
+                                    {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
+                                        <TableRow key={req.id}>
+                                            <TableCell>{req.studentName}</TableCell>
+                                            <TableCell>{req.subject}</TableCell>
+                                            <TableCell>{getTeacherName(req.teacherId)}</TableCell>
+                                            <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
+                                                <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-24 text-center">No pending student requests.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                );
             case 'inventory': return (
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                     {inventorySubView === 'grid' ? (

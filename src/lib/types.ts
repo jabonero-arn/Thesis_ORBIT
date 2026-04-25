@@ -1,5 +1,6 @@
 
 
+
 export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Property Custodian";
 
 export type User = {
@@ -75,6 +76,8 @@ export type StudentDepartmentAccessRequest = {
     studentName: string;
     departmentId: string;
     departmentName: string;
+    subject: string;
+    teacherId: string;
     status: StudentDepartmentAccessRequestStatus;
     requestedAt: string;
 }

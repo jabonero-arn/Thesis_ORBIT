@@ -185,10 +185,12 @@
             "studentName": { "type": "string" },
             "departmentId": { "type": "string" },
             "departmentName": { "type": "string" },
+            "subject": { "type": "string", "description": "The subject or reason for the access request." },
+            "teacherId": { "type": "string", "description": "The ID of the supervising teacher for the subject." },
             "status": { "type": "string", "enum": ["pending", "approved", "denied"] },
             "requestedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["studentId", "studentName", "departmentId", "departmentName", "status", "requestedAt"]
+        "required": ["studentId", "studentName", "departmentId", "departmentName", "subject", "teacherId", "status", "requestedAt"]
     }
   },
   "auth": {
