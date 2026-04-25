@@ -354,7 +354,7 @@ export default function HeadSupervisorDashboardPage() {
             'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive',
             'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default',
         };
-        const textMap: Partial<Record<BorrowHistoryStatus, string>> = { 'Approved': 'Approved for Pickup', 'Reserved': 'Reserved' };
+        const textMap: Partial<Record<BorrowHistoryStatus, string>> = { 'Approved': 'Approved for Borrowing', 'Reserved': 'Reserved' };
         const text = textMap[status] || status;
         const variant = variants[status] || 'default';
 
@@ -462,7 +462,6 @@ export default function HeadSupervisorDashboardPage() {
                         {activityLogSubView === 'borrowing' && (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
-                            </Card>
                         )}
                     </div>
                 );

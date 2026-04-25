@@ -153,7 +153,7 @@ export default function StaffDashboardPage() {
             'Pending': 'outline', 'Approved': 'default', 'Active': 'destructive', 'Denied': 'destructive',
             'Returned': 'secondary', 'Pending Return': 'secondary', 'Cancelled': 'destructive', 'Reserved': 'default',
         };
-        const textMap: Partial<Record<BorrowHistoryStatus, string>> = { 'Approved': 'Approved for Pickup', 'Reserved': 'Reserved' };
+        const textMap: Partial<Record<BorrowHistoryStatus, string>> = { 'Approved': 'Approved for Borrowing', 'Reserved': 'Reserved' };
         return <Badge variant={variants[status] || 'default'}>{textMap[status] || status}</Badge>;
     }
     

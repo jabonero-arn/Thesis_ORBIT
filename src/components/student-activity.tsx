@@ -26,7 +26,7 @@ const getStatusBadge = (record: BorrowHistory) => {
         case 'Reserved':
              return <Badge variant="default">Reservation Confirmed</Badge>;
         case 'Approved':
-            return <Badge variant="default">Approved for Pickup</Badge>;
+            return <Badge variant="default">Approved for Borrowing</Badge>;
         case 'Pending':
              if (record.teacherId) {
                 return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending Teacher Approval</Badge>

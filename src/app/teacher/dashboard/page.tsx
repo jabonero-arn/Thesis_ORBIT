@@ -184,7 +184,7 @@ export default function TeacherDashboardPage() {
     };
 
     const textMap: Partial<Record<BorrowHistoryStatus, string>> = {
-        'Approved': 'Approved for Pickup',
+        'Approved': 'Approved for Borrowing',
     };
 
     const text = textMap[status] || status;

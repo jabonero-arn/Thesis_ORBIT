@@ -318,7 +318,7 @@ export default function SupervisorDashboardPage() {
         };
 
         const textMap: Partial<Record<BorrowHistoryStatus, string>> = {
-            'Approved': 'Approved for Pickup',
+            'Approved': 'Approved for Borrowing',
             'Reserved': 'Reserved',
         };
 
