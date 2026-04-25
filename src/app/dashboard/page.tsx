@@ -105,6 +105,24 @@ export default function Home() {
     return borrowHistory.filter(h => h.borrowerUserId === user.uid);
   }, [borrowHistory, user]);
 
+  React.useEffect(() => {
+    // This effect handles auto-closing the return QR dialog
+    if (itemsToReturn.length > 0 && borrowHistory.length > 0) {
+      const allItemsInDialogReturned = itemsToReturn.every(itemInDialog => {
+        const correspondingItemInHistory = borrowHistory.find(h => h.id === itemInDialog.id);
+        return correspondingItemInHistory?.status === 'Returned';
+      });
+
+      if (allItemsInDialogReturned) {
+        toast({
+          title: "Return Complete!",
+          description: "Your items have been successfully returned.",
+        });
+        setItemsToReturn([]); // This will close the dialog
+      }
+    }
+  }, [borrowHistory, itemsToReturn, toast]);
+
 
   const pendingRequestedItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
@@ -608,7 +626,7 @@ export default function Home() {
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
-                    <DialogDescription>Present this QR code to lab staff to process your return.</DialogDescription>
+                    <DialogDescription>Present this QR code to lab staff to process your return. This dialog will close automatically after scanning.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
                     {itemsToReturn.length > 0 && <Image
@@ -623,7 +641,7 @@ export default function Home() {
                     />}
                 </div>
                 <DialogFooter>
-                    <Button onClick={() => setItemsToReturn([])}>Done</Button>
+                    <Button variant="outline" onClick={() => setItemsToReturn([])}>Cancel</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
