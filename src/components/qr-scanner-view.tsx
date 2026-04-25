@@ -343,11 +343,9 @@ export function QrScannerView() {
             if (record.inventoryItemId) {
                 if (condition === 'Good') {
                     itemQuantityIncrements.set(record.inventoryItemId, (itemQuantityIncrements.get(record.inventoryItemId) || 0) + 1);
-                } else if (condition === 'Defected') {
-                    const itemDocRef = doc(firestore, 'inventory_items', record.inventoryItemId);
-                    batch.update(itemDocRef, { status: 'Inaccurate', inaccuracyReason: 'Returned with defect' });
                 }
-                // For 'Broken' or 'Lost', we don't increment the quantity, effectively removing it from circulation.
+                // For 'Defected', 'Broken', or 'Lost', we simply don't increment the quantity back into circulation.
+                // The item's quantity was already decremented at checkout.
             }
         }
 
