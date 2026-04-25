@@ -180,7 +180,8 @@ export default function Home() {
         return;
     }
 
-    const isApproved = approvedForBorrowItemNames.has(item.name);
+    const studentApprovedRecords = studentBorrowHistory.filter(h => h.status === 'Approved' && !h.checkoutSessionId && h.itemName === item.name);
+    const isApproved = studentApprovedRecords.length > 0;
 
     // Primary conditions for adding an item to the cart
     const isAvailable = item.status === "Available" && item.quantity > 0;
@@ -188,13 +189,22 @@ export default function Home() {
     // This case handles data inconsistencies where an item is borrowed but still has stock.
     const isBorrowableInconsistency = item.status === "Borrowed" && item.quantity > 0;
     
-    if (isAvailable || isApprovedAndLocked || isBorrowableInconsistency) {
-        setSelectedItems((prev) => [...prev, { item, quantity: 1 }])
-        if (isApprovedAndLocked) {
+    if (isAvailable || isBorrowableInconsistency) {
+        setSelectedItems((prev) => [...prev, { item, quantity: 1 }]);
+        return;
+    }
+
+    if (isApprovedAndLocked) {
+        const totalApprovedQuantity = studentApprovedRecords.reduce((sum, record) => sum + (record.itemQuantity || 0), 0);
+        
+        if (totalApprovedQuantity > 0) {
+            setSelectedItems((prev) => [...prev, { item, quantity: totalApprovedQuantity }])
             toast({
                 title: "Approved Item Added",
-                description: `"${item.name}" has been added to your cart.`,
+                description: `All your approved "${item.name}" (x${totalApprovedQuantity}) have been added to your cart.`,
             });
+        } else {
+             toast({ variant: 'destructive', title: "Approval Error", description: "Could not find approved quantity." });
         }
         return;
     }
@@ -674,3 +684,5 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    

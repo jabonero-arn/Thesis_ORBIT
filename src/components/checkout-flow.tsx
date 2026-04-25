@@ -88,7 +88,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   }
 
   const handleBorrow = () => {
-     if (!user || !user.uid || !user.displayName) {
+    if (!user || !user.uid || !user.displayName) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -96,10 +96,11 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       })
       return;
     }
-    
-    // Find approval records for any locked items in the cart
+
     const approvalsToConsume: string[] = [];
-    for (const { item, quantity } of cartItems) {
+
+    // Pre-flight check to ensure enough approvals exist for all locked items
+    for (const { item, quantity: requestedQuantity } of cartItems) {
       const masterItem = allItems.find(i => i.id === item.id);
       if (masterItem?.status === 'Locked') {
         const availableApprovals = borrowHistory.filter(h => 
@@ -108,16 +109,40 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
           h.status === 'Approved' &&
           !h.checkoutSessionId
         );
-        if (availableApprovals.length < quantity) {
+        
+        const totalApprovedQuantity = availableApprovals.reduce((sum, approval) => sum + (approval.itemQuantity || 0), 0);
+
+        if (totalApprovedQuantity < requestedQuantity) {
            toast({
             variant: "destructive",
-            title: "Approval Missing",
-            description: `Not enough approvals for "${item.name}". You need ${quantity} but have ${availableApprovals.length}.`,
+            title: "Approval Quantity Insufficient",
+            description: `You are requesting ${requestedQuantity} of "${item.name}", but only have approvals for ${totalApprovedQuantity}.`,
           });
-          return;
+          return; // Stop the whole process
         }
-        // Add the IDs of the approval records we will consume
-        approvalsToConsume.push(...availableApprovals.slice(0, quantity).map(a => a.id));
+      }
+    }
+
+    // If all checks pass, gather the approval record IDs to be consumed.
+    for (const { item, quantity: requestedQuantity } of cartItems) {
+      const masterItem = allItems.find(i => i.id === item.id);
+      if (masterItem?.status === 'Locked') {
+        const availableApprovals = borrowHistory.filter(h => 
+            h.borrowerUserId === user.uid &&
+            h.itemName === item.name &&
+            h.status === 'Approved' &&
+            !h.checkoutSessionId
+        ).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // FIFO
+
+        let quantityToSatisfy = requestedQuantity;
+        for (const approval of availableApprovals) {
+            if (quantityToSatisfy > 0) {
+                approvalsToConsume.push(approval.id);
+                quantityToSatisfy -= (approval.itemQuantity || 1);
+            } else {
+                break;
+            }
+        }
       }
     }
 
@@ -500,3 +525,5 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     </div>
   )
 }
+
+    
