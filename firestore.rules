@@ -111,7 +111,8 @@ service cloud.firestore {
     }
     match /channels/{channelId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isHeadSupervisor();
+      allow create: if isHeadSupervisor() || (isSupervisor() && request.resource.data.departmentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId);
+      allow update, delete: if isHeadSupervisor() || (isSupervisor() && resource.data.departmentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId);
     }
      // --------------------------------------------------------------------------------
     // Teacher Access Request Rules

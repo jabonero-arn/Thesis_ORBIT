@@ -411,10 +411,27 @@ export default function HeadSupervisorDashboardPage() {
                      </div>
                 );
              case 'inventory':
+                const selectedDeptForInventory = departments?.find(d => d.prefix === inventorySubView);
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit or remove items from all labs.</CardDescription></CardHeader>
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div>
+                                    <CardTitle>Manage Inventory</CardTitle>
+                                    <CardDescription>Edit or remove items from all labs.</CardDescription>
+                                </div>
+                                {inventorySubView !== 'all' && inventorySubView !== 'inaccurate' && departments && (
+                                    <Button onClick={() => {
+                                        if (selectedDeptForInventory) {
+                                            setFormDepartmentContext(selectedDeptForInventory);
+                                            setIsAddChannelOpen(true);
+                                        }
+                                    }}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add Room
+                                    </Button>
+                                )}
+                            </CardHeader>
                             <CardContent><InventoryTable items={inventoryItemsToDisplay} /></CardContent>
                         </Card>
                     </div>

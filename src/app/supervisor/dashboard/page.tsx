@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
-    Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon,
+    Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
     Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound
 } from "lucide-react"
@@ -49,6 +49,7 @@ import { ReturnConditionBadge } from "@/components/return-condition-badge"
 import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
 import { Switch } from "@/components/ui/switch"
+import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 
 
 type SupervisorView = 'dashboard' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests';
@@ -108,6 +109,7 @@ export default function SupervisorDashboardPage() {
 
     const [selectedForRoomAssignment, setSelectedForRoomAssignment] = React.useState<string[]>([]);
     const [isAssignRoomDialogOpen, setIsAssignRoomDialogOpen] = React.useState(false);
+    const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
 
 
     // Data Filtering
@@ -557,7 +559,13 @@ export default function SupervisorDashboardPage() {
                             />
                         ) : (
                             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                                <CardHeader><div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department's rooms.</CardDescription></div></CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between">
+                                    <div><CardTitle>Item List</CardTitle><CardDescription>A detailed list of all items in your department's rooms.</CardDescription></div>
+                                     <Button onClick={() => setIsAddChannelOpen(true)}>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Add Room
+                                    </Button>
+                                </CardHeader>
                                 <CardContent>
                                     <Table>
                                         <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Visibility</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
@@ -896,6 +904,11 @@ export default function SupervisorDashboardPage() {
                     onOpenChange={setIsAssignRoomDialogOpen}
                     onAssign={handleAssignToRoom}
                     channels={assignedChannels}
+                />
+                <AddChannelForm 
+                    open={isAddChannelOpen}
+                    onOpenChange={setIsAddChannelOpen}
+                    department={assignedDepartment}
                 />
 
             </div>
