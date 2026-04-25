@@ -12,19 +12,22 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
-import { Edit, KeyRound } from "lucide-react"
+import { doc, deleteDoc } from "firebase/firestore"
+import { Edit, KeyRound, Trash2 } from "lucide-react"
 import { EditProfileDialog } from "./edit-profile-dialog"
 import type { User as UserType, ChannelAccessRequest, ChannelAccessRequestStatus } from "@/lib/types"
 import { useAppContext } from "@/context/app-context"
 import { RequestLabAccessDialog } from "./teacher/request-lab-access-dialog"
 import { Badge } from "./ui/badge"
 import { format } from "date-fns"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
   const { user } = useUser()
   const firestore = useFirestore()
+  const { toast } = useToast();
   const { departments, channels, channelAccessRequests } = useAppContext();
 
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
@@ -59,6 +62,25 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
     setIsEditOpen(true);
   }
 
+  const handleDeleteRequest = async (requestId: string) => {
+    if (!firestore) return;
+    try {
+      const docRef = doc(firestore, 'channel_access_requests', requestId);
+      await deleteDoc(docRef);
+      toast({
+        title: "Request Removed",
+        description: "Your access request has been removed.",
+      });
+    } catch (e) {
+      console.error("Error removing request:", e);
+      toast({
+        variant: 'destructive',
+        title: "Error",
+        description: "Could not remove the request.",
+      });
+    }
+  };
+
   const getStatusBadge = (status: ChannelAccessRequestStatus) => {
     switch (status) {
         case 'pending':
@@ -77,18 +99,48 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                  <h3 className="text-xs font-bold uppercase text-gray-400">My Laboratory Access</h3>
                  <Button size="sm" variant="ghost" onClick={() => setIsRequestAccessOpen(true)}>
                     <KeyRound className="mr-2 h-4 w-4" />
-                    Request Access
+                    Request New Access
                  </Button>
               </div>
               <div className="space-y-2 text-sm max-h-40 overflow-y-auto pr-2">
                   {teacherAccessRequests.length > 0 ? teacherAccessRequests.map(req => (
                       <div key={req.id} className="text-xs p-2 rounded bg-black/30">
                           <div className="flex justify-between items-center">
-                              <span className="font-semibold text-white">{req.channelName.replace('#','')}</span>
-                              {getStatusBadge(req.status)}
+                              <div>
+                                  <p className="font-semibold text-white">{req.channelName.replace('#','')}</p>
+                                  <p className="text-gray-400">For: {req.subject}</p>
+                                  <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                  {getStatusBadge(req.status)}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                            aria-label="Remove request"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will remove your access request for {req.channelName.replace('#','')}. This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => handleDeleteRequest(req.id)}>
+                                                Continue
+                                            </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                              </div>
                           </div>
-                          <p className="text-gray-400">For: {req.subject}</p>
-                          <p className="text-gray-500 text-right">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
                       </div>
                   )) : (
                       <p className="text-center text-xs text-gray-500 py-4">You have not requested access to any labs.</p>

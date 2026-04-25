@@ -120,7 +120,7 @@ service cloud.firestore {
         allow create: if isTeacher() && isOwner(request.resource.data.teacherId);
         allow list, get: if isOwner(resource.data.teacherId) || isSupervisor();
         allow update: if isSupervisor() && request.resource.data.keys().hasOnly(['status']);
-        allow delete: if false;
+        allow delete: if isOwner(resource.data.teacherId);
     }
 
     // --------------------------------------------------------------------------------
