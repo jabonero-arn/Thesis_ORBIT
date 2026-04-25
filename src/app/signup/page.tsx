@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -200,7 +199,7 @@ export default function SignUpPage() {
                 </div>
                 <div className="grid gap-2">
                 <Label htmlFor="confirm-password">Confirm Password</Label>
-                <Input id="confirm-password" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} required maxLength={20} />
+                <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required maxLength={20} />
                 </div>
             </div>
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>
