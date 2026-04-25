@@ -75,7 +75,7 @@ export function ItemCard({
 
         {item.quantity === 0 && !isManagementView && (
             <Badge variant="destructive" className="absolute top-2 left-2">
-                {item.status === 'Borrowed' ? 'Borrowed' : 'Out of Stock'}
+                Out of Stock
             </Badge>
         )}
         
