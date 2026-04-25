@@ -35,8 +35,8 @@ export function ItemCard({
       // In management view, the card isn't for selection.
       return;
     }
-    // Allow selection if not 'Borrowed', OR if 'Borrowed' but has quantity (handles data inconsistency)
-    if (isSelectionEnabled && (item.status !== 'Borrowed' || item.quantity > 0) && !isPending) {
+    // Allow selection only if quantity is greater than 0 and not pending
+    if (isSelectionEnabled && item.quantity > 0 && !isPending) {
       onSelect();
     }
   };
@@ -49,9 +49,9 @@ export function ItemCard({
       onClick={handleCardClick}
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-200 bg-card/80 backdrop-blur-sm group h-full",
-        (isSelectionEnabled && (item.status !== 'Borrowed' || item.quantity > 0) && !isManagementView && !isPending) && "cursor-pointer",
+        (isSelectionEnabled && item.quantity > 0 && !isManagementView && !isPending) && "cursor-pointer",
         isSelected && isSelectionEnabled ? "border-primary shadow-lg shadow-primary/20" : "hover:border-primary/50 hover:shadow-md",
-        ((item.status === "Borrowed" && item.quantity === 0) || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed"
+        (item.quantity === 0 || isPending) && isSelectionEnabled && !isManagementView && "cursor-not-allowed opacity-50"
       )}
     >
       <div className="relative aspect-video overflow-hidden">
@@ -73,21 +73,25 @@ export function ItemCard({
           </div>
         )}
 
-        {item.status === 'Borrowed' && item.quantity === 0 && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
+        {item.quantity === 0 && !isManagementView && (
+            <Badge variant="destructive" className="absolute top-2 left-2">
+                {item.status === 'Borrowed' ? 'Borrowed' : 'Out of Stock'}
+            </Badge>
+        )}
         
-        {showPending && (
+        {item.quantity > 0 && showPending && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-amber-500/20 border-amber-500 text-amber-300 flex items-center">
                 <Hourglass className="mr-1 h-3 w-3"/>Pending
             </Badge>
         )}
         
-        {showApproved && (
+        {item.quantity > 0 && showApproved && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-green-600/20 border-green-600 text-green-300 flex items-center">
                 <CheckCircle className="mr-1 h-3 w-3"/>Approved
             </Badge>
         )}
 
-        {item.status === 'Locked' && !isPending && !isApproved && !isTeacherView && !isManagementView && (
+        {item.quantity > 0 && item.status === 'Locked' && !isPending && !isApproved && !isTeacherView && !isManagementView && (
             <Badge variant="secondary" className="absolute top-2 left-2 flex items-center">
                 <Lock className="mr-1 h-3 w-3"/>Locked
             </Badge>
