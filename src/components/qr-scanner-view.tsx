@@ -268,6 +268,7 @@ export function QrScannerView() {
                     borrowerUserId: originalPayload.u,
                     studentName: studentName,
                     itemName: dbItem.name,
+                    inventoryItemId: dbItem.id,
                     date: new Date().toISOString(),
                     status: 'Active',
                     checkoutSessionId: originalPayload.sid,
@@ -319,7 +320,7 @@ export function QrScannerView() {
     setIsProcessing(true);
     try {
         const batch = writeBatch(firestore);
-        const itemQuantityIncrements = new Map<string, number>();
+        const itemQuantityIncrements = new Map<string, number>(); // Key: inventoryItemId, Value: quantity to increment
 
         for (const record of selectedReturnGroup.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
@@ -338,29 +339,28 @@ export function QrScannerView() {
 
             batch.update(historyDocRef, updatePayload);
 
-
-            if (condition === 'Good') {
-                itemQuantityIncrements.set(record.itemName, (itemQuantityIncrements.get(record.itemName) || 0) + 1);
-            } else if (condition === 'Defected') {
-                const itemToUpdate = items.find(i => i.name === record.itemName);
-                if (itemToUpdate) {
-                    const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                    batch.update(itemDocRef, { status: 'Inaccurate' });
+            // Only update inventory if we know which item it is
+            if (record.inventoryItemId) {
+                if (condition === 'Good') {
+                    itemQuantityIncrements.set(record.inventoryItemId, (itemQuantityIncrements.get(record.inventoryItemId) || 0) + 1);
+                } else if (condition === 'Defected') {
+                    const itemDocRef = doc(firestore, 'inventory_items', record.inventoryItemId);
+                    batch.update(itemDocRef, { status: 'Inaccurate', inaccuracyReason: 'Returned with defect' });
                 }
+                // For 'Broken' or 'Lost', we don't increment the quantity, effectively removing it from circulation.
             }
         }
 
-        if (condition === 'Good') {
-            for (const [itemName, quantityToIncrement] of itemQuantityIncrements.entries()) {
-                const itemToUpdate = items.find(i => i.name === itemName);
-                if (itemToUpdate) {
-                    const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                    const newQuantity = itemToUpdate.quantity + quantityToIncrement;
-                    batch.update(itemDocRef, {
-                        quantity: newQuantity,
-                        status: newQuantity > 0 ? (itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status) : 'Borrowed'
-                    });
-                }
+        // Process quantity updates for 'Good' items
+        for (const [itemId, quantityToIncrement] of itemQuantityIncrements.entries()) {
+            const itemToUpdate = items.find(i => i.id === itemId);
+            if (itemToUpdate) {
+                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
+                const newQuantity = itemToUpdate.quantity + quantityToIncrement;
+                batch.update(itemDocRef, {
+                    quantity: newQuantity,
+                    status: itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status
+                });
             }
         }
 

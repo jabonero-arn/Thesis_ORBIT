@@ -89,6 +89,7 @@
       "properties": {
         "studentName": { "type": "string" },
         "itemName": { "type": "string" },
+        "inventoryItemId": { "type": "string", "description": "The ID of the specific inventory item document." },
         "itemQuantity": { "type": "number", "description": "The quantity of the item being borrowed or reserved." },
         "date": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["Pending", "Approved", "Denied", "Active", "Returned", "Pending Return", "Cancelled", "Reserved"] },

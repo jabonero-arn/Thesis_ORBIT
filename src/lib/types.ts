@@ -1,6 +1,5 @@
 
 
-
 export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Property Custodian";
 
 export type User = {
@@ -86,6 +85,7 @@ export type BorrowHistory = {
     id: string;
     studentName: string;
     itemName: string;
+    inventoryItemId?: string;
     itemQuantity?: number;
     date: string;
     status: BorrowHistoryStatus;
