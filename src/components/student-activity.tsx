@@ -54,12 +54,15 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
     const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
     
     const groupedActiveBorrows = React.useMemo(() => {
-        const groups: { [itemName: string]: BorrowHistory[] } = {};
+        const groups: { [compositeKey: string]: BorrowHistory[] } = {};
         activeBorrows.forEach(record => {
-            if (!groups[record.itemName]) {
-                groups[record.itemName] = [];
+            const key = record.borrowingType === 'Group' && record.groupNumber && record.groupSubject
+                ? `group_${record.itemName}_${record.groupNumber}_${record.groupSubject}`
+                : `individual_${record.itemName}`;
+            if (!groups[key]) {
+                groups[key] = [];
             }
-            groups[record.itemName].push(record);
+            groups[key].push(record);
         });
         return Object.values(groups);
     }, [activeBorrows]);
@@ -104,19 +107,27 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
         
     const totalToReturn = Array.from(selectedToReturn.values()).reduce((sum, quantity) => sum + quantity, 0);
 
-    const handleQuantityChange = (itemName: string, newQuantity: number, maxQuantity: number) => {
+    const handleQuantityChange = (compositeKey: string, newQuantity: number, maxQuantity: number) => {
         const boundedQuantity = Math.max(0, Math.min(newQuantity, maxQuantity));
-        setSelectedToReturn(prev => new Map(prev).set(itemName, boundedQuantity));
+        setSelectedToReturn(prev => new Map(prev).set(compositeKey, boundedQuantity));
     };
 
     const handleReturnSelected = () => {
         const recordsToReturn: BorrowHistory[] = [];
-        selectedToReturn.forEach((quantity, itemName) => {
+        selectedToReturn.forEach((quantity, compositeKey) => {
             if (quantity > 0) {
-                const availableRecords = borrowHistory.filter(h => 
-                    h.itemName === itemName && h.status === 'Active'
-                );
-                recordsToReturn.push(...availableRecords.slice(0, quantity));
+                const group = groupedActiveBorrows.find(g => {
+                    const firstRecord = g[0];
+                    if (!firstRecord) return false;
+                     const key = firstRecord.borrowingType === 'Group' && firstRecord.groupNumber && firstRecord.groupSubject
+                        ? `group_${firstRecord.itemName}_${firstRecord.groupNumber}_${firstRecord.groupSubject}`
+                        : `individual_${firstRecord.itemName}`;
+                    return key === compositeKey;
+                });
+
+                if (group) {
+                    recordsToReturn.push(...group.slice(0, quantity));
+                }
             }
         });
         
@@ -147,11 +158,15 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                             {groupedActiveBorrows.map(group => {
                                 const firstRecord = group[0];
                                 if (!firstRecord) return null;
+                                
+                                const compositeKey = firstRecord.borrowingType === 'Group' && firstRecord.groupNumber && firstRecord.groupSubject
+                                    ? `group_${firstRecord.itemName}_${firstRecord.groupNumber}_${firstRecord.groupSubject}`
+                                    : `individual_${firstRecord.itemName}`;
 
-                                const returnQuantity = selectedToReturn.get(firstRecord.itemName) || 0;
+                                const returnQuantity = selectedToReturn.get(compositeKey) || 0;
 
                                 return (
-                                    <div key={firstRecord.itemName} className="p-3 rounded-lg bg-black/20">
+                                    <div key={compositeKey} className="p-3 rounded-lg bg-black/20">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-4">
                                                 <div>
@@ -166,7 +181,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                         size="icon" 
                                                         variant="outline" 
                                                         className="h-7 w-7" 
-                                                        onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity - 1, group.length)}
+                                                        onClick={() => handleQuantityChange(compositeKey, returnQuantity - 1, group.length)}
                                                         disabled={returnQuantity <= 0}
                                                     >
                                                         <Minus className="h-4 w-4" />
@@ -176,7 +191,7 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                                         size="icon" 
                                                         variant="outline" 
                                                         className="h-7 w-7" 
-                                                        onClick={() => handleQuantityChange(firstRecord.itemName, returnQuantity + 1, group.length)}
+                                                        onClick={() => handleQuantityChange(compositeKey, returnQuantity + 1, group.length)}
                                                         disabled={returnQuantity >= group.length}
                                                     >
                                                         <Plus className="h-4 w-4" />
@@ -377,5 +392,3 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
 
     return null;
 }
-
-    

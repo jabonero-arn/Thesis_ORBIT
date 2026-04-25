@@ -53,10 +53,31 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
   const [isLoading, setIsLoading] = React.useState(false)
   const [isQrCodeOpen, setIsQrCodeOpen] = React.useState(false)
   const [qrCodeData, setQrCodeData] = React.useState<string>("");
+  const [activeCheckoutSessionId, setActiveCheckoutSessionId] = React.useState<string | null>(null);
+
   const { toast } = useToast()
   const { user } = useUser();
   const { items: allItems, borrowHistory } = useAppContext();
   const firestore = useFirestore();
+
+
+  React.useEffect(() => {
+    if (!isQrCodeOpen || !activeCheckoutSessionId) return;
+
+    // Check if a borrow history record for this session has been created
+    const checkoutComplete = borrowHistory.some(h => h.checkoutSessionId === activeCheckoutSessionId);
+
+    if (checkoutComplete) {
+        toast({
+            title: "Checkout Complete!",
+            description: "Your items have been successfully checked out.",
+        });
+        setIsQrCodeOpen(false);
+        setActiveCheckoutSessionId(null);
+        onSuccess();
+    }
+  }, [borrowHistory, isQrCodeOpen, activeCheckoutSessionId, onSuccess, toast]);
+
 
   const handleSubmit = () => {
     if (isReserve) {
@@ -99,9 +120,13 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         approvalsToConsume.push(...availableApprovals.slice(0, quantity).map(a => a.id));
       }
     }
+
+    const sessionId = `checkout-${user.uid}-${Date.now()}`;
+    setActiveCheckoutSessionId(sessionId);
     
     const checkoutPayload: any = {
       t: 'c', // type: checkout
+      sid: sessionId, // checkout session ID
       u: user.uid,
       i: cartItems.map(({ item, quantity }) => ({ id: item.id, q: quantity })),
       a: approvalsToConsume,
@@ -257,11 +282,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
   const handleCancelQrDialog = () => {
     setIsQrCodeOpen(false);
-  }
-
-  const handleDoneQrDialog = () => {
-    setIsQrCodeOpen(false);
-    onSuccess(); 
+    setActiveCheckoutSessionId(null);
   }
 
   if (cartItems.length === 0) {
@@ -407,7 +428,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             <DialogHeader>
               <DialogTitle className="font-headline">Your QR Code</DialogTitle>
               <DialogDescription>
-                Present this QR code to the lab staff to complete the checkout process.
+                Present this QR code to the lab staff. This dialog will close automatically after scanning.
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-center py-4">
@@ -423,9 +444,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCancelQrDialog}>
                 Cancel
-              </Button>
-              <Button type="button" onClick={handleDoneQrDialog}>
-                Done
               </Button>
             </DialogFooter>
           </DialogContent>

@@ -19,6 +19,7 @@ import { Label } from "@/components/ui/label"
 
 type ScannedCompactCheckoutData = {
     t: 'c'; // type: 'checkout'
+    sid: string; // session ID
     u: string; // userId
     i: { id: string; q: number }[]; // items: id and quantity
     a: string[]; // approvalsToConsume
@@ -269,6 +270,7 @@ export function QrScannerView() {
                     itemName: dbItem.name,
                     date: new Date().toISOString(),
                     status: 'Active',
+                    checkoutSessionId: originalPayload.sid,
                 };
 
                 if (originalPayload.gType === 'Group') {
@@ -285,7 +287,7 @@ export function QrScannerView() {
         });
         originalPayload.a.forEach(approvalId => {
             const approvalDocRef = doc(firestore, 'borrowing_transactions', approvalId);
-            batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString() });
+            batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString(), checkoutSessionId: originalPayload.sid });
         });
         await batch.commit();
         const totalItemsCheckedOut = originalPayload.i.reduce((sum, item) => sum + item.q, 0);

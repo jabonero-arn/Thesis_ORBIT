@@ -72,12 +72,6 @@ export function ItemCard({
              <Hourglass className="h-12 w-12 text-amber-300 animate-spin" />
           </div>
         )}
-        {showApproved && (
-           <div className="absolute inset-0 bg-green-900/50 flex items-center justify-center">
-             <CheckCircle className="h-12 w-12 text-green-300" />
-          </div>
-        )}
-
 
         {item.status === 'Borrowed' && item.quantity === 0 && <Badge variant="destructive" className="absolute top-2 left-2">Borrowed</Badge>}
         
@@ -89,7 +83,7 @@ export function ItemCard({
         
         {showApproved && (
             <Badge variant="outline" className="absolute top-2 left-2 bg-green-600/20 border-green-600 text-green-300 flex items-center">
-                <CheckCircle className="mr-1 h-3 w-3"/>Pending
+                <CheckCircle className="mr-1 h-3 w-3"/>Approved
             </Badge>
         )}
 
