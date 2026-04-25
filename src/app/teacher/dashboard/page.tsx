@@ -268,6 +268,7 @@ export default function TeacherDashboardPage() {
                   <TableRow>
                     <TableHead>Student</TableHead>
                     <TableHead>Item</TableHead>
+                    <TableHead>Qty</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -277,6 +278,7 @@ export default function TeacherDashboardPage() {
                     <TableRow key={record.id}>
                       <TableCell className="font-medium">{record.studentName}</TableCell>
                       <TableCell>{record.itemName}</TableCell>
+                      <TableCell>{record.itemQuantity || 1}</TableCell>
                       <TableCell>{format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                       <TableCell className="text-right space-x-2">
                         <Button variant="secondary" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Approved')}>
@@ -310,6 +312,7 @@ export default function TeacherDashboardPage() {
                 <TableRow className="sticky top-0 bg-card z-10">
                   <TableHead>Student</TableHead>
                   <TableHead>Item</TableHead>
+                  <TableHead>Qty</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead className="text-right">Status</TableHead>
                 </TableRow>
@@ -319,6 +322,7 @@ export default function TeacherDashboardPage() {
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">{record.studentName}</TableCell>
                     <TableCell>{record.itemName}</TableCell>
+                    <TableCell>{record.itemQuantity || 1}</TableCell>
                     <TableCell>{format(new Date(record.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                     <TableCell className="text-right">
                       {getHistoryStatusBadge(record.status)}
@@ -326,7 +330,7 @@ export default function TeacherDashboardPage() {
                   </TableRow>
                 )) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       No processed requests yet.
                     </TableCell>
                   </TableRow>

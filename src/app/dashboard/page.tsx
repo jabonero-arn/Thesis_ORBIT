@@ -214,12 +214,13 @@ export default function Home() {
     });
   }
 
-  const handleConfirmRequest = async (teacherId: string) => {
+  const handleConfirmRequest = async (teacherId: string, quantity: number) => {
     if (!itemToRequest || !user?.displayName || !firestore || !user.uid) return;
     
     const newRequest: Omit<BorrowHistory, 'id'> = {
         studentName: user.displayName,
         itemName: itemToRequest.name,
+        itemQuantity: quantity,
         date: new Date().toISOString(),
         status: 'Pending',
         teacherId: teacherId,
@@ -232,7 +233,7 @@ export default function Home() {
       setItemToRequest(null);
       toast({
           title: "Approval Request Sent",
-          description: `Your request for "${itemToRequest.name}" has been sent for approval.`,
+          description: `Your request for ${quantity} of "${itemToRequest.name}" has been sent for approval.`,
       });
     } catch (error) {
       console.error("Error sending request:", error);
@@ -540,7 +541,7 @@ export default function Home() {
                                 ))}
                             </div>
                         </div>
-                        <div className="mt-auto border-t border-border/50 bg-[#0e1015] pb-6">
+                        <div className="mt-auto border-t border-border/50 bg-[#0e1015] pb-8">
                           <div className="flex items-center justify-between p-2">
                               <UserProfileModal role="Student">
                                 <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
