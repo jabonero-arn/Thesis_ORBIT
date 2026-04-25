@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -37,7 +36,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { departments, studentDepartmentAccessRequests, allUsers } = useAppContext();
+  const { departments, studentDepartmentAccessRequests, allUsers, channels, channelAccessRequests } = useAppContext();
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedDepts, setSelectedDepts] = React.useState<Map<string, RequestLine>>(new Map());
@@ -61,9 +60,33 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     departments.filter(d => !alreadyRequestedDeptIds.has(d.id))
   , [departments, alreadyRequestedDeptIds]);
 
-  const teachers = React.useMemo(() =>
-      allUsers.filter(u => u.role === 'Teacher')
-  , [allUsers]);
+  const teachersByDepartment = React.useMemo(() => {
+    const map = new Map<string, { id: string; displayName: string }[]>();
+
+    if (!departments || !channels || !channelAccessRequests || !allUsers) {
+        return map;
+    }
+
+    departments.forEach(dept => {
+        const channelsInDept = channels.filter(c => c.departmentId === dept.id).map(c => c.id);
+        const channelsInDeptSet = new Set(channelsInDept);
+
+        const approvedTeacherIds = new Set(
+            channelAccessRequests
+                .filter(req => req.status === 'approved' && channelsInDeptSet.has(req.channelId))
+                .map(req => req.teacherId)
+        );
+
+        const teachersForDept = allUsers
+            .filter(u => u.role === 'Teacher' && approvedTeacherIds.has(u.id))
+            .map(u => ({ id: u.id, displayName: u.displayName }));
+
+        map.set(dept.id, teachersForDept);
+    });
+
+    return map;
+  }, [departments, channels, channelAccessRequests, allUsers]);
+
 
   const handleDeptToggle = (checked: boolean, departmentId: string) => {
       setSelectedDepts(prev => {
@@ -199,9 +222,15 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
                                             <SelectValue placeholder="Select a teacher..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {teachers.map(t => (
-                                                <SelectItem key={t.id} value={t.id}>{t.displayName}</SelectItem>
-                                            ))}
+                                            {teachersByDepartment.get(d.id)?.length ?? 0 > 0 ? (
+                                                teachersByDepartment.get(d.id)!.map(t => (
+                                                    <SelectItem key={t.id} value={t.id}>{t.displayName}</SelectItem>
+                                                ))
+                                            ) : (
+                                                <SelectItem value="no-teachers" disabled>
+                                                    No approved teachers for this department.
+                                                </SelectItem>
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </div>
