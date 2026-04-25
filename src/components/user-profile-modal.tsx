@@ -117,7 +117,6 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
                                     <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    {getStatusBadge(req.status)}
                                     <DropdownMenu>
                                       <DropdownMenuTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Edit className="h-4 w-4" /></Button>
