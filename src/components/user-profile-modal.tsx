@@ -22,6 +22,8 @@ import { Badge } from "./ui/badge"
 import { format } from "date-fns"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu"
+import { EditLabAccessDialog } from "./teacher/edit-lab-access-dialog"
 
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
@@ -33,6 +35,8 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
   const [isProfileOpen, setIsProfileOpen] = React.useState(false);
   const [isEditOpen, setIsEditOpen] = React.useState(false);
   const [isRequestAccessOpen, setIsRequestAccessOpen] = React.useState(false);
+  const [isEditAccessOpen, setIsEditAccessOpen] = React.useState(false);
+  const [requestToEdit, setRequestToEdit] = React.useState<ChannelAccessRequest | null>(null);
 
 
   const userProfileRef = useMemoFirebase(() => {
@@ -104,44 +108,50 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
               </div>
               <div className="space-y-2 text-sm max-h-40 overflow-y-auto pr-2">
                   {teacherAccessRequests.length > 0 ? teacherAccessRequests.map(req => (
-                      <div key={req.id} className="text-xs p-2 rounded bg-black/30">
-                          <div className="flex justify-between items-center">
-                              <div>
-                                  <p className="font-semibold text-white">{req.channelName.replace('#','')}</p>
-                                  <p className="text-gray-400">For: {req.subject}</p>
-                                  <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                  {getStatusBadge(req.status)}
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                                            aria-label="Remove request"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This will remove your access request for {req.channelName.replace('#','')}. This action cannot be undone.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => handleDeleteRequest(req.id)}>
-                                                Continue
-                                            </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                              </div>
-                          </div>
-                      </div>
+                      <AlertDialog key={req.id}>
+                        <div className="text-xs p-2 rounded bg-black/30">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold text-white">{req.channelName.replace('#','')}</p>
+                                    <p className="text-gray-400">For: {req.subject}</p>
+                                    <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    {getStatusBadge(req.status)}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Edit className="h-4 w-4" /></Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => { setRequestToEdit(req); setIsEditAccessOpen(true);}}>
+                                          Edit Request
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <AlertDialogTrigger asChild>
+                                          <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground" onSelect={(e) => e.preventDefault()}>
+                                            Delete Request
+                                          </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
+                        </div>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                  This will remove your access request for {req.channelName.replace('#','')}. This action cannot be undone.
+                              </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteRequest(req.id)}>
+                                  Continue
+                              </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                   )) : (
                       <p className="text-center text-xs text-gray-500 py-4">You have not requested access to any labs.</p>
                   )}
@@ -208,6 +218,11 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
         displayRole={displayRole}
       />
       <RequestLabAccessDialog open={isRequestAccessOpen} onOpenChange={setIsRequestAccessOpen} />
+      <EditLabAccessDialog 
+        open={isEditAccessOpen} 
+        onOpenChange={setIsEditAccessOpen}
+        request={requestToEdit}
+      />
     </>
   )
 }

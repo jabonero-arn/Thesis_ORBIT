@@ -119,7 +119,7 @@ service cloud.firestore {
     match /channel_access_requests/{requestId} {
         allow create: if isTeacher() && isOwner(request.resource.data.teacherId);
         allow list, get: if isOwner(resource.data.teacherId) || isSupervisor();
-        allow update: if isSupervisor() && request.resource.data.keys().hasOnly(['status']);
+        allow update: if (isSupervisor() && request.resource.data.keys().hasOnly(['status'])) || (isTeacher() && isOwner(resource.data.teacherId));
         allow delete: if isOwner(resource.data.teacherId);
     }
 
