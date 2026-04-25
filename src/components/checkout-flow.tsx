@@ -394,7 +394,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
             <div className="flex items-center justify-between">
                 <Label htmlFor="reservation-mode" className="font-medium">
-                {isReserve ? 'Reserve for Later' : 'Immediate Borrow'}
+                Reserve for Later
                 </Label>
                 <Switch
                 id="reservation-mode"
@@ -525,5 +525,3 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     </div>
   )
 }
-
-    
