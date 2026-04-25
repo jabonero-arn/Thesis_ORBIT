@@ -337,7 +337,7 @@ export default function StaffDashboardPage() {
 
      if (isUserLoading || isProfileLoading || !user) {
       return (
-        <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+        <div className="flex h-dvh w-full items-center justify-center bg-[#1e2430]">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </div>
       );
@@ -346,7 +346,7 @@ export default function StaffDashboardPage() {
     return (
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
-            <div className="flex h-screen bg-[#1e2430]">
+            <div className="flex h-dvh bg-[#1e2430]">
                  <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
                         <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
@@ -414,7 +414,7 @@ export default function StaffDashboardPage() {
                     </div>
                 </div>
 
-                <main className="flex-1 flex flex-col h-screen">
+                <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger>

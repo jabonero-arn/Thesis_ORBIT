@@ -212,13 +212,13 @@ export default function PropertyCustodianDashboardPage() {
     );
     
     if (isUserLoading || !user) {
-      return (<div className="flex h-screen w-full items-center justify-center bg-[#1e2430]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>);
+      return (<div className="flex h-dvh w-full items-center justify-center bg-[#1e2430]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>);
     }
 
     return (
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
-            <div className="flex h-screen bg-[#1e2430]">
+            <div className="flex h-dvh bg-[#1e2430]">
                 <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
                         <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
@@ -265,7 +265,7 @@ export default function PropertyCustodianDashboardPage() {
                      <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
                 </div>
 
-                <main className="flex-1 flex flex-col h-screen">
+                <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>

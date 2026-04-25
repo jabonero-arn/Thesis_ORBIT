@@ -166,6 +166,7 @@ export default function Home() {
   }, [selectedDepartmentId, channels]);
 
   const handleItemSelect = (item: InventoryItem) => {
+    if (item.quantity === 0) return;
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
         return; // Already in cart, do nothing
@@ -307,7 +308,7 @@ export default function Home() {
 
   if (isUserLoading || isProfileLoading || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+      <div className="flex h-dvh w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -316,7 +317,7 @@ export default function Home() {
   if (studentDepartments.length === 0) {
      return (
       <TooltipProvider>
-       <div className="flex h-screen bg-[#1e2430]">
+       <div className="flex h-dvh bg-[#1e2430]">
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
             <div className="flex flex-1">
                  <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
@@ -356,7 +357,7 @@ export default function Home() {
               </div>
             </div>
         </div>
-         <main className="flex-1 flex flex-col h-screen">
+         <main className="flex-1 flex flex-col h-dvh">
           <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
              <div className="flex items-center gap-2">
                 <Sheet>
@@ -393,7 +394,7 @@ export default function Home() {
 
   return (
     <TooltipProvider>
-      <div className="flex h-screen bg-[#1e2430]">
+      <div className="flex h-dvh bg-[#1e2430]">
         {/* Combined Sidebar */}
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
             <div className="flex flex-1">
@@ -497,7 +498,7 @@ export default function Home() {
         </div>
         
         {/* Main Content */}
-        <main className="flex-1 flex flex-col h-screen">
+        <main className="flex-1 flex flex-col">
           <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>

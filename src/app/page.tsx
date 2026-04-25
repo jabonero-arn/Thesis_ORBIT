@@ -56,7 +56,7 @@ export default function RoleSelectionPage() {
   ]
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-[#1e2430] p-4 lg:p-8">
+    <div className="flex h-dvh w-full items-center justify-center bg-[#1e2430] p-4 lg:p-8">
       <div className="flex w-full max-w-5xl flex-col items-center justify-center gap-8 lg:flex-row lg:items-stretch">
 
         {/* Info Card */}

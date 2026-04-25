@@ -216,7 +216,7 @@ export default function TeacherDashboardPage() {
   }, [selectedDepartmentId, teacherChannels]);
 
   const handleItemSelect = (item: InventoryItem) => {
-    if (item.status === "Borrowed") return;
+    if (item.status === "Borrowed" || item.quantity === 0) return;
 
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
@@ -387,7 +387,7 @@ export default function TeacherDashboardPage() {
                 </Button>
             </div>
         </div>
-        <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
+        <div className="mt-auto border-t border-border/50 bg-[#0e1015] pb-8">
           <div className="flex items-center justify-between p-2">
             <UserProfileModal role="Teacher">
               <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
@@ -479,7 +479,7 @@ export default function TeacherDashboardPage() {
 
   if (isUserLoading || isProfileLoading || !teacherData) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#1e2430]">
+      <div className="flex h-dvh w-full items-center justify-center bg-[#1e2430]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -495,7 +495,7 @@ export default function TeacherDashboardPage() {
         open={showLabSelectionDialog}
         onFinished={() => setShowLabSelectionDialog(false)}
       />
-      <div className="flex h-screen bg-[#1e2430]">
+      <div className="flex h-dvh bg-[#1e2430]">
         {/* Combined Sidebar */}
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
             <div className="flex flex-1">
@@ -612,7 +612,7 @@ export default function TeacherDashboardPage() {
         </div>
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col h-screen">
+        <main className="flex-1 flex flex-col h-dvh">
           {activeView === 'borrow' ? <BorrowView /> : <RequestsView />}
         </main>
 

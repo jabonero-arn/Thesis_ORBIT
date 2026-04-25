@@ -13,7 +13,8 @@ export const metadata: Metadata = {
     title: 'Orbit',
   },
   icons: {
-    apple: '/icons/icon-192x192.png',
+    icon: '/icon.svg',
+    apple: '/icon.svg',
   },
 };
 
