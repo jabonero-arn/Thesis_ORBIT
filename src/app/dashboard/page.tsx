@@ -33,17 +33,17 @@ export default function Home() {
   const { toast } = useToast()
   const { items: allItems, borrowHistory, departments, channels, allUsers, channelAccessRequests } = useAppContext();
 
+  const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
+  
+  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
+  const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null);
+
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
-
-  const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
-  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
-
-  const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
-  const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null);
 
   const teachersForDialog = React.useMemo(() => {
       if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
@@ -132,6 +132,10 @@ export default function Home() {
   
   const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId, channels])
   const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId, departments]);
+  const channelsForSidebar = React.useMemo(() => {
+    if (!selectedDepartmentId) return [];
+    return channels.filter(c => c.departmentId === selectedDepartmentId);
+  }, [selectedDepartmentId, channels]);
 
   const handleItemSelect = (item: InventoryItem) => {
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
@@ -411,7 +415,8 @@ export default function Home() {
                           {selectedDepartment?.name}
                         </div>
                         <AppSidebar
-                          departmentId={selectedDepartmentId}
+                          department={selectedDepartment}
+                          channelsInDept={channelsForSidebar}
                           selectedChannelId={selectedChannelId}
                           onChannelSelect={handleChannelSelect}
                         />
@@ -490,7 +495,8 @@ export default function Home() {
                             </div>
                             {activeView === 'borrow' && selectedDepartmentId && (
                                 <AppSidebar
-                                    departmentId={selectedDepartmentId}
+                                    department={selectedDepartment}
+                                    channelsInDept={channelsForSidebar}
                                     selectedChannelId={selectedChannelId}
                                     onChannelSelect={handleChannelSelect}
                                 />
@@ -638,5 +644,3 @@ export default function Home() {
     </TooltipProvider>
   )
 }
-
-    

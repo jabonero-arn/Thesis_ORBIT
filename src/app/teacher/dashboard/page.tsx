@@ -39,7 +39,7 @@ export default function TeacherDashboardPage() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, departments, channels } = useAppContext();
+  const { items: allItems, borrowHistory, departments, channels, channelAccessRequests } = useAppContext();
   
   const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
   const [showLabSelectionDialog, setShowLabSelectionDialog] = React.useState(false);
@@ -87,27 +87,51 @@ export default function TeacherDashboardPage() {
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
   const [requestSubView, setRequestSubView] = React.useState<RequestSubView>('pending');
 
+  const approvedChannelsInfo = React.useMemo(() => {
+    if (!user || !channelAccessRequests) return { approvedChannelIds: new Set<string>(), approvedDepartmentIds: new Set<string>() };
+    
+    const approvedReqs = channelAccessRequests.filter(req => req.teacherId === user.uid && req.status === 'approved');
+    
+    const approvedChannelIds = new Set(approvedReqs.map(req => req.channelId));
+    const approvedDepartmentIds = new Set<string>();
+    channels.forEach(channel => {
+        if(approvedChannelIds.has(channel.id)) {
+            approvedDepartmentIds.add(channel.departmentId);
+        }
+    });
+
+    return { approvedChannelIds, approvedDepartmentIds };
+  }, [user, channelAccessRequests, channels]);
+
+  const teacherDepartments = React.useMemo(() => {
+    if (!departments) return [];
+    return departments.filter(dept => approvedChannelsInfo.approvedDepartmentIds.has(dept.id));
+  }, [departments, approvedChannelsInfo.approvedDepartmentIds]);
+
+  const teacherChannels = React.useMemo(() => {
+    if (!channels) return [];
+    return channels.filter(chan => approvedChannelsInfo.approvedChannelIds.has(chan.id));
+  }, [channels, approvedChannelsInfo.approvedChannelIds]);
+
+
   // State for borrowing
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string|null>(null);
   const [selectedChannelId, setSelectedChannelId] = React.useState<string|null>(null);
 
   React.useEffect(() => {
-    if (activeView === 'borrow' && !selectedDepartmentId && departments.length > 0) {
-      setSelectedDepartmentId(departments[0].id);
+    if (activeView === 'borrow' && !selectedDepartmentId && teacherDepartments.length > 0) {
+      setSelectedDepartmentId(teacherDepartments[0].id);
     }
-  }, [departments, selectedDepartmentId, activeView]);
+  }, [teacherDepartments, selectedDepartmentId, activeView]);
 
   React.useEffect(() => {
-    if (activeView === 'borrow' && selectedDepartmentId && !selectedChannelId) {
-        const dept = departments.find(d => d.id === selectedDepartmentId);
-        if (dept) {
-            const firstChannel = channels.find(c => c.departmentId === dept.id);
-            if (firstChannel) {
-                setSelectedChannelId(firstChannel.id);
-            }
+    if (activeView === 'borrow' && selectedDepartmentId) {
+        const firstChannelInDept = teacherChannels.find(c => c.departmentId === selectedDepartmentId);
+        if (!selectedChannelId || !teacherChannels.some(c => c.id === selectedChannelId && c.departmentId === selectedDepartmentId)) {
+           setSelectedChannelId(firstChannelInDept?.id ?? null);
         }
     }
-  }, [selectedDepartmentId, selectedChannelId, channels, departments, activeView]);
+  }, [selectedDepartmentId, teacherChannels, activeView, selectedChannelId]);
 
 
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
@@ -166,7 +190,7 @@ export default function TeacherDashboardPage() {
   const handleDepartmentSelect = (deptId: string) => {
     setActiveView('borrow')
     setSelectedDepartmentId(deptId);
-    const firstChannelInDept = channels.find(c => c.departmentId === deptId);
+    const firstChannelInDept = teacherChannels.find(c => c.departmentId === deptId);
     setSelectedChannelId(firstChannelInDept?.id ?? null);
     setSelectedItems([]);
   }
@@ -176,8 +200,12 @@ export default function TeacherDashboardPage() {
     [allItems, selectedChannelId]
   )
   
-  const selectedChannel = React.useMemo(() => channels.find(c => c.id === selectedChannelId), [selectedChannelId, channels])
-  const selectedDepartment = React.useMemo(() => departments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId, departments]);
+  const selectedChannel = React.useMemo(() => teacherChannels.find(c => c.id === selectedChannelId), [selectedChannelId, teacherChannels])
+  const selectedDepartment = React.useMemo(() => teacherDepartments.find(d => d.id === selectedDepartmentId), [selectedDepartmentId, teacherDepartments]);
+  const channelsForSidebar = React.useMemo(() => {
+    if (!selectedDepartmentId) return [];
+    return teacherChannels.filter(c => c.departmentId === selectedDepartmentId);
+  }, [selectedDepartmentId, teacherChannels]);
 
   const handleItemSelect = (item: InventoryItem) => {
     if (item.status === "Borrowed") return;
@@ -319,7 +347,7 @@ export default function TeacherDashboardPage() {
                 Departments
             </div>
             <div className="p-2 space-y-1">
-                {departments.map(dept => (
+                {teacherDepartments.map(dept => (
                     <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
                         {getDeptIcon(dept.prefix)}
                         {dept.name}
@@ -329,7 +357,8 @@ export default function TeacherDashboardPage() {
             
             {activeView === 'borrow' && selectedDepartmentId && (
                 <AppSidebar
-                    departmentId={selectedDepartmentId}
+                    department={selectedDepartment}
+                    channelsInDept={channelsForSidebar}
                     selectedChannelId={selectedChannelId}
                     onChannelSelect={handleChannelSelect}
                 />
@@ -467,7 +496,7 @@ export default function TeacherDashboardPage() {
                     <Logo />
                   </div>
                   <div className="flex flex-col items-center gap-2 w-full">
-                    {departments.map(dept => (
+                    {teacherDepartments.map(dept => (
                       <Tooltip key={dept.id}>
                           <TooltipTrigger asChild>
                               <Button variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => handleDepartmentSelect(dept.id)}>
@@ -505,7 +534,8 @@ export default function TeacherDashboardPage() {
                         {selectedDepartment?.name}
                     </div>
                     <AppSidebar
-                        departmentId={selectedDepartmentId}
+                        department={selectedDepartment}
+                        channelsInDept={channelsForSidebar}
                         selectedChannelId={selectedChannelId}
                         onChannelSelect={handleChannelSelect}
                     />
