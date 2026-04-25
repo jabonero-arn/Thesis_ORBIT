@@ -7,7 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, Edit, Trash, QrCode, Loader2, Menu,
-    Hourglass, PackageCheck, LayoutGrid, List, AlertTriangle
+    Hourglass, PackageCheck, LayoutGrid, List, AlertTriangle, ClipboardCheck, Check, X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -15,7 +15,7 @@ import { UserNav } from "@/components/user-nav"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, Department } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, Department, StudentDepartmentAccessRequestStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -29,7 +29,7 @@ import { ForcePasswordChangeDialog } from "@/components/force-password-change-di
 import { InventoryGrid } from "@/components/inventory-grid"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
 
-type StaffView = 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged';
+type StaffView = 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged' | 'accessRequests';
 type TransactionSubView = 'reservations' | 'borrowed';
 type InventorySubView = 'grid' | 'table';
 
@@ -37,7 +37,7 @@ export default function StaffDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, departments, channels } = useAppContext();
+    const { items, borrowHistory, departments, channels, studentDepartmentAccessRequests } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -64,6 +64,10 @@ export default function StaffDashboardPage() {
         const itemNamesInDept = new Set(departmentItems.map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, departmentItems]);
+    
+    const pendingStudentRequests = React.useMemo(() => {
+        return studentDepartmentAccessRequests.filter(req => req.departmentId === assignedDepartmentId && req.status === 'pending');
+    }, [studentDepartmentAccessRequests, assignedDepartmentId]);
 
     const { groupedPendingReservations, groupedConfirmedReservations } = React.useMemo(() => {
         const pending: { [id: string]: { records: BorrowHistory[], date: string, studentName: string, startTime?: string, endTime?: string } } = {};
@@ -127,6 +131,22 @@ export default function StaffDashboardPage() {
         setActiveView(view);
         setIsMobileMenuOpen(false);
     }
+    
+    const handleAccessRequest = async (requestId: string, newStatus: StudentDepartmentAccessRequestStatus) => {
+        if (!firestore) return;
+        try {
+            const docRef = doc(firestore, 'student_department_access_requests', requestId);
+            await updateDoc(docRef, { status: newStatus });
+            toast({
+                title: `Request ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+                description: `The student's access request has been updated.`,
+            });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        }
+    };
+
 
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
         const variants: Record<BorrowHistoryStatus, "secondary" | "destructive" | "outline" | "default"> = {
@@ -139,6 +159,7 @@ export default function StaffDashboardPage() {
     
     const navItems = [
         { id: 'scanner', label: 'QR Scanner', icon: <QrCode /> },
+        { id: 'accessRequests', label: 'Access Requests', icon: <ClipboardCheck /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
@@ -161,6 +182,43 @@ export default function StaffDashboardPage() {
 
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
+            case 'accessRequests': return (
+                <Card className="bg-card/80">
+                    <CardHeader>
+                        <CardTitle>Student Department Access</CardTitle>
+                        <CardDescription>Approve or deny student requests to access your department's materials.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Department</TableHead>
+                                    <TableHead>Date Requested</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
+                                    <TableRow key={req.id}>
+                                        <TableCell>{req.studentName}</TableCell>
+                                        <TableCell>{req.departmentName}</TableCell>
+                                        <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                        <TableCell className="text-right space-x-2">
+                                            <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
+                                            <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="h-24 text-center">No pending student requests.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            );
             case 'inventory': return (
                 <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                     {inventorySubView === 'grid' ? (

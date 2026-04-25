@@ -39,13 +39,6 @@
           "type": "string",
           "description": "Student's education level (college or shs)."
         },
-        "departmentIds": {
-            "type": "array",
-            "description": "The IDs of the departments the student is associated with.",
-            "items": {
-                "type": "string"
-            }
-        },
         "department": {
           "type": "string",
           "description": "The department the user belongs to (for non-students)."
@@ -182,6 +175,20 @@
             "requestedAt": { "type": "string", "format": "date-time" }
         },
         "required": ["teacherId", "teacherName", "channelId", "channelName", "departmentId", "subject", "status", "requestedAt"]
+    },
+    "StudentDepartmentAccessRequest": {
+        "title": "Student Department Access Request",
+        "description": "A student's request to gain access to a specific department.",
+        "type": "object",
+        "properties": {
+            "studentId": { "type": "string" },
+            "studentName": { "type": "string" },
+            "departmentId": { "type": "string" },
+            "departmentName": { "type": "string" },
+            "status": { "type": "string", "enum": ["pending", "approved", "denied"] },
+            "requestedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["studentId", "studentName", "departmentId", "departmentName", "status", "requestedAt"]
     }
   },
   "auth": {
@@ -251,6 +258,10 @@
     "/channel_access_requests/{requestId}": {
         "schema": { "$ref": "#/entities/ChannelAccessRequest" },
         "description": "Stores teachers' requests for lab access."
+    },
+    "/student_department_access_requests/{requestId}": {
+        "schema": { "$ref": "#/entities/StudentDepartmentAccessRequest" },
+        "description": "Stores students' requests for department access."
     }
   }
 }

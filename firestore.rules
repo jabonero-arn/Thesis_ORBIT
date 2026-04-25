@@ -57,7 +57,7 @@ service cloud.firestore {
     function isPropertyCustodian() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
-    function getSupervisorAssignedDept() {
+    function getStaffAssignedDept() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId;
     }
 
@@ -123,6 +123,18 @@ service cloud.firestore {
         allow update: if (isSupervisor() && request.resource.data.keys().hasOnly(['status'])) || (isTeacher() && isOwner(resource.data.teacherId));
         allow delete: if isOwner(resource.data.teacherId);
     }
+
+    // --------------------------------------------------------------------------------
+    // Student Department Access Request Rules
+    // --------------------------------------------------------------------------------
+    match /student_department_access_requests/{requestId} {
+        allow create: if isOwner(request.resource.data.studentId);
+        allow get: if isOwner(resource.data.studentId) || isStaff();
+        allow list: if isSignedIn();
+        allow update: if isStaff() && request.resource.data.keys().hasOnly(['status']) && resource.data.departmentId == getStaffAssignedDept();
+        allow delete: if isOwner(resource.data.studentId);
+    }
+
 
     // --------------------------------------------------------------------------------
     // Inventory Rules

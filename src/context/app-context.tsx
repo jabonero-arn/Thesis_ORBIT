@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest } from '@/lib/types';
+import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest, StudentDepartmentAccessRequest } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -14,6 +14,7 @@ type AppContextType = {
   departments: Department[];
   channels: Channel[];
   channelAccessRequests: ChannelAccessRequest[];
+  studentDepartmentAccessRequests: StudentDepartmentAccessRequest[];
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -54,6 +55,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     firestore ? query(collection(firestore, 'channel_access_requests'), orderBy('requestedAt', 'desc')) : null
   , [firestore]);
   const { data: accessRequestsData } = useCollection<Omit<ChannelAccessRequest, 'id'>>(accessRequestsQuery);
+
+  const studentAccessRequestsQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'student_department_access_requests'), orderBy('requestedAt', 'desc')) : null
+  , [firestore]);
+  const { data: studentAccessRequestsData } = useCollection<Omit<StudentDepartmentAccessRequest, 'id'>>(studentAccessRequestsQuery);
 
 
   // This ref is to prevent the effect from running multiple times for the same set of cancellations
@@ -114,7 +120,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     departments: departmentsData || [],
     channels: channelsData || [],
     channelAccessRequests: accessRequestsData || [],
-  }), [itemsData, historyData, usersData, departmentsData, channelsData, accessRequestsData]);
+    studentDepartmentAccessRequests: studentAccessRequestsData || [],
+  }), [itemsData, historyData, usersData, departmentsData, channelsData, accessRequestsData, studentAccessRequestsData]);
 
   return (
     <AppContext.Provider value={value}>

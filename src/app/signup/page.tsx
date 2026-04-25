@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -44,16 +45,6 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [educationLevel, setEducationLevel] = React.useState<"college" | "shs" | "">("");
   const [idNumber, setIdNumber] = React.useState("");
-  const [selectedDepartments, setSelectedDepartments] = React.useState<string[]>([]);
-
-
-  const handleDepartmentChange = (departmentId: string) => {
-    setSelectedDepartments(prev => 
-      prev.includes(departmentId) 
-        ? prev.filter(id => id !== departmentId)
-        : [...prev, departmentId]
-    );
-  };
 
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -90,7 +81,6 @@ export default function SignUpPage() {
             role: "Student",
             idNumber: idNumber,
             educationLevel: educationLevel,
-            departmentIds: selectedDepartments,
         };
 
         const userDocRef = doc(firestore, "users", user.uid);
@@ -167,25 +157,6 @@ export default function SignUpPage() {
                         <SelectItem value="shs">Senior High School</SelectItem>
                     </SelectContent>
                 </Select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Departments</Label>
-              <p className="text-sm text-muted-foreground">Select the departments relevant to your subjects.</p>
-              <div className="space-y-2 rounded-md border p-4 max-h-40 overflow-y-auto">
-                  {departments.map(dept => (
-                      <div key={dept.id} className="flex items-center space-x-2">
-                          <Checkbox
-                              id={`dept-${dept.id}`}
-                              onCheckedChange={() => handleDepartmentChange(dept.id)}
-                              checked={selectedDepartments.includes(dept.id)}
-                          />
-                          <Label htmlFor={`dept-${dept.id}`} className="font-normal cursor-pointer">
-                              {dept.name}
-                          </Label>
-                      </div>
-                  ))}
-              </div>
             </div>
             
             <div className="grid gap-2">

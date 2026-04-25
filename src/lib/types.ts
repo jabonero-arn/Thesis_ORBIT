@@ -11,7 +11,6 @@ export type User = {
   // Student specific
   idNumber?: string;
   educationLevel?: string;
-  departmentIds?: string[];
   
   // Teacher/Staff/Supervisor specific
   employeeId?: string;
@@ -56,6 +55,7 @@ export type InventoryItem = {
 
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
 export type ChannelAccessRequestStatus = 'pending' | 'approved' | 'denied';
+export type StudentDepartmentAccessRequestStatus = 'pending' | 'approved' | 'denied';
 
 export type ChannelAccessRequest = {
     id: string;
@@ -66,6 +66,16 @@ export type ChannelAccessRequest = {
     departmentId: string;
     subject: string;
     status: ChannelAccessRequestStatus;
+    requestedAt: string;
+}
+
+export type StudentDepartmentAccessRequest = {
+    id: string;
+    studentId: string;
+    studentName: string;
+    departmentId: string;
+    departmentName: string;
+    status: StudentDepartmentAccessRequestStatus;
     requestedAt: string;
 }
 

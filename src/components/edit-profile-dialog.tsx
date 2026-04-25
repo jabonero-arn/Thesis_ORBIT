@@ -37,7 +37,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
   // Student fields
   const [educationLevel, setEducationLevel] = React.useState("");
   const [idNumber, setIdNumber] = React.useState("");
-  const [selectedDepartments, setSelectedDepartments] = React.useState<string[]>([]);
   // Staff/Teacher fields
   const [employeeId, setEmployeeId] = React.useState("");
 
@@ -52,7 +51,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
       if (displayRole === 'Student') {
           setIdNumber(userProfile.idNumber || "");
           setEducationLevel(userProfile.educationLevel || "");
-          setSelectedDepartments(userProfile.departmentIds || []);
       } else {
           setEmployeeId(userProfile.employeeId || "");
       }
@@ -64,13 +62,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
     }
   }, [userProfile, open, displayRole]);
   
-  const handleDepartmentChange = (departmentId: string) => {
-    setSelectedDepartments(prev => 
-      prev.includes(departmentId) 
-        ? prev.filter(id => id !== departmentId)
-        : [...prev, departmentId]
-    );
-  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -108,7 +99,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
       if (displayRole === 'Student') {
         updatedProfileData.idNumber = idNumber;
         updatedProfileData.educationLevel = educationLevel as 'college' | 'shs';
-        updatedProfileData.departmentIds = selectedDepartments;
       } else {
         updatedProfileData.employeeId = employeeId;
       }
@@ -149,23 +139,6 @@ export function EditProfileDialog({ open, onOpenChange, userProfile, displayRole
                   <SelectItem value="shs">Senior High School</SelectItem>
               </SelectContent>
           </Select>
-      </div>
-      <div className="grid gap-2">
-        <Label>Departments</Label>
-        <div className="space-y-2 rounded-md border p-4 max-h-40 overflow-y-auto">
-            {departments.map(dept => (
-                <div key={dept.id} className="flex items-center space-x-2">
-                    <Checkbox
-                        id={`edit-dept-${dept.id}`}
-                        onCheckedChange={() => handleDepartmentChange(dept.id)}
-                        checked={selectedDepartments.includes(dept.id)}
-                    />
-                    <Label htmlFor={`edit-dept-${dept.id}`} className="font-normal cursor-pointer">
-                        {dept.name}
-                    </Label>
-                </div>
-            ))}
-        </div>
       </div>
     </>
   );

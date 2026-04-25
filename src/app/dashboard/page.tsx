@@ -31,7 +31,7 @@ export default function Home() {
   const { user, isUserLoading } = useUser()
   const firestore = useFirestore()
   const { toast } = useToast()
-  const { items: allItems, borrowHistory, departments, channels, allUsers, channelAccessRequests } = useAppContext();
+  const { items: allItems, borrowHistory, departments, channels, allUsers, channelAccessRequests, studentDepartmentAccessRequests } = useAppContext();
 
   const [activeView, setActiveView] = React.useState<'borrow' | 'activity'>('borrow');
   const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'requests' | 'reservations' | 'history' | 'issues'>('borrowed');
@@ -44,6 +44,14 @@ export default function Home() {
     return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
+
+  const approvedDepartmentIds = React.useMemo(() => 
+    new Set(studentDepartmentAccessRequests.filter(req => req.studentId === user?.uid && req.status === 'approved').map(req => req.departmentId))
+  , [studentDepartmentAccessRequests, user]);
+
+  const studentDepartments = React.useMemo(() => 
+      departments.filter(dept => approvedDepartmentIds.has(dept.id))
+  , [departments, approvedDepartmentIds]);
 
   const teachersForDialog = React.useMemo(() => {
       if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
@@ -69,10 +77,12 @@ export default function Home() {
   }, [user, isUserLoading, router])
 
   React.useEffect(() => {
-    if (!selectedDepartmentId && departments.length > 0) {
-      setSelectedDepartmentId(departments[0].id);
+    if (studentDepartments.length > 0 && !selectedDepartmentId) {
+      setSelectedDepartmentId(studentDepartments[0].id);
+    } else if (studentDepartments.length === 0) {
+        setActiveView('activity');
     }
-  }, [departments, selectedDepartmentId]);
+  }, [studentDepartments, selectedDepartmentId]);
 
   React.useEffect(() => {
     if (selectedDepartmentId) {
@@ -285,7 +295,7 @@ export default function Home() {
     );
   }
   
-  if (departments.length === 0) {
+  if (studentDepartments.length === 0) {
      return (
       <TooltipProvider>
        <div className="flex h-screen bg-[#1e2430]">
@@ -344,9 +354,9 @@ export default function Home() {
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex items-center justify-center">
             <div className="text-center text-muted-foreground">
                 <PackageSearch className="mx-auto h-16 w-16" />
-                <h2 className="mt-4 text-xl font-semibold text-foreground">Nothing to see here yet!</h2>
-                <p className="mt-2">No laboratories have been set up by the administrator.</p>
-                <p>Please check back later.</p>
+                <h2 className="mt-4 text-xl font-semibold text-foreground">No Approved Departments</h2>
+                <p className="mt-2">You do not have access to any departments yet.</p>
+                <p>Request access via your user profile to get started.</p>
             </div>
           </div>
         </main>
@@ -375,7 +385,7 @@ export default function Home() {
                     <Logo />
                   </div>
                   <div className="flex flex-col items-center gap-2 w-full">
-                    {departments.map(dept => (
+                    {studentDepartments.map(dept => (
                       <Tooltip key={dept.id}>
                           <TooltipTrigger asChild>
                               <Button 
@@ -486,7 +496,7 @@ export default function Home() {
                                 Departments
                             </div>
                             <div className="p-2 space-y-1">
-                                {departments.map(dept => (
+                                {studentDepartments.map(dept => (
                                     <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>
                                         {getDeptIcon(dept.prefix)}
                                         {dept.name}
