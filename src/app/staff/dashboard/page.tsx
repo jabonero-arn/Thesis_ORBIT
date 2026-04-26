@@ -24,7 +24,7 @@ import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { QrScannerView } from "@/components/qr-scanner-view"
-import { format } from "date-fns"
+import { format, isSameDay } from "date-fns"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { InventoryGrid } from "@/components/inventory-grid"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
@@ -61,9 +61,24 @@ export default function StaffDashboardPage() {
 
     const departmentHistory = React.useMemo(() => {
         if (!assignedDepartmentId) return [];
-        const itemNamesInDept = new Set(departmentItems.map(i => i.name));
-        return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, departmentItems]);
+        
+        // Get all channel IDs for the assigned department
+        const assignedChannelIds = new Set(
+            channels
+                .filter(c => c.departmentId === assignedDepartmentId)
+                .map(c => c.id)
+        );
+
+        // Get all inventory item IDs that are in those channels
+        const departmentItemIds = new Set(
+            items
+                .filter(item => item.channelId && assignedChannelIds.has(item.channelId))
+                .map(item => item.id)
+        );
+
+        // Filter borrow history for records that reference those items
+        return borrowHistory.filter(h => h.inventoryItemId && departmentItemIds.has(h.inventoryItemId));
+    }, [borrowHistory, items, channels, assignedDepartmentId]);
     
     const pendingStudentRequests = React.useMemo(() => {
         return studentDepartmentAccessRequests.filter(req => req.departmentId === assignedDepartmentId && req.status === 'pending');
@@ -146,6 +161,66 @@ export default function StaffDashboardPage() {
             toast({ variant: 'destructive', title: 'Update Failed' });
         }
     };
+
+    const handleReservationAction = async (reservationId: string, newStatus: 'Reserved' | 'Denied') => {
+        if (!firestore) return;
+
+        const recordsToUpdate = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
+        if (recordsToUpdate.length === 0) {
+            toast({ variant: 'destructive', title: 'Action Failed', description: 'This reservation is no longer pending.' });
+            return;
+        }
+        
+        if (newStatus === 'Reserved') {
+            const reservationDate = new Date(recordsToUpdate[0].date);
+            const startTime = recordsToUpdate[0].startTime;
+            const endTime = recordsToUpdate[0].endTime;
+            
+            for (const record of recordsToUpdate) {
+                const item = items.find(i => i.id === record.inventoryItemId);
+                if (!item) continue;
+                
+                const overlappingReservations = borrowHistory.filter(h => 
+                    h.inventoryItemId === record.inventoryItemId &&
+                    h.status === 'Reserved' &&
+                    h.date && isSameDay(new Date(h.date), reservationDate) &&
+                    h.startTime && h.endTime && startTime && endTime &&
+                    h.startTime < endTime && h.endTime > startTime
+                );
+
+                const overlappingQuantity = overlappingReservations.reduce((sum, h) => sum + (h.itemQuantity || 1), 0);
+                const requestedQuantity = record.itemQuantity || 1;
+
+                if ((overlappingQuantity + requestedQuantity) > item.quantity) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Approval Failed: Conflict',
+                        description: `Not enough stock for "${item.name}" at the selected time to approve this reservation.`
+                    });
+                    return;
+                }
+            }
+        }
+
+
+        try {
+            const batch = writeBatch(firestore);
+            recordsToUpdate.forEach(record => {
+                const docRef = doc(firestore, 'borrowing_transactions', record.id);
+                batch.update(docRef, { status: newStatus });
+            });
+            await batch.commit();
+
+            toast({
+                title: `Reservation ${newStatus}`,
+                description: `The reservation has been ${newStatus.toLowerCase()}.`
+            });
+
+        } catch (error) {
+            console.error(`Error updating reservation ${reservationId}:`, error);
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        }
+    }
 
 
     const getHistoryStatusBadge = (status: BorrowHistoryStatus) => {
@@ -244,11 +319,81 @@ export default function StaffDashboardPage() {
             case 'transactions': return (
                  <div className="space-y-6">
                     {transactionSubView === 'reservations' && (<>
-                        <Card className="bg-card/80"><CardHeader><CardTitle>Pending Reservations</CardTitle><CardDescription>Student reservation requests for your department.</CardDescription></CardHeader>
-                            <CardContent>{groupedPendingReservations.length > 0 ? groupedPendingReservations.map(([id, group]) => <div key={id} />) : <p className="text-center text-muted-foreground py-8">No pending reservations.</p>}</CardContent>
+                        <Card className="bg-card/80">
+                            <CardHeader>
+                                <CardTitle>Pending Reservations</CardTitle>
+                                <CardDescription>Student reservation requests for your department.</CardDescription>
+                            </CardHeader>
+                             <CardContent>
+                                {groupedPendingReservations.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {groupedPendingReservations.map(([reservationId, group]) => (
+                                            <div key={reservationId} className="p-4 rounded-lg bg-black/20 border border-border/50">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-semibold text-lg">{group.studentName}</p>
+                                                        <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime} - {group.endTime}</p>
+                                                    </div>
+                                                    <Badge variant="outline">Pending Approval</Badge>
+                                                </div>
+                                                <ul className="list-disc list-inside my-3 space-y-1 pl-1 text-sm">
+                                                    {group.records.map(record => (
+                                                        <li key={record.id}>{record.itemName} (x{record.itemQuantity || 1})</li>
+                                                    ))}
+                                                </ul>
+                                                {group.records[0].borrowingType === 'Group' && (
+                                                    <div className="mb-3 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                                                        <p><b>Group {group.records[0].groupNumber}</b> ({group.records[0].groupSubject})</p>
+                                                        <p>Members: {group.records[0].groupMembers}</p>
+                                                    </div>
+                                                )}
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    <Button size="sm" variant="secondary" onClick={() => handleReservationAction(reservationId, 'Reserved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleReservationAction(reservationId, 'Denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-muted-foreground py-8">No pending reservations.</p>
+                                )}
+                            </CardContent>
                         </Card>
-                        <Card className="bg-card/80"><CardHeader><CardTitle>Confirmed Reservations</CardTitle><CardDescription>Upcoming confirmed reservations in your department.</CardDescription></CardHeader>
-                             <CardContent>{groupedConfirmedReservations.length > 0 ? groupedConfirmedReservations.map(([id, group]) => <div key={id} />) : <p className="text-center text-muted-foreground py-8">No confirmed reservations.</p>}</CardContent>
+                        <Card className="bg-card/80">
+                            <CardHeader>
+                                <CardTitle>Confirmed Reservations</CardTitle>
+                                <CardDescription>Upcoming confirmed reservations in your department.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {groupedConfirmedReservations.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {groupedConfirmedReservations.map(([reservationId, group]) => (
+                                            <div key={reservationId} className="p-4 rounded-lg bg-black/20">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-semibold text-lg">{group.studentName}</p>
+                                                        <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime} - {group.endTime}</p>
+                                                    </div>
+                                                    <Badge variant="default">Confirmed</Badge>
+                                                </div>
+                                                <ul className="list-disc list-inside my-3 space-y-1 pl-1 text-sm">
+                                                    {group.records.map(record => (
+                                                        <li key={record.id}>{record.itemName} (x{record.itemQuantity || 1})</li>
+                                                    ))}
+                                                </ul>
+                                                {group.records[0].borrowingType === 'Group' && (
+                                                    <div className="mt-2 pt-2 border-t border-border/50 text-xs text-muted-foreground">
+                                                        <p><b>Group {group.records[0].groupNumber}</b> ({group.records[0].groupSubject})</p>
+                                                        <p>Members: {group.records[0].groupMembers}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-center text-muted-foreground py-8">No confirmed reservations.</p>
+                                )}
+                            </CardContent>
                         </Card>
                     </>)}
                     {transactionSubView === 'borrowed' && (
@@ -433,3 +578,5 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
+
+    
