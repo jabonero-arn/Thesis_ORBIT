@@ -4,7 +4,7 @@
 import * as React from "react"
 import Image from "next/image"
 import { format, isSameDay } from "date-fns"
-import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
+import { Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, writeBatch, doc } from "firebase/firestore"
 
@@ -15,8 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { Switch } from "@/components/ui/switch"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import {
@@ -403,29 +401,16 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             
             {isReserve && (
                 <div className="grid gap-3 p-3 rounded-lg bg-black/20 border border-border/50">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            id="reservation-date"
-                            variant={"outline"}
-                            className={cn(
+                    <Input
+                        type="date"
+                        value={reservationDate ? format(reservationDate, 'yyyy-MM-dd') : ''}
+                        onChange={(e) => setReservationDate(e.target.value ? new Date(e.target.value.replace(/-/g, '/')) : undefined)}
+                        min={format(new Date(), 'yyyy-MM-dd')}
+                        className={cn(
                             "w-full justify-start text-left font-normal bg-input",
                             !reservationDate && "text-muted-foreground"
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {reservationDate ? format(reservationDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={reservationDate}
-                            onSelect={setReservationDate}
-                            disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                        />
-                        </PopoverContent>
-                    </Popover>
+                        )}
+                    />
                     <div className="flex items-center gap-2">
                         <Input id="start-time" type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="bg-input" />
                         <span className="text-muted-foreground">-</span>
@@ -522,3 +507,5 @@ export function CheckoutFlow(props: CheckoutFlowProps) {
     </div>
   )
 }
+
+    
