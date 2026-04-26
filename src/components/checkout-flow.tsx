@@ -219,7 +219,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
         // Correctly filter for reservations on the same day with overlapping times
         const overlappingReservations = borrowHistory.filter(h => 
-            h.itemName === item.name &&
+            h.inventoryItemId === item.id &&
             h.status === 'Reserved' &&
             reservationDate && isSameDay(new Date(h.date), reservationDate) && // Correct date comparison
             h.startTime && h.endTime && startTime && endTime &&
@@ -227,13 +227,12 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         );
 
         const overlappingQuantity = overlappingReservations.reduce((sum, h) => sum + (h.itemQuantity || 1), 0);
+        
+        const totalStock = allItemsInDB.quantity;
 
-        // `allItemsInDB.quantity` is the currently available quantity on the shelf
-        const availableForReservation = allItemsInDB.quantity;
-
-        if ((overlappingQuantity + requestedQuantity) > availableForReservation) {
+        if ((overlappingQuantity + requestedQuantity) > totalStock) {
             hasConflict = true;
-            const canStillReserve = availableForReservation - overlappingQuantity;
+            const canStillReserve = totalStock - overlappingQuantity;
             toast({
                 variant: 'destructive',
                 title: 'Reservation Conflict',
@@ -424,7 +423,6 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                             selected={reservationDate}
                             onSelect={setReservationDate}
                             disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                            initialFocus
                         />
                         </PopoverContent>
                     </Popover>
