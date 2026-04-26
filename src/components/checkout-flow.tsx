@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import Image from "next/image"
-import { format } from "date-fns"
+import { format, isSameDay } from "date-fns"
 import { Calendar as CalendarIcon, Loader2, X, ShoppingCart, Minus, Plus } from "lucide-react"
 import { useUser, useFirestore } from "@/firebase"
 import { collection, writeBatch, doc } from "firebase/firestore"
@@ -217,21 +217,19 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         const allItemsInDB = allItems.find(i => i.id === item.id)
         if (!allItemsInDB) continue;
 
+        // Correctly filter for reservations on the same day with overlapping times
         const overlappingReservations = borrowHistory.filter(h => 
             h.itemName === item.name &&
             h.status === 'Reserved' &&
-            h.date === format(reservationDate, "yyyy-MM-dd") &&
+            reservationDate && isSameDay(new Date(h.date), reservationDate) && // Correct date comparison
             h.startTime && h.endTime && startTime && endTime &&
             h.startTime < endTime && h.endTime > startTime
         );
 
         const overlappingQuantity = overlappingReservations.reduce((sum, h) => sum + (h.itemQuantity || 1), 0);
 
-        const activeBorrows = borrowHistory.filter(h => 
-            h.itemName === item.name && h.status === 'Active'
-        ).length;
-
-        const availableForReservation = allItemsInDB.quantity - activeBorrows;
+        // `allItemsInDB.quantity` is the currently available quantity on the shelf
+        const availableForReservation = allItemsInDB.quantity;
 
         if ((overlappingQuantity + requestedQuantity) > availableForReservation) {
             hasConflict = true;
@@ -257,6 +255,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         const record: Omit<BorrowHistory, 'id'> = {
             studentName: user.displayName!,
             itemName: item.name,
+            inventoryItemId: item.id,
             itemQuantity: quantity,
             date: reservationDate.toISOString(),
             status: 'Pending', 
