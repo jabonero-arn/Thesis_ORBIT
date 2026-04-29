@@ -633,6 +633,7 @@ export default function TeacherDashboardPage() {
                 onSuccess={() => {
                     setSelectedItems([]);
                 }}
+                isTeacherView={true}
             />
         )}
         

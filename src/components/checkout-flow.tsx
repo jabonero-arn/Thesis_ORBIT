@@ -34,9 +34,10 @@ type CheckoutFlowProps = {
   onClear: () => void
   onSuccess: () => void
   onItemQuantityChange: (itemId: string, newQuantity: number) => void
+  isTeacherView?: boolean
 }
 
-function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChange }: CheckoutFlowProps) {
+function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChange, isTeacherView }: CheckoutFlowProps) {
   const [isReserve, setIsReserve] = React.useState(false)
   const [reservationDate, setReservationDate] = React.useState<Date>()
   const [startTime, setStartTime] = React.useState<string>("14:00")
@@ -154,7 +155,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       a: approvalsToConsume,
     };
     
-    if (borrowingType === 'Group') {
+    if (borrowingType === 'Group' && !isTeacherView) {
         if (!groupNumber || !groupSubject || !groupMembers) {
             toast({
                 variant: "destructive",
@@ -195,7 +196,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     
     setIsLoading(true);
 
-    if (borrowingType === 'Group') {
+    if (borrowingType === 'Group' && !isTeacherView) {
         if (!groupNumber || !groupSubject || !groupMembers) {
             toast({
                 variant: "destructive",
@@ -261,7 +262,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             reservationId: reservationId,
         };
 
-        if (borrowingType === 'Group') {
+        if (borrowingType === 'Group' && !isTeacherView) {
             record.borrowingType = 'Group';
             record.groupNumber = groupNumber;
             record.groupSubject = groupSubject;
@@ -347,46 +348,50 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         <Separator className="my-2 bg-border/50"/>
         
         <div className="space-y-4">
-             <div className="space-y-2">
-                <Label htmlFor="borrowing-type" className="font-medium">Borrowing Type</Label>
-                <RadioGroup
-                    id="borrowing-type"
-                    value={borrowingType}
-                    onValueChange={(value: 'Individual' | 'Group') => setBorrowingType(value)}
-                    className="flex space-x-4"
-                >
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Individual" id="individual" />
-                        <Label htmlFor="individual">Individual</Label>
+             {!isTeacherView && (
+                <>
+                    <div className="space-y-2">
+                        <Label htmlFor="borrowing-type" className="font-medium">Borrowing Type</Label>
+                        <RadioGroup
+                            id="borrowing-type"
+                            value={borrowingType}
+                            onValueChange={(value: 'Individual' | 'Group') => setBorrowingType(value)}
+                            className="flex space-x-4"
+                        >
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Individual" id="individual" />
+                                <Label htmlFor="individual">Individual</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="Group" id="group" />
+                                <Label htmlFor="group">Group</Label>
+                            </div>
+                        </RadioGroup>
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="Group" id="group" />
-                        <Label htmlFor="group">Group</Label>
-                    </div>
-                </RadioGroup>
-            </div>
 
-            {borrowingType === 'Group' && (
-                <div className="grid gap-3 p-3 rounded-lg bg-black/20 border border-border/50">
-                    <div className="grid grid-cols-2 gap-2">
-                        <div className="grid gap-1">
-                            <Label htmlFor="group-number">Group Number</Label>
-                            <Input id="group-number" value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="e.g., 3" className="bg-input" />
+                    {borrowingType === 'Group' && (
+                        <div className="grid gap-3 p-3 rounded-lg bg-black/20 border border-border/50">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div className="grid gap-1">
+                                    <Label htmlFor="group-number">Group Number</Label>
+                                    <Input id="group-number" value={groupNumber} onChange={e => setGroupNumber(e.target.value)} placeholder="e.g., 3" className="bg-input" />
+                                </div>
+                                <div className="grid gap-1">
+                                    <Label htmlFor="group-subject">Subject</Label>
+                                    <Input id="group-subject" value={groupSubject} onChange={e => setGroupSubject(e.target.value)} placeholder="e.g., CPE 101" className="bg-input" />
+                                </div>
+                            </div>
+                            <div className="grid gap-1">
+                                <Label htmlFor="group-members">Group Members</Label>
+                                <Textarea id="group-members" value={groupMembers} onChange={e => setGroupMembers(e.target.value)} placeholder="Enter names, separated by commas" className="bg-input" />
+                            </div>
                         </div>
-                        <div className="grid gap-1">
-                            <Label htmlFor="group-subject">Subject</Label>
-                            <Input id="group-subject" value={groupSubject} onChange={e => setGroupSubject(e.target.value)} placeholder="e.g., CPE 101" className="bg-input" />
-                        </div>
-                    </div>
-                    <div className="grid gap-1">
-                        <Label htmlFor="group-members">Group Members</Label>
-                        <Textarea id="group-members" value={groupMembers} onChange={e => setGroupMembers(e.target.value)} placeholder="Enter names, separated by commas" className="bg-input" />
-                    </div>
-                </div>
+                    )}
+                    
+                    <Separator className="my-2 bg-border/50"/>
+                </>
             )}
             
-            <Separator className="my-2 bg-border/50"/>
-
             <div className="flex items-center justify-between">
                 <Label htmlFor="reservation-mode" className="font-medium">
                 Reserve for Later
