@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle, Minus, Plus, QrCode } from "lucide-react"
 import * as React from "react"
-import { format } from "date-fns"
+import { format, isToday } from "date-fns"
 import { ReturnConditionBadge } from "./return-condition-badge"
 
 
@@ -268,6 +268,8 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                     if (!reservationId) return null;
                     
                     const firstRecord = group.records[0];
+                    const canClaim = group.status === 'Reserved' && isToday(new Date(group.date));
+                    const canCancel = group.status === 'Pending' || (group.status === 'Reserved' && !isToday(new Date(group.date)));
 
                     return (
                         <div key={reservationId || index} className="p-4 rounded-lg bg-black/20 border border-border/50">
@@ -290,13 +292,13 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                 </div>
                             )}
                             <div className="flex justify-end gap-2 mt-2">
-                                {group.status === 'Pending' && (
+                                {canCancel && (
                                     <Button size="sm" variant="destructive" onClick={() => onCancelReservation(reservationId)}>
                                         <XCircle className="mr-2 h-4 w-4"/> Cancel
                                     </Button>
                                 )}
                                 {group.status === 'Reserved' && (
-                                     <Button size="sm" onClick={() => onClaimReservation(reservationId)}>
+                                     <Button size="sm" onClick={() => onClaimReservation(reservationId)} disabled={!canClaim}>
                                         <QrCode className="mr-2 h-4 w-4"/> Claim Items
                                     </Button>
                                 )}

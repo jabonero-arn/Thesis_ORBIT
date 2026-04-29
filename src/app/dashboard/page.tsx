@@ -8,6 +8,7 @@ import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "fi
 import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
+import { isToday } from "date-fns"
 
 import type { InventoryItem, BorrowHistory, CartItem, User as UserType } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -262,14 +263,21 @@ export default function Home() {
   const handleCancelReservation = async (reservationId: string) => {
     if (!firestore) return;
     try {
-        const batch = writeBatch(firestore);
-        const recordsToCancel = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
+        const recordsToCancel = borrowHistory.filter(h => h.reservationId === reservationId && (h.status === 'Pending' || h.status === 'Reserved'));
         
         if (recordsToCancel.length === 0) {
-            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'This reservation is no longer pending.' });
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'This reservation is no longer pending or reserved.' });
             return;
         }
 
+        if (recordsToCancel.length > 0 && recordsToCancel[0].status === 'Reserved') {
+          if (isToday(new Date(recordsToCancel[0].date))) {
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'You cannot cancel a reservation on the day it is scheduled.' });
+            return;
+          }
+        }
+
+        const batch = writeBatch(firestore);
         recordsToCancel.forEach(record => {
             const docRef = doc(firestore, 'borrowing_transactions', record.id);
             batch.update(docRef, { status: 'Cancelled' });

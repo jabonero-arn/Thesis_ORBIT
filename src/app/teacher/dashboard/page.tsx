@@ -4,10 +4,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc } from "firebase/firestore"
-import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, Building } from "lucide-react"
+import { doc, updateDoc, writeBatch } from "firebase/firestore"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, Building, Inbox, PackageCheck, CalendarDays, XCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { format } from "date-fns"
+import { format, isToday } from "date-fns"
+import Image from "next/image"
 
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -33,6 +34,8 @@ import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { LabSelectionDialog } from "@/components/teacher/lab-selection-dialog"
+import { StudentActivity } from "@/components/student-activity"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 export default function TeacherDashboardPage() {
   const router = useRouter()
@@ -89,6 +92,8 @@ export default function TeacherDashboardPage() {
   // View state
   const [activeView, setActiveView] = React.useState<TeacherView>('requests');
   const [requestSubView, setRequestSubView] = React.useState<RequestSubView>('pending');
+  const [activitySubView, setActivitySubView] = React.useState<'borrowed' | 'reservations' | 'history' | 'issues'>('borrowed');
+
 
   const approvedChannelsInfo = React.useMemo(() => {
     if (!user || !channelAccessRequests || !channels || !departments) return { approvedChannelIds: new Set<string>(), approvedDepartmentIds: new Set<string>() };
@@ -151,6 +156,14 @@ export default function TeacherDashboardPage() {
   // State for request approvals
   const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // State for teacher's own activity
+  const [itemsToReturn, setItemsToReturn] = React.useState<BorrowHistory[]>([]);
+  const [claimQrPayload, setClaimQrPayload] = React.useState<string | null>(null);
+  const teacherBorrowHistory = React.useMemo(() => {
+      if (!user?.uid) return [];
+      return borrowHistory.filter(h => h.borrowerUserId === user.uid);
+  }, [borrowHistory, user]);
 
   const handleRequest = async (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore) return;
@@ -256,7 +269,47 @@ export default function TeacherDashboardPage() {
     }
   };
 
-  type TeacherView = 'borrow' | 'requests';
+  const handleInitiateReturn = (records: BorrowHistory[]) => {
+    if (!records.length) return;
+    setItemsToReturn(records);
+  }
+
+  const handleCancelReservation = async (reservationId: string) => {
+    if (!firestore) return;
+    try {
+        const recordsToCancel = teacherBorrowHistory.filter(h => h.reservationId === reservationId && (h.status === 'Pending' || h.status === 'Reserved'));
+        
+        if (recordsToCancel.length === 0) {
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'This reservation is no longer pending or reserved.' });
+            return;
+        }
+
+        if (recordsToCancel.length > 0 && recordsToCancel[0].status === 'Reserved') {
+          if (isToday(new Date(recordsToCancel[0].date))) {
+            toast({ variant: 'destructive', title: 'Cannot Cancel', description: 'You cannot cancel a reservation on the day it is scheduled.' });
+            return;
+          }
+        }
+
+        const batch = writeBatch(firestore);
+        recordsToCancel.forEach(record => {
+            const docRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(docRef, { status: 'Cancelled' });
+        });
+
+        await batch.commit();
+        toast({
+            title: "Reservation Cancelled",
+            description: "Your reservation has been cancelled.",
+        });
+    } catch (error) {
+        console.error("Error cancelling reservation:", error);
+        toast({ variant: 'destructive', title: 'Failed to cancel reservation' });
+    }
+  };
+
+
+  type TeacherView = 'borrow' | 'requests' | 'my-activity';
   type RequestSubView = 'pending' | 'history';
 
   const ApprovalRequests = () => {
@@ -356,6 +409,14 @@ export default function TeacherDashboardPage() {
     return <UserIcon />;
   }
 
+  const activityNavItems = [
+    { id: 'borrowed', label: 'My Borrowed Items', icon: <PackageCheck /> },
+    { id: 'reservations', label: 'My Reservations', icon: <CalendarDays /> },
+    { id: 'history', label: 'History Log', icon: <History /> },
+    { id: 'issues', label: 'Damaged/Lost Items', icon: <XCircle /> },
+  ] as const;
+
+
   const mobileSidebarContent = (
     <div className="flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
@@ -383,14 +444,14 @@ export default function TeacherDashboardPage() {
             <Separator />
             
             <div className="p-4 font-headline text-lg font-bold border-b border-t border-border/50">
-                Approvals
+                Menu
             </div>
             <div className="p-2 space-y-1">
-                <Button variant={activeView === 'requests' && requestSubView === 'pending' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setRequestSubView('pending'); setIsMobileMenuOpen(false); }}>
+                 <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setIsMobileMenuOpen(false); }}>
                     <Hourglass className="h-5 w-5" /> Pending Requests
                 </Button>
-                <Button variant={activeView === 'requests' && requestSubView === 'history' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setRequestSubView('history'); setIsMobileMenuOpen(false); }}>
-                    <History className="h-5 w-5" /> Request History
+                <Button variant={activeView === 'my-activity' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('my-activity'); setIsMobileMenuOpen(false); }}>
+                    <Inbox className="h-5 w-5" /> My Activity
                 </Button>
             </div>
         </div>
@@ -484,6 +545,45 @@ export default function TeacherDashboardPage() {
     </>
   );
 
+  const MyActivityView = () => (
+     <>
+        <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="md:hidden">
+                      <Menu />
+                      <span className="sr-only">Open Menu</span>
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                     {mobileSidebarContent}
+                  </SheetContent>
+                </Sheet>
+                <div className="flex items-center gap-2">
+                    {React.cloneElement(activityNavItems.find(i => i.id === activitySubView)?.icon || <Inbox/>, { className: "text-muted-foreground" })}
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                       {activityNavItems.find(i => i.id === activitySubView)?.label}
+                    </h1>
+                </div>
+            </div>
+        </header>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+            <StudentActivity
+                borrowHistory={teacherBorrowHistory} 
+                onReturn={handleInitiateReturn} 
+                view={activitySubView}
+                onCancelReservation={handleCancelReservation}
+                onClaimReservation={(reservationId) => {
+                    const payload = { t: 'res-claim', rId: reservationId };
+                    setClaimQrPayload(JSON.stringify(payload));
+                }}
+            />
+        </div>
+    </>
+  );
+
+
   if (isUserLoading || isProfileLoading || !teacherData) {
     return (
       <div className="flex h-dvh w-full items-center justify-center bg-[#1e2430]">
@@ -491,6 +591,16 @@ export default function TeacherDashboardPage() {
       </div>
     );
   }
+
+  const renderActiveView = () => {
+    switch (activeView) {
+      case 'borrow': return <BorrowView />;
+      case 'requests': return <RequestsView />;
+      case 'my-activity': return <MyActivityView />;
+      default: return null;
+    }
+  }
+
 
   return (
     <TooltipProvider>
@@ -541,9 +651,23 @@ export default function TeacherDashboardPage() {
                             <p>Approve Requests</p>
                         </TooltipContent>
                     </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                variant={activeView === 'my-activity' ? 'secondary' : 'ghost'} 
+                                size="icon" 
+                                className="h-12 w-12 rounded-lg"
+                                onClick={() => setActiveView('my-activity')}>
+                                <Inbox />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="right" align="center">
+                            <p>My Activity</p>
+                        </TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
-                {/* Channel List or Request Sub-menu */}
+                {/* Channel List or Sub-menu */}
                 {activeView === 'borrow' && selectedDepartmentId && (
                     <div className="w-64 flex-col bg-[#141821] p-2">
                     <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
@@ -557,43 +681,27 @@ export default function TeacherDashboardPage() {
                     />
                     </div>
                 )}
-                {activeView === 'requests' && (
+                {(activeView === 'requests' || activeView === 'my-activity') && (
                     <div className="w-64 flex-col bg-[#141821] p-2">
                         <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                            Approvals
+                            {activeView === 'requests' ? 'Approvals' : 'My Activity'}
                         </div>
                         <div className="flex-1 py-4">
                             <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                REQUESTS
+                                {activeView === 'requests' ? 'REQUESTS' : 'CATEGORIES'}
                             </h2>
-                            <ul className="flex flex-col gap-1">
-                                <li>
-                                    <button
-                                      onClick={() => setRequestSubView('pending')}
-                                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                        requestSubView === 'pending'
-                                          ? 'bg-accent text-white'
-                                          : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                      }`}
-                                    >
-                                      <Hourglass className="h-5 w-5" />
-                                      <span className="truncate">Pending Requests</span>
-                                    </button>
-                                </li>
-                                <li>
-                                    <button
-                                      onClick={() => setRequestSubView('history')}
-                                       className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                        requestSubView === 'history'
-                                          ? 'bg-accent text-white'
-                                          : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                      }`}
-                                    >
-                                      <History className="h-5 w-5" />
-                                      <span className="truncate">Request History</span>
-                                    </button>
-                                </li>
-                            </ul>
+                            {activeView === 'requests' ? (
+                                <ul className="flex flex-col gap-1">
+                                    <li><button onClick={() => setRequestSubView('pending')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${requestSubView === 'pending' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /><span className="truncate">Pending Requests</span></button></li>
+                                    <li><button onClick={() => setRequestSubView('history')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${requestSubView === 'history' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><History className="h-5 w-5" /><span className="truncate">Request History</span></button></li>
+                                </ul>
+                            ) : (
+                                <ul className="flex flex-col gap-1">
+                                    {activityNavItems.map(navItem => (
+                                        <li key={navItem.id}><button onClick={() => setActivitySubView(navItem.id)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activitySubView === navItem.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(navItem.icon, { className: 'h-5 w-5' })}<span className="truncate">{navItem.label}</span></button></li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                     </div>
                 )}
@@ -620,7 +728,7 @@ export default function TeacherDashboardPage() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col h-dvh">
-          {activeView === 'borrow' ? <BorrowView /> : <RequestsView />}
+          {renderActiveView()}
         </main>
 
         {/* Cart */}
@@ -637,6 +745,51 @@ export default function TeacherDashboardPage() {
             />
         )}
         
+        <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2">Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
+                    <DialogDescription>Present this QR code to lab staff to process your return. This dialog will close automatically after scanning.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-4">
+                    {itemsToReturn.length > 0 && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(
+                            JSON.stringify({ t: 'r', ids: itemsToReturn.map(i => i.id) })
+                        )}`}
+                        alt="Return QR Code"
+                        width={256}
+                        height={256}
+                        className="rounded-lg bg-white p-2"
+                        data-ai-hint="qr code"
+                    />}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => setItemsToReturn([])}>Cancel</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!claimQrPayload} onOpenChange={(open) => !open && setClaimQrPayload(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle className="font-headline flex items-center gap-2">Reservation Claim QR Code</DialogTitle>
+                    <DialogDescription>Present this QR code to lab staff to claim your reserved items.</DialogDescription>
+                </DialogHeader>
+                <div className="flex justify-center py-4">
+                    {claimQrPayload && <Image
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(claimQrPayload)}`}
+                        alt="Reservation Claim QR Code"
+                        width={256}
+                        height={256}
+                        className="rounded-lg bg-white p-2"
+                        data-ai-hint="qr code"
+                    />}
+                </div>
+                <DialogFooter>
+                    <Button onClick={() => setClaimQrPayload(null)}>Done</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   )
