@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { useAuth, useFirestore } from "@/firebase"
-import { signInWithEmailAndPassword, signOut, AuthError } from "firebase/auth"
+import { signInWithEmailAndPassword, signOut, AuthError, sendPasswordResetEmail } from "firebase/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
 
@@ -44,6 +44,38 @@ export default function LoginPage() {
   const capitalizedRole = role
     ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
     : ""
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        variant: "destructive",
+        title: "Email Required",
+        description: "Please enter your email address to reset your password.",
+      })
+      return
+    }
+    setIsLoading(true)
+    try {
+      await sendPasswordResetEmail(auth, email)
+      toast({
+        title: "Password Reset Email Sent",
+        description: "Check your inbox for a link to reset your password. This may take a few minutes.",
+      })
+    } catch (e) {
+      const error = e as AuthError
+      let description = "Could not send password reset email. Please try again."
+      if (error.code === 'auth/user-not-found') {
+        description = "No account found with this email address."
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: description,
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -170,7 +202,18 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="mt-2 w-full" disabled={isLoading}>
+            <div className="text-right">
+                <Button
+                    type="button"
+                    variant="link"
+                    className="p-0 h-auto text-sm text-muted-foreground hover:text-primary"
+                    onClick={handleForgotPassword}
+                    disabled={isLoading}
+                >
+                    Forgot password?
+                </Button>
+            </div>
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? <Loader2 className="animate-spin" /> : 'Sign In'}
             </Button>
           </form>
