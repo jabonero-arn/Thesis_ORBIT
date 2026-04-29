@@ -6,6 +6,7 @@ import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAc
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { isToday } from 'date-fns';
 
 type AppContextType = {
   items: InventoryItem[];
@@ -76,11 +77,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Check only 'Reserved' items that haven't been processed for cancellation check yet.
       if (record.status === 'Reserved' && record.date && record.startTime && !processedReservationIds.current.has(record.id)) {
         try {
-          const reservationDateTime = new Date(`${record.date.split('T')[0]}T${record.startTime}`);
-          if (!isNaN(reservationDateTime.getTime())) { // Check if date is valid
-            // Check if current time is 10 minutes past the reservation time
-            if (now.getTime() > reservationDateTime.getTime() + tenMinutes) {
-              reservationsToCancel.push(record as BorrowHistory);
+          const reservationDate = new Date(record.date);
+          // Only process cancellations for reservations scheduled for today.
+          if (isToday(reservationDate)) {
+            const reservationDateTime = new Date(`${record.date.split('T')[0]}T${record.startTime}`);
+            if (!isNaN(reservationDateTime.getTime())) { // Check if date is valid
+              // Check if current time is 10 minutes past the reservation time
+              if (now.getTime() > reservationDateTime.getTime() + tenMinutes) {
+                reservationsToCancel.push(record as BorrowHistory);
+              }
             }
           }
         } catch (e) {
