@@ -371,7 +371,7 @@ export default function Home() {
          <main className="flex-1 flex flex-col h-dvh">
           <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
              <div className="flex items-center gap-2">
-                <Sheet>
+                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
                       <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
                   </SheetTrigger>
