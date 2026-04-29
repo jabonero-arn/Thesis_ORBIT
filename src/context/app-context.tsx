@@ -74,22 +74,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const reservationsToCancel: BorrowHistory[] = [];
 
     historyData.forEach(record => {
-      // Check only 'Reserved' items that haven't been processed for cancellation check yet.
       if (record.status === 'Reserved' && record.date && record.startTime && !processedReservationIds.current.has(record.id)) {
         try {
           const reservationDate = new Date(record.date);
-          // Only process cancellations for reservations scheduled for today.
+          
           if (isToday(reservationDate)) {
-            const reservationDateTime = new Date(`${record.date.split('T')[0]}T${record.startTime}`);
-            if (!isNaN(reservationDateTime.getTime())) { // Check if date is valid
-              // Check if current time is 10 minutes past the reservation time
-              if (now.getTime() > reservationDateTime.getTime() + tenMinutes) {
-                reservationsToCancel.push(record as BorrowHistory);
-              }
+            const [hours, minutes] = record.startTime.split(':').map(Number);
+            // Create a new date object representing today at the reservation's time
+            const reservationDateTime = new Date(); // starts as "now"
+            reservationDateTime.setHours(hours, minutes, 0, 0); // sets to today at HH:mm:00.000
+
+            // Check if current time is 10 minutes past the reservation time
+            if (now.getTime() > reservationDateTime.getTime() + tenMinutes) {
+              reservationsToCancel.push(record as BorrowHistory);
             }
           }
         } catch (e) {
-          console.error("Error parsing reservation date/time", e);
+          console.error("Error parsing reservation date/time for auto-cancellation:", e);
         }
       }
     });
