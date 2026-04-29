@@ -69,23 +69,36 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     if (!firestore || !historyData) return;
 
+    // --- Timezone-aware logic for PHT (UTC+8) ---
+    const PHT_OFFSET_MS = 8 * 60 * 60 * 1000;
+
+    // Function to get 'YYYY-MM-DD' string in PHT
+    const toPHTDateString = (date: Date): string => {
+        const phtDate = new Date(date.getTime() + PHT_OFFSET_MS);
+        return phtDate.toISOString().split('T')[0];
+    };
+
     const now = new Date();
+    const todayInPHT = toPHTDateString(now);
     const tenMinutes = 10 * 60 * 1000;
     const reservationsToCancel: BorrowHistory[] = [];
 
     historyData.forEach(record => {
       if (record.status === 'Reserved' && record.date && record.startTime && !processedReservationIds.current.has(record.id)) {
         try {
-          const reservationDate = new Date(record.date);
-          
-          if (isToday(reservationDate)) {
-            const [hours, minutes] = record.startTime.split(':').map(Number);
-            // Create a new date object representing today at the reservation's time
-            const reservationDateTime = new Date(); // starts as "now"
-            reservationDateTime.setHours(hours, minutes, 0, 0); // sets to today at HH:mm:00.000
+          const reservationDateUtc = new Date(record.date);
+          const reservationDayInPHT = toPHTDateString(reservationDateUtc);
 
-            // Check if current time is 10 minutes past the reservation time
-            if (now.getTime() > reservationDateTime.getTime() + tenMinutes) {
+          if (reservationDayInPHT === todayInPHT) {
+            const [hours, minutes] = record.startTime.split(':').map(Number);
+            
+            // Construct the exact reservation datetime in UTC by adding the start time to the reservation date (which is midnight PHT in UTC)
+            const reservationDateTimeUtc = new Date(
+                reservationDateUtc.getTime() + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000)
+            );
+
+            // Check if current time (UTC) is 10 minutes past the reservation time (UTC)
+            if (now.getTime() > reservationDateTimeUtc.getTime() + tenMinutes) {
               reservationsToCancel.push(record as BorrowHistory);
             }
           }
