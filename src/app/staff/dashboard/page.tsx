@@ -112,10 +112,13 @@ export default function StaffDashboardPage() {
 
 
     React.useEffect(() => {
-      if (!isUserLoading && !user) {
-        router.push("/login?role=staff")
+      if (isUserLoading) return;
+      if (!user) {
+        router.push("/login?role=staff");
+      } else if (!user.emailVerified) {
+        router.push("/verify-email");
       }
-    }, [user, isUserLoading, router])
+    }, [user, isUserLoading, router]);
 
      React.useEffect(() => {
         if (!isProfileLoading && assignedDepartmentId === undefined && userProfile) {

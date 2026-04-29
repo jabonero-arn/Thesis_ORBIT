@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Logo } from "@/components/logo"
 import { useAuth, useFirestore, FirestorePermissionError, errorEmitter } from "@/firebase"
-import { createUserWithEmailAndPassword, updateProfile, AuthError } from "firebase/auth"
+import { createUserWithEmailAndPassword, updateProfile, AuthError, sendEmailVerification } from "firebase/auth"
 import { doc, setDoc } from "firebase/firestore"
 import { Loader2 } from "lucide-react"
 import {
@@ -73,6 +73,8 @@ export default function SignUpPage() {
             displayName: name
         });
         
+        await sendEmailVerification(userCredential.user);
+
         const user = userCredential.user;
         const userProfile = {
             id: user.uid,
@@ -103,11 +105,10 @@ export default function SignUpPage() {
 
         toast({
             title: "Account Created!",
-            description: "You have successfully signed up. Redirecting...",
+            description: "We've sent a verification link to your email. Please check your inbox.",
         });
         
-        // Only students can sign up, so always redirect to the student dashboard.
-        router.push("/dashboard");
+        router.push("/verify-email");
 
     } catch(e) {
         const error = e as AuthError;

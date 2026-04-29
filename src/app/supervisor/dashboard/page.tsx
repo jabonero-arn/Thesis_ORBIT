@@ -77,10 +77,13 @@ export default function SupervisorDashboardPage() {
     }, [channels, assignedDepartmentId]);
     
     React.useEffect(() => {
-      if (!isUserLoading && !user) {
-        router.push("/login?role=supervisor")
+      if (isUserLoading) return;
+      if (!user) {
+        router.push("/login?role=supervisor");
+      } else if (!user.emailVerified) {
+        router.push("/verify-email");
       }
-    }, [user, isUserLoading, router])
+    }, [user, isUserLoading, router]);
     
     React.useEffect(() => {
         if (!isProfileLoading && assignedDepartmentId === undefined && userProfile) {

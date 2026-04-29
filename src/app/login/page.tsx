@@ -85,6 +85,12 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user;
 
+      if (!user.emailVerified) {
+        router.push("/verify-email");
+        setIsLoading(false);
+        return;
+      }
+
       // After successful sign-in, fetch user profile from Firestore
       if (!firestore) {
         throw new Error("Firestore is not initialized");

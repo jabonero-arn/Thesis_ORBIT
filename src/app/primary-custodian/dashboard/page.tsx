@@ -94,10 +94,13 @@ export default function HeadSupervisorDashboardPage() {
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
     
     React.useEffect(() => {
-      if (!isUserLoading && !user) {
-        router.push("/login?role=head-supervisor")
+      if (isUserLoading) return;
+      if (!user) {
+        router.push("/login?role=head-supervisor");
+      } else if (!user.emailVerified) {
+        router.push("/verify-email");
       }
-    }, [user, isUserLoading, router])
+    }, [user, isUserLoading, router]);
 
     React.useEffect(() => {
         if (isUserLoading || isProfileLoading || !user) return;

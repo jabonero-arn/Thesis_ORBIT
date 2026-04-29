@@ -71,10 +71,13 @@ export default function Home() {
   }, [selectedChannelId, channelAccessRequests, allUsers]);
 
   React.useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login?role=student")
+    if (isUserLoading) return;
+    if (!user) {
+      router.push("/login?role=student");
+    } else if (!user.emailVerified) {
+      router.push("/verify-email");
     }
-  }, [user, isUserLoading, router])
+  }, [user, isUserLoading, router]);
 
   React.useEffect(() => {
     if (studentDepartments.length > 0 && !selectedDepartmentId) {

@@ -52,10 +52,13 @@ export default function TeacherDashboardPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
   React.useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login?role=teacher")
+    if (isUserLoading) return;
+    if (!user) {
+      router.push("/login?role=teacher");
+    } else if (!user.emailVerified) {
+      router.push("/verify-email");
     }
-  }, [user, isUserLoading, router])
+  }, [user, isUserLoading, router]);
 
   React.useEffect(() => {
     if (isUserLoading || isProfileLoading || !user || !userProfile) {

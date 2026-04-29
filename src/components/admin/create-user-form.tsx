@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { firebaseConfig } from "@/firebase/config";
 import { initializeApp, deleteApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, writeBatch, serverTimestamp } from "firebase/firestore";
 import type { Role, Department } from "@/lib/types";
@@ -97,6 +97,8 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       if (!newUser) {
         throw new Error("User creation failed in authentication step.");
       }
+      
+      await sendEmailVerification(newUser);
 
       if (!firestore) {
          throw new Error("Firestore is not available");
