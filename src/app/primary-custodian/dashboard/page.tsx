@@ -74,9 +74,9 @@ const getDeptIcon = (prefix: string) => {
 type AdminView = 'dashboard' | 'inventory' | 'transactions' | 'activityLogs' | 'users' | 'verification';
 type DashboardSubView = 'overall' | string; // string is department prefix
 type InventorySubView = 'all' | 'inaccurate' | string; // string is department prefix
-type TransactionSubView = 'borrowed';
+type TransactionSubView = 'borrowed' | 'history';
 type VerificationSubView = 'queue' | 'provisioning' | 'assign';
-type ActivityLogSubView = 'approvals' | 'borrowing';
+type ActivityLogSubView = 'approvals';
 
 
 export default function HeadSupervisorDashboardPage() {
@@ -440,31 +440,31 @@ export default function HeadSupervisorDashboardPage() {
                 const activeBorrows = borrowHistory.filter(h => h.status === 'Active');
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out.</CardDescription></CardHeader>
-                           <CardContent>
-                               <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
-                                   <TableBody>
-                                       {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
-                                   </TableBody>
-                               </Table>
-                           </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'activityLogs':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        {activityLogSubView === 'approvals' && (
-                            <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
-                                <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                        {transactionSubView === 'borrowed' && (
+                            <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out.</CardDescription></CardHeader>
+                               <CardContent>
+                                   <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
+                                       <TableBody>
+                                           {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
+                                       </TableBody>
+                                   </Table>
+                               </CardContent>
                             </Card>
                         )}
-                        {activityLogSubView === 'borrowing' && (
+                         {transactionSubView === 'history' && (
                             <Card className="bg-card/80">
                                 <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses.</CardDescription></CardHeader>
                                 <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{borrowHistory.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
                             </Card>
                         )}
+                    </div>
+                );
+            case 'activityLogs':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approval Log</CardTitle><CardDescription>History of all student requests handled by teachers.</CardDescription></CardHeader>
+                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead>Date</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{getTeacherName(r.teacherId!)}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                        </Card>
                     </div>
                 );
             case 'users':
@@ -611,9 +611,9 @@ export default function HeadSupervisorDashboardPage() {
              );
         }
         
-        if (activeView === 'activityLogs') {
-             const label = activityLogSubView === 'approvals' ? 'Approvals (Teachers)' : 'All Borrowing';
-             const icon = activityLogSubView === 'approvals' ? <Users /> : <PackageOpen />;
+        if (activeView === 'transactions') {
+             const label = transactionSubView === 'borrowed' ? 'Currently Borrowed' : 'Full History';
+             const icon = transactionSubView === 'borrowed' ? <PackageCheck /> : <HistoryIcon />;
               return (
                 <div className="flex items-center gap-2">
                     <div className="text-muted-foreground">{icon}</div>
@@ -641,7 +641,10 @@ export default function HeadSupervisorDashboardPage() {
             </div>
             {activeView === 'dashboard' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div>)}
             {activeView === 'inventory' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setInventorySubView('all'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => {setInventorySubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => {setInventorySubView('inaccurate'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-2" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div>)}
-            {activeView === 'transactions' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div>)}
+            {activeView === 'transactions' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
+                <li><button onClick={() => {setTransactionSubView('borrowed'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
+                <li><button onClick={() => {setTransactionSubView('history'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'history' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5" /> Full History</button></li>
+            </ul></div>)}
             {activeView === 'users' && (<div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => {setUsersSubView(role.id as any); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{role.icon}{role.name}</button></li>))}</ul></div>)}
             {activeView === 'verification' && (
                 <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VERIFICATION</h2><ul className="flex flex-col gap-1">
@@ -652,8 +655,7 @@ export default function HeadSupervisorDashboardPage() {
             )}
             {activeView === 'activityLogs' && (
                 <div className="p-2"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ACTIVITY</h2><ul className="flex flex-col gap-1">
-                    <li><button onClick={() => {setActivityLogSubView('approvals'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'approvals' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
-                    <li><button onClick={() => {setActivityLogSubView('borrowing'); setIsMobileMenuOpen(false)}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'borrowing' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageOpen className="h-5 w-5"/>All Borrowing</button></li>
+                    <li><button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
                 </ul></div>
             )}
           </div>
@@ -678,7 +680,10 @@ export default function HeadSupervisorDashboardPage() {
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              {activeView === 'dashboard' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Dashboard View</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}</ul></div></>)}
                              {activeView === 'inventory' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Inventory Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">DEPARTMENTS</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setInventorySubView('all')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'all' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Package className="h-5 w-5" />All Items</button></li>{departments?.map(dept => (<li key={dept.id}><button onClick={() => setInventorySubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>))}<li><button onClick={() => setInventorySubView('inaccurate')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'inaccurate' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><AlertTriangle className="h-5 w-5" />Inaccurate Items</button></li></ul><Button className="w-full mt-4" variant="outline" onClick={() => setIsAddDeptOpen(true)}>Add Department</Button></div></>)}
-                             {activeView === 'transactions' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">QUEUES</h2><ul className="flex flex-col gap-1"><li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li></ul></div></>)}
+                             {activeView === 'transactions' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Transactions</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
+                                <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
+                                <li><button onClick={() => setTransactionSubView('history')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'history' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><HistoryIcon className="h-5 w-5" /> Full History</button></li>
+                             </ul></div></>)}
                              {activeView === 'users' && (<><div className="p-4 font-headline text-lg font-bold border-b border-border/50">User Filter</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">ROLES</h2><ul className="flex flex-col gap-1">{userRoles.map(role => (<li key={role.id}><button onClick={() => setUsersSubView(role.id as any)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${usersSubView === role.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{React.cloneElement(role.icon, {className: "h-5 w-5"})}{role.name}</button></li>))}</ul></div></>)}
                              {activeView === 'verification' && (
                                 <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Verification</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">VIEWS</h2><ul className="flex flex-col gap-1">
@@ -689,8 +694,7 @@ export default function HeadSupervisorDashboardPage() {
                              )}
                               {activeView === 'activityLogs' && (
                                 <><div className="p-4 font-headline text-lg font-bold border-b border-border/50">Activity Logs</div><div className="py-4"><h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LOGS</h2><ul className="flex flex-col gap-1">
-                                    <li><button onClick={() => setActivityLogSubView('approvals')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'approvals' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
-                                    <li><button onClick={() => setActivityLogSubView('borrowing')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${activityLogSubView === 'borrowing' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageOpen className="h-5 w-5"/>All Borrowing</button></li>
+                                    <li><button className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white`}><Users className="h-5 w-5"/>Approvals (Teachers)</button></li>
                                 </ul></div></>
                              )}
                         </div>
