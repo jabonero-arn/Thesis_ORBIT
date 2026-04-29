@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -321,7 +320,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
   return (
       <>
-        <div className="hidden md:flex justify-between items-center pb-2 border-b border-border/50">
+        <div className="flex justify-between items-center pb-2 border-b border-border/50">
           <h2 className="font-headline text-lg font-bold">Your Cart</h2>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClear}>
             <X className="h-4 w-4"/>
@@ -461,51 +460,50 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
 export function CheckoutFlow(props: CheckoutFlowProps) {
   const isMobile = useIsMobile();
-  const [mobileSheetOpen, setMobileSheetOpen] = React.useState(false);
+  const [sheetOpen, setSheetOpen] = React.useState(false);
 
   const handleSuccess = () => {
     props.onSuccess();
-    setMobileSheetOpen(false);
-  }
+    setSheetOpen(false);
+  };
 
   const totalItemsInCart = props.items.reduce((sum, item) => sum + item.quantity, 0);
 
-
-  if (isMobile) {
-    return (
-      <Sheet open={mobileSheetOpen} onOpenChange={setMobileSheetOpen}>
-        {props.items.length > 0 && (
-          <SheetTrigger asChild>
-            <Button className="md:hidden fixed bottom-6 right-6 rounded-full h-16 w-16 shadow-lg shadow-primary/30 z-40 flex items-center justify-center">
-              <ShoppingCart className="h-6 w-6" />
-              <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">{totalItemsInCart}</span>
-              <span className="sr-only">View Cart</span>
-            </Button>
-          </SheetTrigger>
-        )}
-        <SheetContent side="bottom" className="h-[90dvh] rounded-t-2xl flex flex-col p-0" onOpenAutoFocus={(e) => e.preventDefault()}>
-          <div className="p-4 border-b">
-            <SheetHeader className="text-left">
-              <SheetTitle className="font-headline text-2xl">Your Cart</SheetTitle>
-            </SheetHeader>
-          </div>
-          <div className="flex-1 flex flex-col overflow-y-auto p-4">
-             <CheckoutForm {...props} onSuccess={handleSuccess} />
-          </div>
-        </SheetContent>
-      </Sheet>
-    )
-  }
-
   if (props.items.length === 0) {
-      return null
+    return null;
   }
 
   return (
-    <div className="hidden md:flex w-80 bg-[#141821] p-4 flex-col border-l border-border/50">
-      <CheckoutForm {...props} />
-    </div>
-  )
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <SheetTrigger asChild>
+        <Button className="fixed bottom-6 right-6 rounded-full h-16 w-16 shadow-lg shadow-primary/30 z-40 flex items-center justify-center">
+          <ShoppingCart className="h-6 w-6" />
+          <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full h-6 w-6 flex items-center justify-center text-sm font-bold">
+            {totalItemsInCart}
+          </span>
+          <span className="sr-only">View Cart</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side={isMobile ? "bottom" : "right"}
+        className={cn(
+          "flex flex-col p-0",
+          isMobile
+            ? "h-[90dvh] rounded-t-2xl"
+            : "w-[400px]",
+          "bg-[#141821] border-l-border/50"
+        )}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="p-4 border-b border-border/50">
+          <SheetHeader className="text-left">
+            <SheetTitle className="font-headline text-2xl">Your Cart</SheetTitle>
+          </SheetHeader>
+        </div>
+        <div className="flex-1 flex flex-col overflow-y-auto p-4">
+          <CheckoutForm {...props} onSuccess={handleSuccess} />
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
 }
-
-    
