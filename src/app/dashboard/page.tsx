@@ -376,6 +376,33 @@ export default function Home() {
                       <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
                   </SheetTrigger>
                   <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                     <div className="flex flex-col h-full">
+                        <div className="flex-1 overflow-y-auto">
+                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                                Menu
+                            </div>
+                            <div className="p-4 text-center text-muted-foreground text-sm">
+                                You don't have access to any labs yet. Request access from your profile.
+                            </div>
+                        </div>
+                        <div className="mt-auto border-t border-border/50 bg-[#0e1015] pb-8">
+                            <div className="flex items-center justify-between p-2">
+                                <UserProfileModal role="Student">
+                                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="overflow-hidden">
+                                            <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                                            <p className="text-xs text-muted-foreground">Student</p>
+                                        </div>
+                                    </div>
+                                </UserProfileModal>
+                                <UserNav role="Student" />
+                            </div>
+                        </div>
+                      </div>
                   </SheetContent>
                 </Sheet>
                 <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">No Labs Available</h1>
@@ -684,5 +711,7 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+
+    
 
     
