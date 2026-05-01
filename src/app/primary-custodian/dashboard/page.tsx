@@ -188,6 +188,45 @@ export default function HeadSupervisorDashboardPage() {
         setIsEditUserRoleOpen(true);
     }
 
+    const handleDeleteUser = async (userToDelete: UserType) => {
+        if (!firestore) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Firestore is not available.' });
+            return;
+        }
+
+        if (userToDelete.id === user?.uid) {
+            toast({ variant: 'destructive', title: 'Action Denied', description: 'You cannot delete your own account.' });
+            return;
+        }
+
+        try {
+            const batch = writeBatch(firestore);
+            
+            // 1. Delete from users collection
+            batch.delete(doc(firestore, "users", userToDelete.id));
+
+            // 2. Delete role flag
+            let roleCollection = "";
+            switch (userToDelete.role) {
+                case "Supervisor": roleCollection = "roles_supervisor"; break;
+                case "Head Supervisor": roleCollection = "roles_head_supervisor"; break;
+                case "Property Custodian": roleCollection = "roles_property_custodian"; break;
+                case "Staff": roleCollection = "roles_staff"; break;
+                case "Teacher": roleCollection = "roles_teachers"; break;
+            }
+            
+            if (roleCollection) {
+                batch.delete(doc(firestore, roleCollection, userToDelete.id));
+            }
+
+            await batch.commit();
+            toast({ title: "User Deleted", description: `${userToDelete.displayName} has been removed from the system.` });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the user profile.' });
+        }
+    }
+
     const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!firestore) {
@@ -488,19 +527,41 @@ export default function HeadSupervisorDashboardPage() {
                                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead>Assigned Department</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>
                                         {usersToDisplay.map(u => {
+                                            const isSelf = u.id === user?.uid;
                                             const canEdit = u.role === 'Supervisor' || u.role === 'Staff';
-                                            const departmentName = canEdit ? departments.find(d => d.id === u.assignedDepartmentId)?.name || 'Not Assigned' : 'N/A';
+                                            const departmentName = (u.role === 'Supervisor' || u.role === 'Staff') ? departments.find(d => d.id === u.assignedDepartmentId)?.name || 'Not Assigned' : 'N/A';
                                             return (
                                                 <TableRow key={u.id}>
-                                                    <TableCell className="font-medium">{u.displayName}</TableCell>
+                                                    <TableCell className="font-medium">{u.displayName} {isSelf && "(You)"}</TableCell>
                                                     <TableCell><Badge variant={(u.role === 'Supervisor' || u.role === 'Head Supervisor' || u.role === 'Property Custodian') ? 'default' : 'secondary'}>{u.role}</Badge></TableCell>
                                                     <TableCell>{departmentName}</TableCell>
-                                                    <TableCell className="text-right">
+                                                    <TableCell className="text-right space-x-2">
                                                         {canEdit && (
                                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditUser(u)}>
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>
                                                         )}
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" disabled={isSelf}>
+                                                                    <Trash className="h-4 w-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete the user account for <strong>{u.displayName}</strong> and revoke their access to the system. This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDeleteUser(u)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                                        Delete Account
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
                                                     </TableCell>
                                                 </TableRow>
                                             )
