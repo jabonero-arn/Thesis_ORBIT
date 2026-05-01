@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -15,9 +14,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
 import type { Department } from "@/lib/types";
+import { createActivityLog } from "@/lib/logging";
 
 type AddChannelFormProps = {
   open: boolean;
@@ -28,6 +28,7 @@ type AddChannelFormProps = {
 export function AddChannelForm({ open, onOpenChange, department }: AddChannelFormProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -68,6 +69,15 @@ export function AddChannelForm({ open, onOpenChange, department }: AddChannelFor
             description,
             departmentId: department.id
         });
+
+        createActivityLog(
+            firestore,
+            user?.uid || 'sys',
+            user?.displayName || 'Admin',
+            'Created Room',
+            `New laboratory room created: #${name} in ${department.name}`,
+            'Management'
+        );
 
         toast({
             title: "Room Created",

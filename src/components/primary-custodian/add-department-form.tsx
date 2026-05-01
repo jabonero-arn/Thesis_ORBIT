@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -15,8 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser } from "@/firebase";
 import { collection, addDoc } from "firebase/firestore";
+import { createActivityLog } from "@/lib/logging";
 
 type AddDepartmentFormProps = {
   open: boolean;
@@ -26,6 +26,7 @@ type AddDepartmentFormProps = {
 export function AddDepartmentForm({ open, onOpenChange }: AddDepartmentFormProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const [name, setName] = React.useState("");
   const [prefix, setPrefix] = React.useState("");
@@ -63,6 +64,15 @@ export function AddDepartmentForm({ open, onOpenChange }: AddDepartmentFormProps
         const departmentsCollection = collection(firestore, "departments");
         await addDoc(departmentsCollection, { name, prefix });
 
+        createActivityLog(
+            firestore,
+            user?.uid || 'sys',
+            user?.displayName || 'Admin',
+            'Created Department',
+            `New department created: ${name} (${prefix})`,
+            'Management'
+        );
+
         toast({
             title: "Department Created",
             description: `The "${name}" department has been added.`
@@ -86,7 +96,7 @@ export function AddDepartmentForm({ open, onOpenChange }: AddDepartmentFormProps
         <DialogHeader>
           <DialogTitle>Add New Department</DialogTitle>
           <DialogDescription>
-            Create a new department or laboratory grouping. The prefix is a unique ID used for sorting (e.g., 'chem').
+            Create a new department or laboratory grouping.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleCreateDepartment}>

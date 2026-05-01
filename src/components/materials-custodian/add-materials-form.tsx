@@ -1,16 +1,16 @@
+"use client"
 
-'use client';
-
-import * as React from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useFirestore } from '@/firebase';
-import { collection, writeBatch, doc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
-import type { InventoryItem } from '@/lib/types';
+import * as React from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useFirestore, useUser } from "@/firebase"
+import { collection, writeBatch, doc } from "firebase/firestore"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PlusCircle, Trash2, Loader2 } from "lucide-react"
+import type { InventoryItem } from "@/lib/types"
+import { createActivityLog } from "@/lib/logging"
 
 type NewMaterial = {
     id: number;
@@ -21,6 +21,7 @@ type NewMaterial = {
 export function AddMaterialsForm({ onSubmissionSuccess }: { onSubmissionSuccess: () => void }) {
     const { toast } = useToast();
     const firestore = useFirestore();
+    const { user } = useUser();
     const [materials, setMaterials] = React.useState<NewMaterial[]>([{ id: 1, name: '', quantity: 1 }]);
     const [isLoading, setIsLoading] = React.useState(false);
 
@@ -73,12 +74,22 @@ export function AddMaterialsForm({ onSubmissionSuccess }: { onSubmissionSuccess:
             });
 
             await batch.commit();
+
+            createActivityLog(
+                firestore,
+                user?.uid || 'sys',
+                user?.displayName || 'Property Custodian',
+                'Provisioned Materials',
+                `Provisioned ${validMaterials.length} new items types for verification: ${validMaterials.map(m=>m.name).join(', ')}`,
+                'Inventory'
+            );
+
             toast({ title: 'Success', description: `${validMaterials.length} item(s) sent for verification.` });
             setMaterials([{ id: 1, name: '', quantity: 1 }]);
             onSubmissionSuccess();
         } catch (error) {
             console.error('Error submitting materials:', error);
-            toast({ variant: 'destructive', title: 'Submission Failed', description: 'An error occurred while sending items.' });
+            toast({ variant: 'destructive', title: 'Submission Failed' });
         } finally {
             setIsLoading(false);
         }

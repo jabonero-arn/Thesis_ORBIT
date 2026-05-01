@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,12 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
-import { useFirestore } from "@/firebase"
+import { useFirestore, useUser } from "@/firebase"
 import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
 import { Html5Qrcode } from "html5-qrcode"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
-
+import { createActivityLog } from "@/lib/logging"
 
 type ScannedCompactCheckoutData = {
     t: 'c'; // type: 'checkout'
@@ -70,6 +69,7 @@ const qrCodeReaderId = "qr-reader";
 export function QrScannerView() {
   const { items, borrowHistory, allUsers } = useAppContext();
   const firestore = useFirestore();
+  const { user: staffUser } = useUser();
   const { toast } = useToast();
   
   const [scannedData, setScannedData] = React.useState("");
@@ -140,7 +140,7 @@ export function QrScannerView() {
         } else if (payload.t === 'r' && payload.ids) {
             const recordsToReturn = borrowHistory.filter(h => payload.ids.includes(h.id) && (h.status === 'Active' || h.status === 'Pending Return'));
             if (recordsToReturn.length === 0) {
-                 toast({ variant: 'destructive', title: 'Invalid Return', description: 'No eligible items to return found for this QR code. The item may have already been returned or is in an invalid state.' });
+                 toast({ variant: 'destructive', title: 'Invalid Return', description: 'No eligible items to return found for this QR code.' });
                  handleResetScanner();
                  return;
             }
@@ -173,7 +173,7 @@ export function QrScannerView() {
         }
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message || 'The scanned data is not a valid request.' });
+        toast({ variant: 'destructive', title: 'Invalid QR Code', description: (e as Error).message });
         handleResetScanner();
     }
   };
@@ -182,7 +182,6 @@ export function QrScannerView() {
     if (scannedData) {
         lookupHandlerRef.current();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scannedData]);
 
 
@@ -204,25 +203,12 @@ export function QrScannerView() {
         })
         .catch((err) => {
             setHasCameraPermission(false);
-            const errStr = String(err);
-            if (
-              !errStr.includes("NotAllowedError") &&
-              !errStr.includes('transition') &&
-              !errStr.includes('not found') &&
-              !errStr.includes('play()')
-            ) {
-              // Non-permission related errors can be logged in development
-              if (process.env.NODE_ENV === 'development') {
-                console.error("Failed to start QR scanner", err);
-              }
-            }
         });
     }
 
     return () => {
         if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().catch(err => {
-            });
+            html5QrCode.stop().catch(err => {});
         }
     };
   }, [isScanning]);
@@ -244,18 +230,10 @@ export function QrScannerView() {
                 if (itemToUpdate.quantity < quantityToDecrement) throw new Error(`Not enough stock for ${itemToUpdate.name}.`);
                 const newQuantity = itemToUpdate.quantity - quantityToDecrement;
                 const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-
-                const oldStatus = itemToUpdate.status;
-                const newStatus = newQuantity > 0
-                    ? (oldStatus === 'Borrowed' ? 'Available' : oldStatus)
-                    : 'Borrowed';
-
-                 batch.update(itemDocRef, { 
+                batch.update(itemDocRef, { 
                     quantity: newQuantity,
-                    status: newStatus
+                    status: newQuantity > 0 ? itemToUpdate.status : 'Borrowed'
                 });
-            } else {
-                throw new Error(`Item with ID ${itemId} not found in inventory.`);
             }
         }
         const historyCollectionRef = collection(firestore, 'borrowing_transactions');
@@ -273,7 +251,6 @@ export function QrScannerView() {
                     status: 'Active',
                     checkoutSessionId: originalPayload.sid,
                 };
-
                 if (originalPayload.gType === 'Group') {
                     newRecord.borrowingType = 'Group';
                     newRecord.groupNumber = originalPayload.gNum;
@@ -282,7 +259,6 @@ export function QrScannerView() {
                 } else {
                     newRecord.borrowingType = 'Individual';
                 }
-
                 batch.set(newDocRef, newRecord);
             }
         });
@@ -291,138 +267,79 @@ export function QrScannerView() {
             batch.update(approvalDocRef, { status: 'Active', date: new Date().toISOString(), checkoutSessionId: originalPayload.sid });
         });
         await batch.commit();
-        const totalItemsCheckedOut = originalPayload.i.reduce((sum, item) => sum + item.q, 0);
-        toast({ title: "Checkout Confirmed", description: `${totalItemsCheckedOut} item(s) checked out to ${studentName}.` });
+
+        createActivityLog(
+            firestore,
+            staffUser?.uid || 'sys',
+            staffUser?.displayName || 'Staff',
+            'Processed Checkout',
+            `Verified checkout for ${studentName}: ${sessionInView.items.map(i=>`${i.name} (x${i.quantity})`).join(', ')}`,
+            'Transaction'
+        );
+
+        toast({ title: "Checkout Confirmed" });
     } catch (e: any) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: e.message || 'Could not complete checkout.' });
+        toast({ variant: 'destructive', title: 'Error', description: e.message });
     } finally {
         setIsProcessing(false);
         handleResetScanner();
     }
   }
 
-  const handleDenyCheckout = async () => {
-    if (!sessionInView) return;
-    toast({ variant: "destructive", title: "Checkout Denied", description: `The checkout for ${sessionInView.studentName} has been cancelled.` });
-    handleResetScanner();
-  }
-
-
   const handleConfirmAllReturns = async (condition: 'Good' | 'Defected' | 'Broken' | 'Lost' | '') => {
-    if (!selectedReturnGroup || !firestore || !condition) {
-        if (!condition) {
-            toast({ variant: 'destructive', title: 'Condition Required', description: 'Please select a return condition.' });
-        }
-        return;
-    };
-
+    if (!selectedReturnGroup || !firestore || !condition) return;
     setIsProcessing(true);
     try {
         const batch = writeBatch(firestore);
-        const itemQuantityIncrements = new Map<string, number>(); // Key: inventoryItemId, Value: quantity to increment
+        const itemQuantityIncrements = new Map<string, number>();
 
         for (const record of selectedReturnGroup.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            const updatePayload: { 
-                status: 'Returned'; 
-                returnCondition: typeof condition;
-                resolutionStatus?: 'Pending';
-            } = { 
-                status: 'Returned', 
-                returnCondition: condition 
-            };
-            
-            if (condition !== 'Good') {
-                updatePayload.resolutionStatus = 'Pending';
-            }
-
+            const updatePayload: any = { status: 'Returned', returnCondition: condition };
+            if (condition !== 'Good') updatePayload.resolutionStatus = 'Pending';
             batch.update(historyDocRef, updatePayload);
 
-            // Only update inventory if we know which item it is
-            if (record.inventoryItemId) {
-                if (condition === 'Good') {
-                    itemQuantityIncrements.set(record.inventoryItemId, (itemQuantityIncrements.get(record.inventoryItemId) || 0) + 1);
-                }
-                // For 'Defected', 'Broken', or 'Lost', we simply don't increment the quantity back into circulation.
-                // The item's quantity was already decremented at checkout.
+            if (record.inventoryItemId && condition === 'Good') {
+                itemQuantityIncrements.set(record.inventoryItemId, (itemQuantityIncrements.get(record.inventoryItemId) || 0) + 1);
             }
         }
 
-        // Process quantity updates for 'Good' items
         for (const [itemId, quantityToIncrement] of itemQuantityIncrements.entries()) {
             const itemToUpdate = items.find(i => i.id === itemId);
             if (itemToUpdate) {
-                const itemDocRef = doc(firestore, 'inventory_items', itemToUpdate.id);
-                const newQuantity = itemToUpdate.quantity + quantityToIncrement;
-                batch.update(itemDocRef, {
-                    quantity: newQuantity,
-                    status: itemToUpdate.status === 'Borrowed' ? 'Available' : itemToUpdate.status
+                batch.update(doc(firestore, 'inventory_items', itemToUpdate.id), {
+                    quantity: itemToUpdate.quantity + quantityToIncrement,
+                    status: 'Available'
                 });
             }
         }
-
         await batch.commit();
-        toast({ title: "Items Returned", description: `${selectedReturnGroup.records.length} item(s) from ${selectedReturnGroup.studentName} have been processed with condition: ${condition}.` });
+
+        createActivityLog(
+            firestore,
+            staffUser?.uid || 'sys',
+            staffUser?.displayName || 'Staff',
+            'Processed Return',
+            `Verified return for ${selectedReturnGroup.studentName} with condition: ${condition}`,
+            'Transaction'
+        );
+
+        toast({ title: "Items Returned" });
     } catch (e: any) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not process returns. Please try again.' });
+        toast({ variant: 'destructive', title: 'Error' });
     } finally {
         setIsProcessing(false);
         handleResetScanner();
     }
   };
 
-  const handleConfirmClaim = async () => {
-    if (!claimSessionInView || !firestore) return;
-    setIsProcessing(true);
-    
-    try {
-        await runTransaction(firestore, async (transaction) => {
-            const inventoryUpdates: {ref: any, newQty: number}[] = [];
-            
-            for (const record of claimSessionInView.records) {
-                 const itemQuery = query(collection(firestore, 'inventory_items'), where('name', '==', record.itemName));
-                 const itemSnap = await getDocs(itemQuery);
-                 if (itemSnap.empty) throw new Error(`Item "${record.itemName}" not found in inventory.`);
-                 
-                 const itemDoc = itemSnap.docs[0];
-                 const itemData = itemDoc.data();
-                 const requestedQty = record.itemQuantity || 1;
-                 
-                 if (itemData.quantity < requestedQty) {
-                    throw new Error(`Not enough stock for "${record.itemName}". Available: ${itemData.quantity}, Requested: ${requestedQty}`);
-                 }
-                 inventoryUpdates.push({ ref: itemDoc.ref, newQty: itemData.quantity - requestedQty });
-                 
-                 const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-                 transaction.update(historyDocRef, { status: 'Active', date: new Date().toISOString() });
-            }
-
-            for(const update of inventoryUpdates) {
-                transaction.update(update.ref, { quantity: update.newQty, status: update.newQty > 0 ? 'Available' : 'Borrowed' });
-            }
-        });
-
-        toast({ title: "Reservation Claimed!", description: `${claimSessionInView.items.length} item type(s) checked out to ${claimSessionInView.studentName}.` });
-
-    } catch(e: any) {
-        console.error("Claim transaction failed: ", e);
-        toast({ variant: 'destructive', title: 'Claim Failed', description: e.message || "Could not process claim." });
-    } finally {
-        setIsProcessing(false);
-        handleResetScanner();
-    }
-  }
-
   return (
     <div className="space-y-8">
        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode /> Live QR Code Scanner</CardTitle>
-          <CardDescription>
-            Hold a student's QR code in front of the camera to begin a checkout or return process.
-          </CardDescription>
+          <CardDescription>Scan student codes to process checkouts or returns.</CardDescription>
         </CardHeader>
         <CardContent>
             <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
@@ -430,149 +347,61 @@ export function QrScannerView() {
                 {hasCameraPermission === false && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
                         <p className="text-destructive font-semibold">Camera Access Denied</p>
-                        <p className="text-xs text-muted-foreground">Please enable camera permissions in your browser settings to use the scanner.</p>
-                    </div>
-                )}
-                {isScanning && hasCameraPermission === null && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
-                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground"/>
-                        <p className="text-sm text-muted-foreground mt-2">Initializing camera...</p>
                     </div>
                 )}
             </div>
-            {scannedData && (!sessionInView && !selectedReturnGroup) && (
-                <div className="mt-4 p-3 rounded-md bg-secondary text-secondary-foreground text-center">
-                    <p className="text-sm font-semibold">QR Code Detected! Processing...</p>
-                </div>
-            )}
         </CardContent>
       </Card>
 
       <Dialog open={!!sessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
-        <DialogContent className="max-w-lg">
-            <DialogHeader>
-                <DialogTitle className="font-headline">Confirm Checkout</DialogTitle>
-                <DialogDescription>Review items and confirm to finalize the checkout for {sessionInView?.studentName}.</DialogDescription>
-            </DialogHeader>
+        <DialogContent>
+            <DialogHeader><DialogTitle>Confirm Checkout</DialogTitle></DialogHeader>
             {sessionInView && (
                 <div className="py-4 space-y-4">
                     <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
-                        <Avatar className="h-12 w-12">
-                           <AvatarFallback>{sessionInView.studentName.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                            <p className="font-semibold">{sessionInView.studentName}</p>
-                            <p className="text-sm text-muted-foreground">{sessionInView.groupInfo ? 'Group' : 'Individual'} Borrower</p>
-                        </div>
+                        <Avatar className="h-12 w-12"><AvatarFallback>{sessionInView.studentName.charAt(0)}</AvatarFallback></Avatar>
+                        <div><p className="font-semibold">{sessionInView.studentName}</p></div>
                     </div>
-                    {sessionInView.groupInfo && (
-                        <div>
-                            <h4 className="font-semibold mb-2">Group Details:</h4>
-                            <div className="text-sm space-y-1 bg-black/20 p-3 rounded-md">
-                                <p><span className="text-muted-foreground">Group Number:</span> {sessionInView.groupInfo.number}</p>
-                                <p><span className="text-muted-foreground">Subject:</span> {sessionInView.groupInfo.subject}</p>
-                                <p><span className="text-muted-foreground">Members:</span> {sessionInView.groupInfo.members}</p>
-                            </div>
-                        </div>
-                    )}
-                    <div>
-                        <h4 className="font-semibold mb-2">Items to Check Out ({sessionInView.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
-                         {sessionInView.items.length > 0 ? (
-                             <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 list-disc list-inside bg-black/20 p-3 rounded-md">
-                               {sessionInView.items.map((item, index) => (
-                                   <li key={index} className="flex items-center justify-between">
-                                       <span>{item.name} (x{item.quantity})</span>
-                                   </li>
-                               ))}
-                            </ul>
-                         ) : (
-                            <p className="text-muted-foreground text-center p-4">No items in this request.</p>
-                         )}
-                    </div>
+                    <ul className="space-y-2 list-disc list-inside bg-black/20 p-3 rounded-md">
+                        {sessionInView.items.map((item, index) => (<li key={index}>{item.name} (x{item.quantity})</li>))}
+                    </ul>
                 </div>
             )}
             <DialogFooter>
-                <Button variant="destructive" onClick={handleDenyCheckout} disabled={isProcessing}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <X className="mr-2 h-4 w-4" />}
-                    Deny
-                </Button>
-                <Button onClick={handleConfirmCheckout} disabled={isProcessing || !sessionInView || sessionInView.items.length === 0}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm
-                </Button>
+                <Button variant="destructive" onClick={handleResetScanner} disabled={isProcessing}>Deny</Button>
+                <Button onClick={handleConfirmCheckout} disabled={isProcessing}>Confirm</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
       
        <Dialog open={!!selectedReturnGroup} onOpenChange={(open) => !open && handleResetScanner()}>
         <DialogContent>
-            <DialogHeader>
-                <DialogTitle className="font-headline">Confirm Return for {selectedReturnGroup?.studentName}</DialogTitle>
-                <DialogDescription>Review the items, select their condition, and confirm the return.</DialogDescription>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>Confirm Return</DialogTitle></DialogHeader>
             {selectedReturnGroup && (
                 <div className="py-4 space-y-6">
                     <div>
-                        <h4 className="font-semibold mb-2">Items to Return ({selectedReturnGroup.records.length}):</h4>
-                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md max-h-40 overflow-y-auto">
-                           {selectedReturnGroup.records.map(record => (
-                               <li key={record.id}>{record.itemName}</li>
-                           ))}
+                        <h4 className="font-semibold mb-2">Items from {selectedReturnGroup.studentName}:</h4>
+                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md">
+                           {selectedReturnGroup.records.map(r => (<li key={r.id}>{r.itemName}</li>))}
                         </ul>
                     </div>
                      <div>
-                        <Label className="font-semibold">Return Condition</Label>
-                        <RadioGroup value={returnCondition} onValueChange={(value) => setReturnCondition(value as any)} className="mt-2 space-y-2">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Good" id="cond-good" /><Label htmlFor="cond-good">Good Condition (No issues)</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Defected" id="cond-defected" /><Label htmlFor="cond-defected">Defected (Minor damage, needs review)</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Broken" id="cond-broken" /><Label htmlFor="cond-broken">Completely Broken (Unusable)</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Lost" id="cond-lost" /><Label htmlFor="cond-lost">Item is Lost</Label></div>
+                        <Label>Condition</Label>
+                        <RadioGroup value={returnCondition} onValueChange={(v) => setReturnCondition(v as any)} className="mt-2 space-y-2">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Good" id="cond-good" /><Label htmlFor="cond-good">Good</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Defected" id="cond-defected" /><Label htmlFor="cond-defected">Defected</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Broken" id="cond-broken" /><Label htmlFor="cond-broken">Broken</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Lost" id="cond-lost" /><Label htmlFor="cond-lost">Lost</Label></div>
                         </RadioGroup>
                     </div>
                 </div>
             )}
             <DialogFooter>
-                <Button variant="outline" onClick={() => setSelectedReturnGroup(null)} disabled={isProcessing}>Cancel</Button>
-                <Button onClick={() => handleConfirmAllReturns(returnCondition)} disabled={isProcessing || !returnCondition}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm Return
-                </Button>
+                <Button variant="outline" onClick={handleResetScanner}>Cancel</Button>
+                <Button onClick={() => handleConfirmAllReturns(returnCondition)} disabled={isProcessing || !returnCondition}>Confirm Return</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
-      
-      <Dialog open={!!claimSessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
-        <DialogContent className="max-w-lg">
-            <DialogHeader>
-                <DialogTitle className="font-headline">Confirm Reservation Claim</DialogTitle>
-                <DialogDescription>Confirm checkout of reserved items for {claimSessionInView?.studentName}.</DialogDescription>
-            </DialogHeader>
-            {claimSessionInView && (
-                <div className="py-4 space-y-4">
-                    <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
-                        <Avatar className="h-12 w-12"><AvatarFallback>{claimSessionInView.studentName.charAt(0)}</AvatarFallback></Avatar>
-                        <div><p className="font-semibold">{claimSessionInView.studentName}</p><p className="text-sm text-muted-foreground">Student</p></div>
-                    </div>
-                    <div>
-                        <h4 className="font-semibold mb-2">Items to Claim ({claimSessionInView.items.reduce((acc, item) => acc + item.quantity, 0)}):</h4>
-                        <ul className="space-y-2 max-h-60 overflow-y-auto pr-2 list-disc list-inside bg-black/20 p-3 rounded-md">
-                            {claimSessionInView.items.map((item, index) => (
-                                <li key={index}><span>{item.name} (x{item.quantity})</span></li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            )}
-            <DialogFooter>
-                <Button variant="outline" onClick={handleResetScanner} disabled={isProcessing}>Cancel</Button>
-                <Button onClick={handleConfirmClaim} disabled={isProcessing || !claimSessionInView}>
-                    {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-                    Confirm Checkout
-                </Button>
-            </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
     </div>
   )
 }
