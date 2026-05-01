@@ -193,26 +193,48 @@ export function QrScannerView() {
     const html5QrCode = new Html5Qrcode(qrCodeReaderId);
     
     if (isScanning) {
-        html5QrCode.start(
-            { facingMode: "environment" },
-            { fps: 30, supportedScanTypes: [] },
-            (decodedText, decodedResult) => {
-                setIsScanning(false);
-                setScannedData(decodedText);
-            },
-            (errorMessage) => { /* ignore */ }
-        )
-        .then(() => {
-            setHasCameraPermission(true);
-        })
-        .catch((err) => {
-            setHasCameraPermission(false);
+        Html5Qrcode.getCameras().then(devices => {
+            if (devices && devices.length > 0) {
+                // Heuristic to pick the primary (1x) camera. 
+                // Many multi-lens devices list the ultra-wide as "environment" or first.
+                // We look for labels that don't contain "wide" if possible.
+                const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+                const primaryCamera = backCameras.find(d => !d.label.toLowerCase().includes('wide') && !d.label.toLowerCase().includes('0.5')) || backCameras[0] || devices[0];
+                
+                html5QrCode.start(
+                    primaryCamera.id,
+                    { 
+                        fps: 30,
+                        // No qrbox = scan full camera feed
+                    },
+                    (decodedText) => {
+                        setIsScanning(false);
+                        setScannedData(decodedText);
+                    },
+                    () => { /* silent error */ }
+                )
+                .then(() => setHasCameraPermission(true))
+                .catch(() => setHasCameraPermission(false));
+            } else {
+                // Fallback to basic constraints
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 30 },
+                    (decodedText) => {
+                        setIsScanning(false);
+                        setScannedData(decodedText);
+                    },
+                    () => { /* silent error */ }
+                )
+                .then(() => setHasCameraPermission(true))
+                .catch(() => setHasCameraPermission(false));
+            }
         });
     }
 
     return () => {
         if (html5QrCode && html5QrCode.isScanning) {
-            html5QrCode.stop().catch(err => {});
+            html5QrCode.stop().catch(() => {});
         }
     };
   }, [isScanning]);
@@ -344,13 +366,13 @@ export function QrScannerView() {
 
   return (
     <div className="space-y-8">
-       <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+       <Card className="bg-card/80 backdrop-blur-sm border-border/50 overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode /> Live QR Code Scanner</CardTitle>
           <CardDescription>Scan student codes to process checkouts or returns.</CardDescription>
         </CardHeader>
-        <CardContent>
-            <div className="aspect-video bg-black rounded-lg overflow-hidden relative flex items-center justify-center">
+        <CardContent className="p-0">
+            <div className="aspect-square md:aspect-video bg-black relative flex items-center justify-center">
                  <div id={qrCodeReaderId} className="w-full h-full" />
                 {hasCameraPermission === false && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">

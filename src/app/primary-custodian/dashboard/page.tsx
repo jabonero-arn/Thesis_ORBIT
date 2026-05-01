@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -347,11 +348,11 @@ export default function HeadSupervisorDashboardPage() {
                                     <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{inventoryItemsToDisplay.map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell className="font-medium">{item.name}</TableCell>
-                                            <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                            <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
                                             <TableCell>{getStatusBadge(item)}</TableCell>
-                                            <TableCell className="text-right space-x-2">
+                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
                                                 <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                                             </TableCell>
@@ -368,13 +369,13 @@ export default function HeadSupervisorDashboardPage() {
                         {transactionSubView === 'borrowed' ? (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Active Borrows</CardTitle></CardHeader>
                                <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                                       <TableBody>{borrowHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                       <TableBody>{borrowHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
                                    </Table></CardContent>
                             </Card>
                         ) : (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
                                 <CardContent><Table><TableHeader><TableRow><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Timestamp</TableHead></TableRow></TableHeader>
-                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell>{log.userName}</TableCell><TableCell><Badge variant="outline">{log.action}</Badge></TableCell><TableCell className="max-w-md truncate">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
+                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell><Badge variant="outline" className="whitespace-nowrap">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px]">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
                                 </Table></CardContent>
                             </Card>
                         )}
@@ -385,7 +386,7 @@ export default function HeadSupervisorDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approvals</CardTitle></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
-                                <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell>{r.studentName}</TableCell><TableCell>{r.itemName}</TableCell><TableCell>{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
+                                <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
                             </Table></CardContent>
                         </Card>
                     </div>
@@ -399,8 +400,8 @@ export default function HeadSupervisorDashboardPage() {
                                 )}
                             </CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell>{u.email}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
-                                    <TableCell className="text-right space-x-2">
+                                <TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="whitespace-nowrap">{u.displayName}</TableCell><TableCell className="whitespace-nowrap">{u.email}</TableCell><TableCell><Badge variant="secondary" className="whitespace-nowrap">{u.role}</Badge></TableCell>
+                                    <TableCell className="text-right space-x-2 whitespace-nowrap">
                                         <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                         <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger>
                                         <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Account?</AlertDialogTitle><AlertDialogDescription>Delete {u.displayName}'s account.</AlertDialogDescription></AlertDialogHeader>
@@ -415,14 +416,15 @@ export default function HeadSupervisorDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Material Provisioning Queue</CardTitle></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2">
+                                <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2 whitespace-nowrap">
                                     <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
                                     <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(i.id, 'Inaccurate')}>Reject</Button>
                                 </TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent></Card>
+                            </Table></CardContent>
+                        </Card>
                          <Card className="bg-card/80"><CardHeader className="flex justify-between items-center flex-row"><div><CardTitle>Assign Materials to Dept</CardTitle></div><Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead className="w-12"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead>Item</TableHead><TableHead>Qty</TableHead></TableRow></TableHeader>
-                                <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell>{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
+                                <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
                             </Table></CardContent></Card>
                     </div>
                  )
