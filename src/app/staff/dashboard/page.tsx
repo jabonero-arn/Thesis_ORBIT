@@ -282,11 +282,11 @@ export default function StaffDashboardPage() {
                                 <TableBody>
                                     {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}>
-                                            <TableCell className="whitespace-nowrap">{req.studentName}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{req.subject}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{getTeacherName(req.teacherId)}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
-                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                            <TableCell>{req.studentName}</TableCell>
+                                            <TableCell>{req.subject}</TableCell>
+                                            <TableCell>{getTeacherName(req.teacherId)}</TableCell>
+                                            <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="text-right space-x-2">
                                                 <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
                                                 <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
                                             </TableCell>
@@ -313,7 +313,7 @@ export default function StaffDashboardPage() {
                     ) : (
                         <Card className="bg-card/80"><CardHeader><CardTitle>Department Inventory</CardTitle><CardDescription>All items in the {assignedDepartment?.name} department.</CardDescription></CardHeader>
                             <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
-                                <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell className="whitespace-nowrap">{item.name}</TableCell><TableCell className="whitespace-nowrap">{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'} className="whitespace-nowrap">{item.status}</Badge></TableCell><TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
+                                <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell><TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
                             </Table></CardContent>
                         </Card>
                     )}
@@ -401,16 +401,55 @@ export default function StaffDashboardPage() {
                     </>)}
                     {transactionSubView === 'borrowed' && (
                         <Card className="bg-card/80"><CardHeader><CardTitle>Currently Borrowed</CardTitle><CardDescription>Items currently checked out from your department.</CardDescription></CardHeader>
-                           <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{activeBorrows.map(b => <TableRow key={b.id}><TableCell className="whitespace-nowrap">{b.studentName}</TableCell><TableCell className="whitespace-nowrap">{b.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell></TableRow>)}</TableBody></Table></CardContent>
+                           <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{activeBorrows.map(b => <TableRow key={b.id}><TableCell>{b.studentName}</TableCell><TableCell>{b.itemName}</TableCell><TableCell>{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell></TableRow>)}</TableBody></Table></CardContent>
                         </Card>
                     )}
                  </div>
             );
             case 'history': return (
-                 <Card className="bg-card/80"><CardHeader><CardTitle>Transaction History</CardTitle><CardDescription>Complete log of all transactions for your department.</CardDescription></CardHeader>
-                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
-                        <TableBody>{departmentHistory.map(h => <TableRow key={h.id}><TableCell className="whitespace-nowrap">{h.studentName}</TableCell><TableCell className="whitespace-nowrap">{h.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{h.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {h.groupNumber} ({h.groupSubject})</p><p className="text-muted-foreground max-w-xs">{h.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right whitespace-nowrap">{h.status === 'Returned' && h.returnCondition ? <ReturnConditionBadge condition={h.returnCondition}/> : getHistoryStatusBadge(h.status)}</TableCell></TableRow>)}</TableBody>
-                    </Table></CardContent>
+                 <Card className="bg-card/80">
+                    <CardHeader>
+                        <CardTitle>Transaction History</CardTitle>
+                        <CardDescription>Complete log of all transactions for your department.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Item</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {departmentHistory.map(h => (
+                                    <TableRow key={h.id}>
+                                        <TableCell>{h.studentName}</TableCell>
+                                        <TableCell>{h.itemName}</TableCell>
+                                        <TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                        <TableCell>
+                                            {h.borrowingType === 'Group' ? (
+                                                <Tooltip>
+                                                    <TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-medium">Group {h.groupNumber} ({h.groupSubject})</p>
+                                                        <p className="text-muted-foreground max-w-xs">{h.groupMembers}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            ) : 'Individual'}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {h.status === 'Returned' && h.returnCondition ? (
+                                                <ReturnConditionBadge condition={h.returnCondition}/>
+                                            ) : getHistoryStatusBadge(h.status)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
                  </Card>
             );
             case 'damaged': return (
@@ -433,10 +472,10 @@ export default function StaffDashboardPage() {
                             <TableBody>
                                 {damagedHistory.length > 0 ? damagedHistory.map(h => (
                                     <TableRow key={h.id}>
-                                        <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
-                                        <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
-                                        <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
-                                        <TableCell className="whitespace-nowrap">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
+                                        <TableCell>{h.studentName}</TableCell>
+                                        <TableCell>{h.itemName}</TableCell>
+                                        <TableCell>{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                        <TableCell>{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
                                         <TableCell className="min-w-[200px]">
                                             <span className="text-sm italic opacity-80">{h.returnNotes || 'No specific details provided.'}</span>
                                         </TableCell>
