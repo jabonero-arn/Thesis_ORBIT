@@ -1,5 +1,3 @@
-
-
 export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Property Custodian";
 
 export type User = {
@@ -56,6 +54,18 @@ export type InventoryItem = {
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
 export type ChannelAccessRequestStatus = 'pending' | 'approved' | 'denied';
 export type StudentDepartmentAccessRequestStatus = 'pending' | 'approved' | 'denied';
+
+export type ActivityLogCategory = 'Transaction' | 'Inventory' | 'Management' | 'User';
+
+export type ActivityLog = {
+    id: string;
+    userId: string;
+    userName: string;
+    action: string;
+    details: string;
+    timestamp: string;
+    category: ActivityLogCategory;
+}
 
 export type ChannelAccessRequest = {
     id: string;

@@ -1,12 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
-import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest, StudentDepartmentAccessRequest } from '@/lib/types';
+import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest, StudentDepartmentAccessRequest, ActivityLog } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { isToday } from 'date-fns';
 
 type AppContextType = {
   items: InventoryItem[];
@@ -16,6 +14,7 @@ type AppContextType = {
   channels: Channel[];
   channelAccessRequests: ChannelAccessRequest[];
   studentDepartmentAccessRequests: StudentDepartmentAccessRequest[];
+  activityLogs: ActivityLog[];
 };
 
 const AppContext = React.createContext<AppContextType | undefined>(undefined);
@@ -35,6 +34,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   , [firestore]);
 
   const { data: historyData } = useCollection<Omit<BorrowHistory, 'id'>>(historyQuery);
+
+  const logsQuery = useMemoFirebase(() =>
+    firestore ? query(collection(firestore, 'activity_logs'), orderBy('timestamp', 'desc')) : null
+  , [firestore]);
+  const { data: logsData } = useCollection<Omit<ActivityLog, 'id'>>(logsQuery);
 
   const usersQuery = useMemoFirebase(() =>
     firestore ? query(collection(firestore, 'users'), orderBy('displayName', 'asc')) : null
@@ -140,7 +144,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     channels: channelsData || [],
     channelAccessRequests: accessRequestsData || [],
     studentDepartmentAccessRequests: studentAccessRequestsData || [],
-  }), [itemsData, historyData, usersData, departmentsData, channelsData, accessRequestsData, studentAccessRequestsData]);
+    activityLogs: logsData || [],
+  }), [itemsData, historyData, usersData, departmentsData, channelsData, accessRequestsData, studentAccessRequestsData, logsData]);
 
   return (
     <AppContext.Provider value={value}>

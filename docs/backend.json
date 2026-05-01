@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -112,6 +111,20 @@
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
     },
+    "ActivityLog": {
+      "title": "Activity Log",
+      "description": "A record of any significant action performed in the system.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "action": { "type": "string", "description": "e.g., Created Department, Deleted Item, Checked Out" },
+        "details": { "type": "string", "description": "Human readable details about the action." },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "category": { "type": "string", "enum": ["Transaction", "Inventory", "Management", "User"] }
+      },
+      "required": ["userId", "userName", "action", "details", "timestamp", "category"]
+    },
     "RoleFlag": {
       "title": "Role Flag",
       "description": "A document whose existence grants a user a specific role.",
@@ -217,6 +230,12 @@
         "$ref": "#/entities/BorrowHistory"
       },
       "description": "Stores all borrowing transactions and requests."
+    },
+    "/activity_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/ActivityLog"
+      },
+      "description": "Audit trail for all significant actions in the system."
     },
     "/roles_teachers/{userId}": {
       "schema": {
