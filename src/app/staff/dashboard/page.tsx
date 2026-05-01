@@ -414,10 +414,37 @@ export default function StaffDashboardPage() {
                  </Card>
             );
             case 'damaged': return (
-                <Card className="bg-card/80"><CardHeader><CardTitle>Damaged & Lost Items</CardTitle><CardDescription>Log of all items returned with issues from your department.</CardDescription></CardHeader>
-                    <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Returned</TableHead><TableHead className="text-right">Condition</TableHead></TableRow></TableHeader>
-                        <TableBody>{damagedHistory.length > 0 ? damagedHistory.map(h => <TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}</TableBody>
-                    </Table></CardContent>
+                <Card className="bg-card/80">
+                    <CardHeader>
+                        <CardTitle>Damaged & Lost Items</CardTitle>
+                        <CardDescription>Log of all items returned with issues from your department.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Item</TableHead>
+                                    <TableHead>Date Returned</TableHead>
+                                    <TableHead>Condition</TableHead>
+                                    <TableHead>Details</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {damagedHistory.length > 0 ? damagedHistory.map(h => (
+                                    <TableRow key={h.id}>
+                                        <TableCell>{h.studentName}</TableCell>
+                                        <TableCell>{h.itemName}</TableCell>
+                                        <TableCell>{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                        <TableCell>{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
+                                        <TableCell className="max-w-xs">
+                                            <span className="text-sm italic opacity-80">{h.returnNotes || 'No specific details provided.'}</span>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
                 </Card>
             );
             default: return null;
@@ -581,5 +608,3 @@ export default function StaffDashboardPage() {
         </TooltipProvider>
     )
 }
-
-    

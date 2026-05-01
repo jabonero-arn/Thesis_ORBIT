@@ -641,7 +641,8 @@ export default function SupervisorDashboardPage() {
                                             <TableHead>Student</TableHead>
                                             <TableHead>Item</TableHead>
                                             <TableHead>Date Returned</TableHead>
-                                            <TableHead>Status</TableHead>
+                                            <TableHead>Condition</TableHead>
+                                            <TableHead>Resolution</TableHead>
                                             <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -650,23 +651,33 @@ export default function SupervisorDashboardPage() {
                                             <TableRow key={h.id}>
                                                 <TableCell>{h.studentName}</TableCell>
                                                 <TableCell>{h.itemName}</TableCell>
-                                                <TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                                <TableCell>{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell className="max-w-[200px]">
+                                                    <div className="space-y-1">
+                                                        {h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}
+                                                        {h.returnNotes && (
+                                                            <p className="text-xs italic text-muted-foreground line-clamp-2" title={h.returnNotes}>
+                                                                {h.returnNotes}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell>
                                                     {h.resolutionStatus === 'Resolved' 
                                                         ? <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Resolved</Badge> 
-                                                        : (h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>)
+                                                        : <Badge variant="outline">Pending</Badge>
                                                     }
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     {h.resolutionStatus !== 'Resolved' && (
                                                         <Button size="sm" onClick={() => handleResolveIssue(h.id)}>
                                                             <CheckCircle className="mr-2 h-4 w-4"/>
-                                                            Mark as Resolved
+                                                            Mark Resolved
                                                         </Button>
                                                     )}
                                                 </TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={5} className="h-24 text-center">No damaged or lost items found.</TableCell></TableRow>}
+                                        )) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No damaged or lost items found.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>

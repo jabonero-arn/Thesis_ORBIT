@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,6 +16,7 @@ import { Html5Qrcode } from "html5-qrcode"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { createActivityLog } from "@/lib/logging"
+import { Textarea } from "@/components/ui/textarea"
 
 type ScannedCompactCheckoutData = {
     t: 'c'; // type: 'checkout'
@@ -78,6 +80,7 @@ export function QrScannerView() {
   const [selectedReturnGroup, setSelectedReturnGroup] = React.useState<PendingReturnGroup | null>(null);
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [returnCondition, setReturnCondition] = React.useState<'Good' | 'Defected' | 'Broken' | 'Lost' | ''>('');
+  const [returnNotes, setReturnNotes] = React.useState('');
   
   const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
   const [isScanning, setIsScanning] = React.useState(true);
@@ -90,6 +93,7 @@ export function QrScannerView() {
     setClaimSessionInView(null);
     setSelectedReturnGroup(null);
     setReturnCondition('');
+    setReturnNotes('');
     setIsScanning(true);
   };
   
@@ -296,7 +300,11 @@ export function QrScannerView() {
 
         for (const record of selectedReturnGroup.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
-            const updatePayload: any = { status: 'Returned', returnCondition: condition };
+            const updatePayload: any = { 
+                status: 'Returned', 
+                returnCondition: condition,
+                returnNotes: returnNotes.trim() || null
+            };
             if (condition !== 'Good') updatePayload.resolutionStatus = 'Pending';
             batch.update(historyDocRef, updatePayload);
 
@@ -321,7 +329,7 @@ export function QrScannerView() {
             staffUser?.uid || 'sys',
             staffUser?.displayName || 'Staff',
             'Processed Return',
-            `Verified return for ${selectedReturnGroup.studentName} with condition: ${condition}`,
+            `Verified return for ${selectedReturnGroup.studentName} with condition: ${condition}${returnNotes ? ` (Notes: ${returnNotes})` : ''}`,
             'Transaction'
         );
 
@@ -375,30 +383,53 @@ export function QrScannerView() {
       </Dialog>
       
        <Dialog open={!!selectedReturnGroup} onOpenChange={(open) => !open && handleResetScanner()}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Confirm Return</DialogTitle></DialogHeader>
             {selectedReturnGroup && (
                 <div className="py-4 space-y-6">
                     <div>
                         <h4 className="font-semibold mb-2">Items from {selectedReturnGroup.studentName}:</h4>
-                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md">
+                        <ul className="space-y-1 text-sm list-disc list-inside bg-black/20 p-3 rounded-md max-h-32 overflow-y-auto">
                            {selectedReturnGroup.records.map(r => (<li key={r.id}>{r.itemName}</li>))}
                         </ul>
                     </div>
-                     <div>
-                        <Label>Condition</Label>
-                        <RadioGroup value={returnCondition} onValueChange={(v) => setReturnCondition(v as any)} className="mt-2 space-y-2">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Good" id="cond-good" /><Label htmlFor="cond-good">Good</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Defected" id="cond-defected" /><Label htmlFor="cond-defected">Defected</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Broken" id="cond-broken" /><Label htmlFor="cond-broken">Broken</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Lost" id="cond-lost" /><Label htmlFor="cond-lost">Lost</Label></div>
-                        </RadioGroup>
+                     <div className="space-y-4">
+                        <div>
+                            <Label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Select Condition</Label>
+                            <RadioGroup value={returnCondition} onValueChange={(v) => setReturnCondition(v as any)} className="mt-3 space-y-2">
+                                <div className="flex items-center space-x-2"><RadioGroupItem value="Good" id="cond-good" /><Label htmlFor="cond-good" className="cursor-pointer">Good</Label></div>
+                                <div className="flex items-center space-x-2 text-yellow-500"><RadioGroupItem value="Defected" id="cond-defected" /><Label htmlFor="cond-defected" className="cursor-pointer">Defected</Label></div>
+                                <div className="flex items-center space-x-2 text-orange-500"><RadioGroupItem value="Broken" id="cond-broken" /><Label htmlFor="cond-broken" className="cursor-pointer">Broken</Label></div>
+                                <div className="flex items-center space-x-2 text-destructive"><RadioGroupItem value="Lost" id="cond-lost" /><Label htmlFor="cond-lost" className="cursor-pointer">Lost / Missing</Label></div>
+                            </RadioGroup>
+                        </div>
+                        
+                        {(returnCondition !== 'Good' && returnCondition !== '') && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <Label htmlFor="return-notes" className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                                    {returnCondition === 'Lost' ? 'Specify Missing Parts' : 'Describe Damage'}
+                                </Label>
+                                <Textarea 
+                                    id="return-notes"
+                                    placeholder={returnCondition === 'Lost' ? "e.g., Breadboard and jumper wires are missing from the kit." : "e.g., Screen is cracked but functional."}
+                                    value={returnNotes}
+                                    onChange={(e) => setReturnNotes(e.target.value)}
+                                    className="mt-2 min-h-[80px]"
+                                    required={returnCondition === 'Lost'}
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
             <DialogFooter>
                 <Button variant="outline" onClick={handleResetScanner}>Cancel</Button>
-                <Button onClick={() => handleConfirmAllReturns(returnCondition)} disabled={isProcessing || !returnCondition}>Confirm Return</Button>
+                <Button 
+                    onClick={() => handleConfirmAllReturns(returnCondition)} 
+                    disabled={isProcessing || !returnCondition || (returnCondition === 'Lost' && !returnNotes.trim())}
+                >
+                    Confirm Return
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

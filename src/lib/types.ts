@@ -1,3 +1,4 @@
+
 export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Property Custodian";
 
 export type User = {
@@ -110,6 +111,7 @@ export type BorrowHistory = {
     groupSubject?: string;
     groupMembers?: string;
     returnCondition?: 'Good' | 'Defected' | 'Broken' | 'Lost';
+    returnNotes?: string;
     resolutionStatus?: 'Pending' | 'Resolved';
 };
 

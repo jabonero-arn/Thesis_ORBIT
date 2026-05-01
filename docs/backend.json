@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -102,6 +103,10 @@
           "type": "string",
           "enum": ["Good", "Defected", "Broken", "Lost"],
           "description": "The condition of the item upon return."
+        },
+        "returnNotes": {
+          "type": "string",
+          "description": "Detailed notes about the return condition, especially if parts are missing or broken."
         },
         "resolutionStatus": {
           "type": "string",
