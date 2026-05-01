@@ -206,6 +206,31 @@ export default function HeadSupervisorDashboardPage() {
         }
     }
 
+    const handleDeleteDepartment = async (id: string, name: string, prefix: string) => {
+        if (!firestore) return;
+        try {
+            await deleteDoc(doc(firestore, "departments", id));
+            
+            createActivityLog(
+                firestore,
+                user?.uid || 'sys',
+                userProfile?.displayName || 'Admin',
+                'Deleted Department',
+                `Deleted department: ${name} (${prefix})`,
+                'Management'
+            );
+
+            if (dashboardSubView === prefix) {
+                setDashboardSubView('overall');
+            }
+            
+            toast({ title: "Department Deleted" });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: "Error", description: "Could not delete department." });
+        }
+    }
+
     const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!firestore || !editingItem) return;
@@ -451,7 +476,7 @@ export default function HeadSupervisorDashboardPage() {
                         <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
                             <div className="py-4 space-y-4">
-                                {activeView === 'dashboard' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Scope</h2><ul className="space-y-1"><li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>{departments.map(d=>(<li key={d.id}><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2">{d.name}</span></Button></li>))}</ul><Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button></div>)}
+                                {activeView === 'dashboard' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Scope</h2><ul className="space-y-1"><li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>{departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department. Associated records and rooms may become unmanaged.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}</ul><Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button></div>)}
                                 {activeView === 'inventory' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Inventory View</h2><ul className="space-y-1"><li><Button variant={inventorySubView === 'all' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('all')}><Package className="mr-2 h-4 w-4"/>Full List</Button></li><li><Button variant={inventorySubView === 'inaccurate' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('inaccurate')}><AlertTriangle className="mr-2 h-4 w-4"/>Inaccurate</Button></li>{departments.map(d=>(<li key={d.id}><Button variant={inventorySubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2">{d.name}</span></Button></li>))}</ul></div>)}
                                 {activeView === 'transactions' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Audit</h2><ul className="space-y-1"><li><Button variant={transactionSubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('borrowed')}><PackageCheck className="mr-2 h-4 w-4"/>Active Borrows</Button></li><li><Button variant={transactionSubView === 'logs' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('logs')}><FileText className="mr-2 h-4 w-4"/>Platform Logs</Button></li></ul></div>)}
                                 {activeView === 'users' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Directory</h2><ul className="space-y-1">{userRoles.map(r=>(<li key={r.id}><Button variant={usersSubView === r.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setUsersSubView(r.id as any)}>{r.icon} <span className="ml-2">{r.name}</span></Button></li>))}</ul></div>)}
