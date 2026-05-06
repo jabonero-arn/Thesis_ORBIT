@@ -355,11 +355,11 @@ export default function SupervisorDashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Date Added</TableHead>
-                                <TableHead>Quantity</TableHead>
-                                <TableHead>Assigned Room</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
+                                <TableHead className="whitespace-nowrap">Name</TableHead>
+                                <TableHead className="whitespace-nowrap">Date Added</TableHead>
+                                <TableHead className="whitespace-nowrap">Quantity</TableHead>
+                                <TableHead className="whitespace-nowrap">Assigned Room</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -398,11 +398,11 @@ export default function SupervisorDashboardPage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Lab</TableHead>
-                                <TableHead>Quantity</TableHead>
-                                <TableHead className="text-right">Status</TableHead>
+                                <TableHead className="whitespace-nowrap">Name</TableHead>
+                                <TableHead className="whitespace-nowrap">Date</TableHead>
+                                <TableHead className="whitespace-nowrap">Lab</TableHead>
+                                <TableHead className="whitespace-nowrap">Quantity</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -431,7 +431,9 @@ export default function SupervisorDashboardPage() {
 
     const renderContent = () => {
         const damagedHistory = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
-        
+        const individualDamaged = damagedHistory.filter(h => h.borrowingType !== 'Group');
+        const groupDamaged = damagedHistory.filter(h => h.borrowingType === 'Group');
+
         switch (activeView) {
             case 'dashboard':
                  const totalItemTypes = departmentItems.length;
@@ -466,11 +468,11 @@ export default function SupervisorDashboardPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Teacher</TableHead>
-                                            <TableHead>Requested Lab</TableHead>
-                                            <TableHead>Subject/Purpose</TableHead>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="whitespace-nowrap">Teacher</TableHead>
+                                            <TableHead className="whitespace-nowrap">Requested Lab</TableHead>
+                                            <TableHead className="whitespace-nowrap">Subject/Purpose</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -513,16 +515,16 @@ export default function SupervisorDashboardPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[50px]">
+                                            <TableHead className="w-[50px] whitespace-nowrap">
                                                 <UiCheckbox 
                                                     checked={selectedForRoomAssignment.length > 0 && selectedForRoomAssignment.length === itemsToAssign.length}
                                                     onCheckedChange={handleToggleAllForRoomAssignment}
                                                     aria-label="Select all for room assignment"
                                                 />
                                             </TableHead>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Quantity</TableHead>
-                                            <TableHead>Date Verified</TableHead>
+                                            <TableHead className="whitespace-nowrap">Name</TableHead>
+                                            <TableHead className="whitespace-nowrap">Quantity</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date Verified</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -571,7 +573,7 @@ export default function SupervisorDashboardPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <Table>
-                                        <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Visibility</TableHead><TableHead>Last Updated</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Quantity</TableHead><TableHead className="whitespace-nowrap">Status</TableHead><TableHead className="whitespace-nowrap">Visibility</TableHead><TableHead className="whitespace-nowrap">Last Updated</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
                                             {departmentItems.filter(item => item.channelId).length > 0 ? departmentItems.filter(item => item.channelId).map(item => {
                                                 const dateToShow = item.verifiedAt || item.createdAt;
@@ -608,7 +610,7 @@ export default function SupervisorDashboardPage() {
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out from your department.</CardDescription></CardHeader>
                            <CardContent>
-                               <Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date Borrowed</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
+                               <Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date Borrowed</TableHead><TableHead className="text-right whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
                                    <TableBody>
                                        {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
                                    </TableBody>
@@ -618,36 +620,93 @@ export default function SupervisorDashboardPage() {
                     </div>
                 );
             case 'history':
+                const indvHistory = departmentHistory.filter(h => h.borrowingType !== 'Group');
+                const groupHistory = departmentHistory.filter(h => h.borrowingType === 'Group');
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader><CardTitle>Full Transaction History</CardTitle><CardDescription>A complete log of all borrow requests and their statuses for your department.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader><TableBody>{departmentHistory.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell>{r.borrowingType === 'Group' ? (<Tooltip><TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger><TooltipContent><p className="font-medium">Group {r.groupNumber} ({r.groupSubject})</p><p className="text-muted-foreground max-w-xs">{r.groupMembers}</p></TooltipContent></Tooltip>) : 'Individual'}</TableCell><TableCell className="text-right whitespace-nowrap">{r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody></Table></CardContent>
+                            <CardHeader><CardTitle>Individual Transaction History</CardTitle><CardDescription>A complete log of all individual borrow requests.</CardDescription></CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="whitespace-nowrap">Student</TableHead>
+                                            <TableHead className="whitespace-nowrap">Item</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {indvHistory.map(r => (
+                                            <TableRow key={r.id}>
+                                                <TableCell className="whitespace-nowrap">{r.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{r.itemName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                                <TableCell className="text-right whitespace-nowrap">
+                                                    {r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader><CardTitle>Group Activity History</CardTitle><CardDescription>A detailed log showing all group borrowing activities and their members.</CardDescription></CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="whitespace-nowrap">Representative</TableHead>
+                                            <TableHead className="whitespace-nowrap">Group Info</TableHead>
+                                            <TableHead className="whitespace-nowrap">Members</TableHead>
+                                            <TableHead className="whitespace-nowrap">Item</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {groupHistory.length > 0 ? groupHistory.map(r => (
+                                            <TableRow key={r.id}>
+                                                <TableCell className="whitespace-nowrap">{r.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">Group {r.groupNumber} ({r.groupSubject})</TableCell>
+                                                <TableCell className="max-w-[200px] truncate" title={r.groupMembers}>{r.groupMembers}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{r.itemName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                                <TableCell className="text-right whitespace-nowrap">
+                                                    {r.status === 'Returned' && r.returnCondition ? <ReturnConditionBadge condition={r.returnCondition}/> : getHistoryStatusBadge(r.status)}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={6} className="text-center h-24">No group activities found.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         </Card>
                     </div>
                 );
             case 'damaged':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader>
-                                <CardTitle>Damaged & Lost Items</CardTitle>
-                                <CardDescription>Log of all items returned with issues from your department. Mark them as resolved once addressed.</CardDescription>
+                                <CardTitle>Individual Damaged & Lost Items</CardTitle>
+                                <CardDescription>Log of issues from individual borrowing sessions. Mark as resolved once addressed.</CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Student</TableHead>
-                                            <TableHead>Item</TableHead>
-                                            <TableHead>Date Returned</TableHead>
-                                            <TableHead>Condition</TableHead>
-                                            <TableHead>Resolution</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
+                                            <TableHead className="whitespace-nowrap">Student</TableHead>
+                                            <TableHead className="whitespace-nowrap">Item</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date Returned</TableHead>
+                                            <TableHead className="whitespace-nowrap">Condition</TableHead>
+                                            <TableHead className="whitespace-nowrap">Resolution</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {damagedHistory.length > 0 ? damagedHistory.map(h => (
+                                        {individualDamaged.length > 0 ? individualDamaged.map(h => (
                                             <TableRow key={h.id}>
                                                 <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
@@ -677,7 +736,63 @@ export default function SupervisorDashboardPage() {
                                                     )}
                                                 </TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No damaged or lost items found.</TableCell></TableRow>}
+                                        )) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No individual issues found.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader>
+                                <CardTitle>Group Damaged & Lost Items</CardTitle>
+                                <CardDescription>Issues from group sessions. All listed members are held accountable.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="whitespace-nowrap">Representative</TableHead>
+                                            <TableHead className="whitespace-nowrap">Members</TableHead>
+                                            <TableHead className="whitespace-nowrap">Item</TableHead>
+                                            <TableHead className="whitespace-nowrap">Date Returned</TableHead>
+                                            <TableHead className="whitespace-nowrap">Condition</TableHead>
+                                            <TableHead className="whitespace-nowrap">Resolution</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {groupDamaged.length > 0 ? groupDamaged.map(h => (
+                                            <TableRow key={h.id}>
+                                                <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                                <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell className="max-w-[200px]">
+                                                    <div className="space-y-1">
+                                                        {h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}
+                                                        {h.returnNotes && (
+                                                            <p className="text-xs italic text-muted-foreground line-clamp-2" title={h.returnNotes}>
+                                                                {h.returnNotes}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {h.resolutionStatus === 'Resolved' 
+                                                        ? <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Resolved</Badge> 
+                                                        : <Badge variant="outline">Pending</Badge>
+                                                    }
+                                                </TableCell>
+                                                <TableCell className="text-right whitespace-nowrap">
+                                                    {h.resolutionStatus !== 'Resolved' && (
+                                                        <Button size="sm" onClick={() => handleResolveIssue(h.id)}>
+                                                            <CheckCircle className="mr-2 h-4 w-4"/>
+                                                            Mark Resolved
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={7} className="h-24 text-center">No group issues found.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>

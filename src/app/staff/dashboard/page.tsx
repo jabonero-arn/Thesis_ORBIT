@@ -61,22 +61,8 @@ export default function StaffDashboardPage() {
 
     const departmentHistory = React.useMemo(() => {
         if (!assignedDepartmentId) return [];
-        
-        // Get all channel IDs for the assigned department
-        const assignedChannelIds = new Set(
-            channels
-                .filter(c => c.departmentId === assignedDepartmentId)
-                .map(c => c.id)
-        );
-
-        // Get all inventory item IDs that are in those channels
-        const departmentItemIds = new Set(
-            items
-                .filter(item => item.channelId && assignedChannelIds.has(item.channelId))
-                .map(item => item.id)
-        );
-
-        // Filter borrow history for records that reference those items
+        const assignedChannelIds = new Set(channels.filter(c => c.departmentId === assignedDepartmentId).map(c => c.id));
+        const departmentItemIds = new Set(items.filter(item => item.channelId && assignedChannelIds.has(item.channelId)).map(item => item.id));
         return borrowHistory.filter(h => h.inventoryItemId && departmentItemIds.has(h.inventoryItemId));
     }, [borrowHistory, items, channels, assignedDepartmentId]);
     
@@ -120,16 +106,6 @@ export default function StaffDashboardPage() {
       }
     }, [user, isUserLoading, router]);
 
-     React.useEffect(() => {
-        if (!isProfileLoading && assignedDepartmentId === undefined && userProfile) {
-             toast({
-                variant: 'destructive',
-                title: 'Assignment Error',
-                description: "Your account has not been assigned to a department. Please contact the Primary Custodian."
-            })
-        }
-    }, [userProfile, isProfileLoading, assignedDepartmentId, toast]);
-
     React.useEffect(() => {
         if (isUserLoading || isProfileLoading || !user) return;
         if (userProfile?.passwordChangeRequired) {
@@ -167,7 +143,6 @@ export default function StaffDashboardPage() {
 
     const handleReservationAction = async (reservationId: string, newStatus: 'Reserved' | 'Denied') => {
         if (!firestore) return;
-
         const recordsToUpdate = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
         if (recordsToUpdate.length === 0) {
             toast({ variant: 'destructive', title: 'Action Failed', description: 'This reservation is no longer pending.' });
@@ -182,29 +157,15 @@ export default function StaffDashboardPage() {
             for (const record of recordsToUpdate) {
                 const item = items.find(i => i.id === record.inventoryItemId);
                 if (!item) continue;
-                
-                const overlappingReservations = borrowHistory.filter(h => 
-                    h.inventoryItemId === record.inventoryItemId &&
-                    h.status === 'Reserved' &&
-                    h.date && isSameDay(new Date(h.date), reservationDate) &&
-                    h.startTime && h.endTime && startTime && endTime &&
-                    h.startTime < endTime && h.endTime > startTime
-                );
-
+                const overlappingReservations = borrowHistory.filter(h => h.inventoryItemId === record.inventoryItemId && h.status === 'Reserved' && h.date && isSameDay(new Date(h.date), reservationDate) && h.startTime && h.endTime && startTime && endTime && h.startTime < endTime && h.endTime > startTime);
                 const overlappingQuantity = overlappingReservations.reduce((sum, h) => sum + (h.itemQuantity || 1), 0);
                 const requestedQuantity = record.itemQuantity || 1;
-
                 if ((overlappingQuantity + requestedQuantity) > item.quantity) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Approval Failed: Conflict',
-                        description: `Not enough stock for "${item.name}" at the selected time to approve this reservation.`
-                    });
+                    toast({ variant: 'destructive', title: 'Approval Failed: Conflict', description: `Not enough stock for "${item.name}" at the selected time to approve this reservation.` });
                     return;
                 }
             }
         }
-
 
         try {
             const batch = writeBatch(firestore);
@@ -213,12 +174,7 @@ export default function StaffDashboardPage() {
                 batch.update(docRef, { status: newStatus });
             });
             await batch.commit();
-
-            toast({
-                title: `Reservation ${newStatus}`,
-                description: `The reservation has been ${newStatus.toLowerCase()}.`
-            });
-
+            toast({ title: `Reservation ${newStatus}`, description: `The reservation has been ${newStatus.toLowerCase()}.` });
         } catch (error) {
             console.error(`Error updating reservation ${reservationId}:`, error);
             toast({ variant: 'destructive', title: 'Update Failed' });
@@ -257,6 +213,8 @@ export default function StaffDashboardPage() {
     const renderContent = () => {
         const activeBorrows = departmentHistory.filter(h => h.status === 'Active');
         const damagedHistory = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
+        const individualDamaged = damagedHistory.filter(h => h.borrowingType !== 'Group');
+        const groupDamaged = damagedHistory.filter(h => h.borrowingType === 'Group');
 
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
@@ -268,25 +226,25 @@ export default function StaffDashboardPage() {
                             <CardTitle>Student Department Access</CardTitle>
                             <CardDescription>Approve or deny student requests to access your department's materials.</CardDescription>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="max-h-[60vh] overflow-auto">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Student</TableHead>
-                                        <TableHead>Subject</TableHead>
-                                        <TableHead>Teacher</TableHead>
-                                        <TableHead>Date Requested</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead className="whitespace-nowrap">Student</TableHead>
+                                        <TableHead className="whitespace-nowrap">Subject</TableHead>
+                                        <TableHead className="whitespace-nowrap">Teacher</TableHead>
+                                        <TableHead className="whitespace-nowrap">Date Requested</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}>
-                                            <TableCell>{req.studentName}</TableCell>
-                                            <TableCell>{req.subject}</TableCell>
-                                            <TableCell>{getTeacherName(req.teacherId)}</TableCell>
-                                            <TableCell>{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
-                                            <TableCell className="text-right space-x-2">
+                                            <TableCell className="whitespace-nowrap">{req.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{req.subject}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{getTeacherName(req.teacherId)}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
                                                 <Button size="sm" onClick={() => handleAccessRequest(req.id, 'approved')}><Check className="mr-2 h-4 w-4"/>Approve</Button>
                                                 <Button size="sm" variant="destructive" onClick={() => handleAccessRequest(req.id, 'denied')}><X className="mr-2 h-4 w-4"/>Deny</Button>
                                             </TableCell>
@@ -312,9 +270,30 @@ export default function StaffDashboardPage() {
                         />
                     ) : (
                         <Card className="bg-card/80"><CardHeader><CardTitle>Department Inventory</CardTitle><CardDescription>All items in the {assignedDepartment?.name} department.</CardDescription></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Status</TableHead><TableHead>Last Updated</TableHead></TableRow></TableHeader>
-                                <TableBody>{departmentItems.map(item => (<TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell><TableCell>{item.quantity}</TableCell><TableCell><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell><TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="whitespace-nowrap">Name</TableHead>
+                                            <TableHead className="whitespace-nowrap">Lab</TableHead>
+                                            <TableHead className="whitespace-nowrap">Quantity</TableHead>
+                                            <TableHead className="whitespace-nowrap">Status</TableHead>
+                                            <TableHead className="whitespace-nowrap">Last Updated</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {departmentItems.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="whitespace-nowrap">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell>
+                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell className="whitespace-nowrap"><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
                         </Card>
                     )}
                 </div>
@@ -327,7 +306,7 @@ export default function StaffDashboardPage() {
                                 <CardTitle>Pending Reservations</CardTitle>
                                 <CardDescription>Student reservation requests for your department.</CardDescription>
                             </CardHeader>
-                             <CardContent>
+                             <CardContent className="max-h-[60vh] overflow-auto">
                                 {groupedPendingReservations.length > 0 ? (
                                     <div className="space-y-4">
                                         {groupedPendingReservations.map(([reservationId, group]) => (
@@ -367,7 +346,7 @@ export default function StaffDashboardPage() {
                                 <CardTitle>Confirmed Reservations</CardTitle>
                                 <CardDescription>Upcoming confirmed reservations in your department.</CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 {groupedConfirmedReservations.length > 0 ? (
                                     <div className="space-y-4">
                                         {groupedConfirmedReservations.map(([reservationId, group]) => (
@@ -401,90 +380,166 @@ export default function StaffDashboardPage() {
                     </>)}
                     {transactionSubView === 'borrowed' && (
                         <Card className="bg-card/80"><CardHeader><CardTitle>Currently Borrowed</CardTitle><CardDescription>Items currently checked out from your department.</CardDescription></CardHeader>
-                           <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead></TableRow></TableHeader><TableBody>{activeBorrows.map(b => <TableRow key={b.id}><TableCell>{b.studentName}</TableCell><TableCell>{b.itemName}</TableCell><TableCell>{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell></TableRow>)}</TableBody></Table></CardContent>
+                           <CardContent className="max-h-[60vh] overflow-auto">
+                               <Table>
+                                   <TableHeader>
+                                       <TableRow>
+                                           <TableHead className="whitespace-nowrap">Student</TableHead>
+                                           <TableHead className="whitespace-nowrap">Item</TableHead>
+                                           <TableHead className="whitespace-nowrap">Date</TableHead>
+                                       </TableRow>
+                                   </TableHeader>
+                                   <TableBody>
+                                       {activeBorrows.map(b => <TableRow key={b.id}><TableCell className="whitespace-nowrap">{b.studentName}</TableCell><TableCell className="whitespace-nowrap">{b.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell></TableRow>)}
+                                   </TableBody>
+                               </Table>
+                           </CardContent>
                         </Card>
                     )}
                  </div>
             );
-            case 'history': return (
-                 <Card className="bg-card/80">
-                    <CardHeader>
-                        <CardTitle>Transaction History</CardTitle>
-                        <CardDescription>Complete log of all transactions for your department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Item</TableHead>
-                                    <TableHead>Date</TableHead>
-                                    <TableHead>Type</TableHead>
-                                    <TableHead className="text-right">Status</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {departmentHistory.map(h => (
-                                    <TableRow key={h.id}>
-                                        <TableCell>{h.studentName}</TableCell>
-                                        <TableCell>{h.itemName}</TableCell>
-                                        <TableCell>{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
-                                        <TableCell>
-                                            {h.borrowingType === 'Group' ? (
-                                                <Tooltip>
-                                                    <TooltipTrigger><Badge variant="outline">Group</Badge></TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p className="font-medium">Group {h.groupNumber} ({h.groupSubject})</p>
-                                                        <p className="text-muted-foreground max-w-xs">{h.groupMembers}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            ) : 'Individual'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            {h.status === 'Returned' && h.returnCondition ? (
-                                                <ReturnConditionBadge condition={h.returnCondition}/>
-                                            ) : getHistoryStatusBadge(h.status)}
-                                        </TableCell>
+            case 'history': 
+                const indvHist = departmentHistory.filter(h => h.borrowingType !== 'Group');
+                const groupHist = departmentHistory.filter(h => h.borrowingType === 'Group');
+                return (
+                 <div className="space-y-8">
+                    <Card className="bg-card/80">
+                        <CardHeader>
+                            <CardTitle>Individual Transaction History</CardTitle>
+                            <CardDescription>Complete log of individual sessions for your department.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="whitespace-nowrap">Student</TableHead>
+                                        <TableHead className="whitespace-nowrap">Item</TableHead>
+                                        <TableHead className="whitespace-nowrap">Date</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">Status</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                 </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {indvHist.map(h => (
+                                        <TableRow key={h.id}>
+                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                {h.status === 'Returned' && h.returnCondition ? (
+                                                    <ReturnConditionBadge condition={h.returnCondition}/>
+                                                ) : getHistoryStatusBadge(h.status)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-card/80">
+                        <CardHeader>
+                            <CardTitle>Group Activity History</CardTitle>
+                            <CardDescription>A log of all group sessions including members for accountability.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="whitespace-nowrap">Representative</TableHead>
+                                        <TableHead className="whitespace-nowrap">Group Info</TableHead>
+                                        <TableHead className="whitespace-nowrap">Members</TableHead>
+                                        <TableHead className="whitespace-nowrap">Item</TableHead>
+                                        <TableHead className="whitespace-nowrap">Date</TableHead>
+                                        <TableHead className="text-right whitespace-nowrap">Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupHist.length > 0 ? groupHist.map(h => (
+                                        <TableRow key={h.id}>
+                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">Group {h.groupNumber} ({h.groupSubject})</TableCell>
+                                            <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                {h.status === 'Returned' && h.returnCondition ? (
+                                                    <ReturnConditionBadge condition={h.returnCondition}/>
+                                                ) : getHistoryStatusBadge(h.status)}
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : <TableRow><TableCell colSpan={6} className="text-center h-24">No group history found.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                 </div>
             );
             case 'damaged': return (
-                <Card className="bg-card/80">
-                    <CardHeader>
-                        <CardTitle>Damaged & Lost Items</CardTitle>
-                        <CardDescription>Log of all items returned with issues from your department.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Student</TableHead>
-                                    <TableHead>Item</TableHead>
-                                    <TableHead>Date Returned</TableHead>
-                                    <TableHead>Condition</TableHead>
-                                    <TableHead>Details</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {damagedHistory.length > 0 ? damagedHistory.map(h => (
-                                    <TableRow key={h.id}>
-                                        <TableCell>{h.studentName}</TableCell>
-                                        <TableCell>{h.itemName}</TableCell>
-                                        <TableCell>{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
-                                        <TableCell>{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
-                                        <TableCell className="min-w-[200px]">
-                                            <span className="text-sm italic opacity-80">{h.returnNotes || 'No specific details provided.'}</span>
-                                        </TableCell>
+                <div className="space-y-8">
+                    <Card className="bg-card/80">
+                        <CardHeader>
+                            <CardTitle>Individual Damaged & Lost Items</CardTitle>
+                            <CardDescription>Log of issues from individual borrowing sessions.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="whitespace-nowrap">Student</TableHead>
+                                        <TableHead className="whitespace-nowrap">Item</TableHead>
+                                        <TableHead className="whitespace-nowrap">Date Returned</TableHead>
+                                        <TableHead className="whitespace-nowrap">Condition</TableHead>
+                                        <TableHead className="whitespace-nowrap">Details</TableHead>
                                     </TableRow>
-                                )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No damaged or lost items found.</TableCell></TableRow>}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {individualDamaged.length > 0 ? individualDamaged.map(h => (
+                                        <TableRow key={h.id}>
+                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
+                                            <TableCell className="min-w-[200px] whitespace-nowrap">
+                                                <span className="text-sm italic opacity-80">{h.returnNotes || 'No specific details provided.'}</span>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No individual issues found.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-card/80">
+                        <CardHeader>
+                            <CardTitle>Group Damaged & Lost Items</CardTitle>
+                            <CardDescription>Issues from group sessions. All listed members are accountable for these materials.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="whitespace-nowrap">Representative</TableHead>
+                                        <TableHead className="whitespace-nowrap">Members</TableHead>
+                                        <TableHead className="whitespace-nowrap">Item</TableHead>
+                                        <TableHead className="whitespace-nowrap">Date Returned</TableHead>
+                                        <TableHead className="whitespace-nowrap">Condition</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {groupDamaged.length > 0 ? groupDamaged.map(h => (
+                                        <TableRow key={h.id}>
+                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                            <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
+                                        </TableRow>
+                                    )) : <TableRow><TableCell colSpan={5} className="text-center h-24">No group issues found.</TableCell></TableRow>}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </div>
             );
             default: return null;
         }
