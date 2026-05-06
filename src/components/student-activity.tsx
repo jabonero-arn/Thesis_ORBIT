@@ -1,7 +1,7 @@
 
 'use client'
 
-import type { BorrowHistory } from "@/lib/types"
+import type { BorrowHistory, BorrowHistoryStatus } from "@/lib/types"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -274,9 +274,9 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                     return (
                         <div key={reservationId || index} className="p-4 rounded-lg bg-black/20 border border-border/50">
                             <div className="flex justify-between items-start">
-                                <div>
+                                <div className="min-w-0 flex-1">
                                     <p className="font-semibold text-lg">Reservation</p>
-                                    <p className="text-sm text-muted-foreground">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime} - {group.endTime}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{format(new Date(group.date), 'MMM d, yyyy')} at {group.startTime} - {group.endTime}</p>
                                 </div>
                                 {getStatusBadge(group.records[0])}
                             </div>
@@ -338,6 +338,9 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                     {record.status === 'Returned' && record.returnCondition
                                         ? <ReturnConditionBadge condition={record.returnCondition} />
                                         : getStatusBadge(record)}
+                                    {record.resolutionStatus === 'Resolved' && (
+                                        <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Resolved</Badge>
+                                    )}
                                 </div>
                             </div>
                             {record.borrowingType === 'Group' && (
@@ -378,6 +381,11 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {record.returnCondition && <ReturnConditionBadge condition={record.returnCondition} />}
+                                        {record.resolutionStatus === 'Resolved' ? (
+                                            <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Resolved</Badge>
+                                        ) : (
+                                            <Badge variant="outline">Pending Resolution</Badge>
+                                        )}
                                     </div>
                                 </div>
                             </div>
