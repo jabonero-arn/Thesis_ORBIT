@@ -71,7 +71,7 @@
         "description": { "type": "string" },
         "departmentId": { "type": "string" },
         "channelId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt", "Inaccurate"] },
+        "status": { "type": "string", "enum": ["Available", "Locked", "Borrowed", "Pending Receipt", "Inaccurate", "Returning"] },
         "imageUrl": { "type": "string", "format": "uri" },
         "imageHint": { "type": "string" },
         "quantity": { "type": "number" },

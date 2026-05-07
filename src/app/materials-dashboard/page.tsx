@@ -4,9 +4,9 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle
+    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle
 } from "lucide-react"
 import {
   Card,
@@ -36,6 +36,7 @@ import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { format } from "date-fns"
 import { AddMaterialsForm } from "@/components/materials-custodian/add-materials-form"
+import { createActivityLog } from "@/lib/logging"
 
 export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
@@ -63,7 +64,7 @@ export default function PropertyCustodianDashboardPage() {
         }
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
-    const [activeView, setActiveView] = React.useState<'dashboard' | 'add-materials' | 'outgoing-items'>('dashboard');
+    const [activeView, setActiveView] = React.useState<'dashboard' | 'add-materials' | 'outgoing-items' | 'returned-items'>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall'); // 'overall' or dept prefix
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     
@@ -94,6 +95,8 @@ export default function PropertyCustodianDashboardPage() {
             badge = <Badge variant="outline">Pending Verification</Badge>;
         } else if (item.status === 'Inaccurate') {
             badge = <Badge variant="destructive">Inaccurate</Badge>;
+        } else if (item.status === 'Returning') {
+            badge = <Badge variant="outline" className="border-amber-500 text-amber-500">Returning</Badge>;
         } else {
             badge = <Badge variant="secondary">Received</Badge>;
         }
@@ -111,10 +114,24 @@ export default function PropertyCustodianDashboardPage() {
         return badge;
     }
 
+    const handleConfirmReturn = async (item: InventoryItem) => {
+        if (!firestore) return;
+        try {
+            // Marking it back to Available but unassigned is one way, or deleting it as it's "retired" back to stock.
+            // Let's delete it from the lab inventory as it's returned to bulk storage.
+            await deleteDoc(doc(firestore, "inventory_items", item.id));
+            createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Custodian', 'Confirmed Return', `Received and retired ${item.name} from lab inventory`, 'Inventory');
+            toast({ title: "Return Acknowledged", description: `${item.name} has been processed back into storage.` });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
         { id: 'add-materials', label: 'Add Materials', icon: <PlusCircle /> },
         { id: 'outgoing-items', label: 'Outgoing Items', icon: <Warehouse /> },
+        { id: 'returned-items', label: 'Head Supervisor Returns', icon: <ListRestart /> },
     ];
     
     const getDeptIcon = (prefix: string) => {
@@ -154,20 +171,50 @@ export default function PropertyCustodianDashboardPage() {
                             <CardHeader>
                                 <div><CardTitle>Outgoing Items</CardTitle><CardDescription>Monitor the verification status of materials you have provisioned.</CardDescription></div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Quantity</TableHead><TableHead>Date Added</TableHead><TableHead>Date Verified</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Quantity</TableHead><TableHead className="whitespace-nowrap">Date Added</TableHead><TableHead className="whitespace-nowrap">Date Verified</TableHead><TableHead className="whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
                                     <TableBody>
                                         {items.length > 0 ? items.map(item => (
                                             <TableRow key={item.id}>
-                                                <TableCell className="font-medium">{item.name}</TableCell>
-                                                <TableCell>{getItemChannelName(item.channelId)}</TableCell>
+                                                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
                                                 <TableCell>{item.quantity}</TableCell>
-                                                <TableCell>{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell>{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell>{getStatusBadge(item)}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{getStatusBadge(item)}</TableCell>
                                             </TableRow>
                                         )) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No items in inventory.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'returned-items':
+                const returningItems = items.filter(i => i.status === 'Returning');
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
+                            <CardHeader>
+                                <div><CardTitle>Returned from Labs</CardTitle><CardDescription>Confirm receipt of materials sent back by the Head Supervisor.</CardDescription></div>
+                            </CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">From Dept</TableHead><TableHead className="whitespace-nowrap">Quantity</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {returningItems.length > 0 ? returningItems.map(item => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{departments.find(d => d.id === item.departmentId)?.name || 'Unassigned'}</TableCell>
+                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell className="text-right whitespace-nowrap">
+                                                    <Button size="sm" onClick={() => handleConfirmReturn(item)}>
+                                                        <CheckCircle className="mr-2 h-4 w-4" /> Confirm Receipt
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">No items currently being returned.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -236,7 +283,7 @@ export default function PropertyCustodianDashboardPage() {
                         </div>
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                                {activeView === 'dashboard' ? 'Dashboard View' : activeView === 'add-materials' ? 'Add Materials' : 'Outgoing Items'}
+                                {navItems.find(i => i.id === activeView)?.label || 'View'}
                             </div>
                             {activeView === 'dashboard' && (
                                 <div className="py-4">
@@ -249,13 +296,13 @@ export default function PropertyCustodianDashboardPage() {
                                     </ul>
                                 </div>
                             )}
-                             {(activeView === 'add-materials' || activeView === 'outgoing-items') && (
+                             {(activeView === 'add-materials' || activeView === 'outgoing-items' || activeView === 'returned-items') && (
                                 <div className="py-4">
                                     <ul className="flex flex-col gap-1">
                                         {navItems.filter(item => item.id === activeView).map(item => (
                                             <li key={item.id}>
                                                 <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
-                                                    {React.cloneElement(item.icon, { className: "h-5 w-5" })}
+                                                    {React.cloneElement(item.icon as React.ReactElement, { className: "h-5 w-5" })}
                                                     {item.label}
                                                 </button>
                                             </li>

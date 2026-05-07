@@ -8,7 +8,7 @@ import { collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/fire
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw
 } from "lucide-react"
 import {
   Card,
@@ -281,6 +281,17 @@ export default function HeadSupervisorDashboardPage() {
             console.error(e);
         }
     }
+
+    const handleReturnToCustodian = async (item: InventoryItem) => {
+        if (!firestore) return;
+        try {
+            await updateDoc(doc(firestore, "inventory_items", item.id), { status: 'Returning' });
+            createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Admin', 'Returned to Custodian', `Flagged ${item.name} for return to Property Custodian`, 'Inventory');
+            toast({ title: "Item Flagged", description: `${item.name} is now pending return confirmation from the Materials Custodian.` });
+        } catch (error) {
+            console.error(error);
+        }
+    };
     
     const handleVerificationAction = async (itemId: string, newStatus: 'Available' | 'Inaccurate') => {
         if (!firestore) return;
@@ -317,7 +328,7 @@ export default function HeadSupervisorDashboardPage() {
     };
     
     const getStatusBadge = (item: InventoryItem) => {
-        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive" } as const;
+        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive", "Returning": "outline" } as const;
         return <Badge variant={variants[item.status] || "default"}>{item.status}</Badge>;
     }
 
@@ -368,16 +379,26 @@ export default function HeadSupervisorDashboardPage() {
                                     }}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
                                 )}
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Lab</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="whitespace-nowrap">Status</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{inventoryItemsToDisplay.map(item => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
                                             <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
                                             <TableCell>{item.quantity}</TableCell>
-                                            <TableCell>{getStatusBadge(item)}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{getStatusBadge(item)}</TableCell>
                                             <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
+                                                                <RotateCcw className="h-4 w-4"/>
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent><p>Return to Custodian</p></TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
                                                 <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                                             </TableCell>
@@ -393,14 +414,14 @@ export default function HeadSupervisorDashboardPage() {
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         {transactionSubView === 'borrowed' ? (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Active Borrows</CardTitle></CardHeader>
-                               <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
+                               <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date</TableHead></TableRow></TableHeader>
                                        <TableBody>{borrowHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
                                    </Table></CardContent>
                             </Card>
                         ) : (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
-                                <CardContent><Table><TableHeader><TableRow><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Timestamp</TableHead></TableRow></TableHeader>
-                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell><Badge variant="outline" className="whitespace-nowrap">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px]">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
+                                <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">User</TableHead><TableHead className="whitespace-nowrap">Action</TableHead><TableHead className="whitespace-nowrap">Details</TableHead><TableHead className="text-right whitespace-nowrap">Timestamp</TableHead></TableRow></TableHeader>
+                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell><Badge variant="outline" className="whitespace-nowrap">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px] whitespace-nowrap">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
                                 </Table></CardContent>
                             </Card>
                         )}
@@ -410,8 +431,8 @@ export default function HeadSupervisorDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approvals</CardTitle></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Teacher</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
-                                <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
+                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Teacher</TableHead><TableHead className="text-right whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
+                                <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
                             </Table></CardContent>
                         </Card>
                     </div>
@@ -424,7 +445,7 @@ export default function HeadSupervisorDashboardPage() {
                                     <Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> Create User</Button>
                                 )}
                             </CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Email</TableHead><TableHead className="whitespace-nowrap">Role</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="whitespace-nowrap">{u.displayName}</TableCell><TableCell className="whitespace-nowrap">{u.email}</TableCell><TableCell><Badge variant="secondary" className="whitespace-nowrap">{u.role}</Badge></TableCell>
                                     <TableCell className="text-right space-x-2 whitespace-nowrap">
                                         <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
@@ -440,7 +461,7 @@ export default function HeadSupervisorDashboardPage() {
                  return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Material Provisioning Queue</CardTitle></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2 whitespace-nowrap">
                                     <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
                                     <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(i.id, 'Inaccurate')}>Reject</Button>
@@ -448,7 +469,7 @@ export default function HeadSupervisorDashboardPage() {
                             </Table></CardContent>
                         </Card>
                          <Card className="bg-card/80"><CardHeader className="flex justify-between items-center flex-row"><div><CardTitle>Assign Materials to Dept</CardTitle></div><Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button></CardHeader>
-                            <CardContent><Table><TableHeader><TableRow><TableHead className="w-12"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead>Item</TableHead><TableHead>Qty</TableHead></TableRow></TableHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="w-12 whitespace-nowrap"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead></TableRow></TableHeader>
                                 <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
                             </Table></CardContent></Card>
                     </div>
