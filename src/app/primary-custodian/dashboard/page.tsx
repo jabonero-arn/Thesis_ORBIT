@@ -418,16 +418,18 @@ export default function HeadSupervisorDashboardPage() {
                                             <TableCell>{item.quantity}</TableCell>
                                             <TableCell className="whitespace-nowrap">{getStatusBadge(item)}</TableCell>
                                             <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                <TooltipProvider>
-                                                    <Tooltip>
-                                                        <TooltipTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
-                                                                <RotateCcw className="h-4 w-4"/>
-                                                            </Button>
-                                                        </TooltipTrigger>
-                                                        <TooltipContent><p>Return to Custodian</p></TooltipContent>
-                                                    </Tooltip>
-                                                </TooltipProvider>
+                                                {item.status === 'Inaccurate' && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
+                                                                    <RotateCcw className="h-4 w-4"/>
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Return to Custodian</p></TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
                                                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditForm(item)}><Edit className="h-4 w-4"/></Button>
                                                 <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
                                             </TableCell>
@@ -495,12 +497,12 @@ export default function HeadSupervisorDashboardPage() {
                                     <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
                                     <Button size="sm" variant="destructive" onClick={() => setRejectItem(i)}>Reject</Button>
                                 </TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent>
+                            </CardContent>
                         </Card>
                          <Card className="bg-card/80"><CardHeader className="flex justify-between items-center flex-row"><div><CardTitle>Assign Materials to Dept</CardTitle></div><Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button></CardHeader>
                             <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="w-12 whitespace-nowrap"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead></TableRow></TableHeader>
                                 <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent></Card>
+                            </CardContent></Card>
                     </div>
                  )
             default: return null;
