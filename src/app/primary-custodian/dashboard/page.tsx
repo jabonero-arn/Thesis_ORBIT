@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, Role, User as UserType, Department, ItemStatus, ActivityLog } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -53,6 +53,7 @@ import { ReturnConditionBadge } from "@/components/return-condition-badge"
 import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignMaterialsDialog } from "@/components/primary-custodian/assign-materials-dialog"
 import { createActivityLog } from "@/lib/logging"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -127,6 +128,11 @@ export default function HeadSupervisorDashboardPage() {
 
     const [selectedToAssign, setSelectedToAssign] = React.useState<string[]>([]);
     const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
+
+    // Rejection Dialog State
+    const [rejectItem, setRejectItem] = React.useState<InventoryItem | null>(null);
+    const [rejectReasonType, setRejectReasonType] = React.useState<'damaged' | 'not-functioning' | ''>('');
+    const [rejectDescription, setRejectDescription] = React.useState('');
 
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
@@ -293,16 +299,39 @@ export default function HeadSupervisorDashboardPage() {
         }
     };
     
-    const handleVerificationAction = async (itemId: string, newStatus: 'Available' | 'Inaccurate') => {
+    const handleVerificationAction = async (itemId: string, newStatus: 'Available' | 'Inaccurate', details?: string) => {
         if (!firestore) return;
         const item = items.find(i => i.id === itemId);
         try {
-            await updateDoc(doc(firestore, "inventory_items", itemId), { status: newStatus, verifiedAt: new Date().toISOString() });
-            createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Admin', newStatus === 'Available' ? 'Verified Item' : 'Flagged Inaccurate', `Processed receipt of ${item?.name}`, 'Inventory');
+            const updatePayload: any = { 
+                status: newStatus, 
+                verifiedAt: new Date().toISOString() 
+            };
+            if (details) {
+                updatePayload.inaccuracyReason = details;
+            }
+
+            await updateDoc(doc(firestore, "inventory_items", itemId), updatePayload);
+            createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Admin', newStatus === 'Available' ? 'Verified Item' : 'Flagged Inaccurate', `Processed receipt of ${item?.name}${details ? ` (Reason: ${details})` : ''}`, 'Inventory');
             toast({ title: `Item ${newStatus === 'Available' ? 'Confirmed' : 'Flagged'}` });
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const handleRejectSubmit = () => {
+        if (!rejectItem || !rejectReasonType || !rejectDescription.trim()) {
+            toast({ variant: 'destructive', title: 'Missing details', description: 'Please select a reason and provide a description.' });
+            return;
+        }
+
+        const reasonText = rejectReasonType === 'damaged' ? 'Damaged' : 'Not Functioning';
+        const fullDetails = `${reasonText}: ${rejectDescription}`;
+        
+        handleVerificationAction(rejectItem.id, 'Inaccurate', fullDetails);
+        setRejectItem(null);
+        setRejectReasonType('');
+        setRejectDescription('');
     };
 
     const handleAssignItems = async (departmentId: string) => {
@@ -464,7 +493,7 @@ export default function HeadSupervisorDashboardPage() {
                             <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2 whitespace-nowrap">
                                     <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => handleVerificationAction(i.id, 'Inaccurate')}>Reject</Button>
+                                    <Button size="sm" variant="destructive" onClick={() => setRejectItem(i)}>Reject</Button>
                                 </TableCell></TableRow>))}</TableBody>
                             </Table></CardContent>
                         </Card>
@@ -522,6 +551,47 @@ export default function HeadSupervisorDashboardPage() {
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
                 <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
                 <AssignMaterialsDialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen} onAssign={handleAssignItems} />
+                
+                {/* Rejection Details Dialog */}
+                <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle>
+                            <DialogDescription>Specify why this provisioned material is being rejected.</DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Issue Category</Label>
+                                <RadioGroup value={rejectReasonType} onValueChange={(v) => setRejectReasonType(v as any)} className="flex gap-4">
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="damaged" id="rej-damaged" />
+                                        <Label htmlFor="rej-damaged">Damaged</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="not-functioning" id="rej-func" />
+                                        <Label htmlFor="rej-func">Not Functioning</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="reject-desc">Details / Description</Label>
+                                <Textarea 
+                                    id="reject-desc" 
+                                    placeholder="Explain the issue in detail..." 
+                                    value={rejectDescription}
+                                    onChange={(e) => setRejectDescription(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setRejectItem(null)}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>
+                                Flag as Inaccurate
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
                 <Dialog open={isFormOpen} onOpenChange={closeForm}><DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader><form onSubmit={handleFormSubmit} className="grid gap-4 py-4"><div className="grid gap-2"><Label>Name</Label><Input name="name" defaultValue={editingItem?.name} required /></div><div className="grid gap-2"><Label>Description</Label><Textarea name="description" defaultValue={editingItem?.description} /></div><div className="grid gap-2"><Label>Room</Label><Select name="channelId" defaultValue={editingItem?.channelId}><SelectTrigger><SelectValue placeholder="Room" /></SelectTrigger><SelectContent>{dialogChannels.map(c=>(<SelectItem key={c.id} value={c.id}>{c.name.replace('#','')}</SelectItem>))}</SelectContent></Select></div><div className="grid gap-2"><Label>Qty</Label><Input name="quantity" type="number" defaultValue={editingItem?.quantity} required /></div><DialogFooter><Button type="submit">Save</Button></DialogFooter></form></DialogContent></Dialog>
             </div>
         </TooltipProvider>
