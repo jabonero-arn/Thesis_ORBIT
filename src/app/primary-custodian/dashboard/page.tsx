@@ -105,7 +105,7 @@ export default function HeadSupervisorDashboardPage() {
         if (userProfile?.passwordChangeRequired) {
             setShowPasswordChangeDialog(true);
         }
-    }, [user, userProfile, iSUserLoading, isProfileLoading]);
+    }, [user, userProfile, isUserLoading, isProfileLoading]);
 
     const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
@@ -503,7 +503,10 @@ export default function HeadSupervisorDashboardPage() {
                  const pending = items.filter(i => i.status === 'Pending Receipt');
                  return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-                        <Card className="bg-card/80"><CardHeader><CardTitle>Material Provisioning Queue</CardTitle></CardHeader>
+                        <Card className="bg-card/80">
+                            <CardHeader>
+                                <CardTitle>Material Provisioning Queue</CardTitle>
+                            </CardHeader>
                             <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
                                     <TableHeader><TableRow><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
@@ -514,13 +517,18 @@ export default function HeadSupervisorDashboardPage() {
                                 </Table>
                             </CardContent>
                         </Card>
-                         <Card className="bg-card/80"><CardHeader className="flex justify-between items-center flex-row"><div><CardTitle>Assign Materials to Dept</CardTitle></div><Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button></CardHeader>
+                        <Card className="bg-card/80">
+                            <CardHeader className="flex justify-between items-center flex-row">
+                                <div><CardTitle>Assign Materials to Dept</CardTitle></div>
+                                <Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button>
+                            </CardHeader>
                             <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
                                     <TableHeader><TableRow><TableHead className="w-12 whitespace-nowrap"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead></TableRow></TableHeader>
                                     <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
                                 </Table>
-                            </CardContent></Card>
+                            </CardContent>
+                        </Card>
                     </div>
                  )
             default: return null;
