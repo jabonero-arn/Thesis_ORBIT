@@ -105,7 +105,7 @@ export default function HeadSupervisorDashboardPage() {
         if (userProfile?.passwordChangeRequired) {
             setShowPasswordChangeDialog(true);
         }
-    }, [user, userProfile, isUserLoading, isProfileLoading]);
+    }, [user, userProfile, iSUserLoading, isProfileLoading]);
 
     const [activeView, setActiveView] = React.useState<AdminView>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<DashboardSubView>('overall');
@@ -445,15 +445,21 @@ export default function HeadSupervisorDashboardPage() {
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         {transactionSubView === 'borrowed' ? (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Active Borrows</CardTitle></CardHeader>
-                               <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date</TableHead></TableRow></TableHeader>
-                                       <TableBody>{borrowHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
-                                   </Table></CardContent>
+                               <CardContent className="max-h-[60vh] overflow-auto">
+                                    <Table>
+                                        <TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date</TableHead></TableRow></TableHeader>
+                                        <TableBody>{borrowHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                   </Table>
+                               </CardContent>
                             </Card>
                         ) : (
                             <Card className="bg-card/80"><CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
-                                <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">User</TableHead><TableHead className="whitespace-nowrap">Action</TableHead><TableHead className="whitespace-nowrap">Details</TableHead><TableHead className="text-right whitespace-nowrap">Timestamp</TableHead></TableRow></TableHeader>
-                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell><Badge variant="outline" className="whitespace-nowrap">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px] whitespace-nowrap">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
-                                </Table></CardContent>
+                                <CardContent className="max-h-[60vh] overflow-auto">
+                                    <Table>
+                                        <TableHeader><TableRow><TableHead className="whitespace-nowrap">User</TableHead><TableHead className="whitespace-nowrap">Action</TableHead><TableHead className="whitespace-nowrap">Details</TableHead><TableHead className="text-right whitespace-nowrap">Timestamp</TableHead></TableRow></TableHeader>
+                                        <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell><Badge variant="outline" className="whitespace-nowrap">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px] whitespace-nowrap">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
+                                    </Table>
+                                </CardContent>
                             </Card>
                         )}
                     </div>
@@ -462,9 +468,12 @@ export default function HeadSupervisorDashboardPage() {
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Teacher Approvals</CardTitle></CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Teacher</TableHead><TableHead className="text-right whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
-                                <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Teacher</TableHead><TableHead className="text-right whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
+                                    <TableBody>{approvalLogItems.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{allUsers.find(u=>u.id===r.teacherId)?.displayName || 'N/A'}</TableCell><TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
                         </Card>
                     </div>
                 );
@@ -476,15 +485,18 @@ export default function HeadSupervisorDashboardPage() {
                                     <Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> Create User</Button>
                                 )}
                             </CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Email</TableHead><TableHead className="whitespace-nowrap">Role</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="whitespace-nowrap">{u.displayName}</TableCell><TableCell className="whitespace-nowrap">{u.email}</TableCell><TableCell><Badge variant="secondary" className="whitespace-nowrap">{u.role}</Badge></TableCell>
-                                    <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                        <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                        <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger>
-                                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Account?</AlertDialogTitle><AlertDialogDescription>Delete {u.displayName}'s account.</AlertDialogDescription></AlertDialogHeader>
-                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteUser(u)}>Confirm</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-                                    </TableCell></TableRow>))}</TableBody>
-                            </Table></CardContent></Card>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Email</TableHead><TableHead className="whitespace-nowrap">Role</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{usersToDisplay.map(u => (<TableRow key={u.id}><TableCell className="whitespace-nowrap">{u.displayName}</TableCell><TableCell className="whitespace-nowrap">{u.email}</TableCell><TableCell><Badge variant="secondary" className="whitespace-nowrap">{u.role}</Badge></TableCell>
+                                        <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                            <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                            <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger>
+                                            <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Account?</AlertDialogTitle><AlertDialogDescription>Delete {u.displayName}'s account.</AlertDialogDescription></AlertDialogHeader>
+                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteUser(u)}>Confirm</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                        </TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent></Card>
                     </div>
                 );
             case 'verification':
@@ -492,16 +504,22 @@ export default function HeadSupervisorDashboardPage() {
                  return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         <Card className="bg-card/80"><CardHeader><CardTitle>Material Provisioning Queue</CardTitle></CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2 whitespace-nowrap">
-                                    <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => setRejectItem(i)}>Reject</Button>
-                                </TableCell></TableRow>))}</TableBody>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{pending.map(i => (<TableRow key={i.id}><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2 whitespace-nowrap">
+                                        <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}>Confirm</Button>
+                                        <Button size="sm" variant="destructive" onClick={() => setRejectItem(i)}>Reject</Button>
+                                    </TableCell></TableRow>))}</TableBody>
+                                </Table>
                             </CardContent>
                         </Card>
                          <Card className="bg-card/80"><CardHeader className="flex justify-between items-center flex-row"><div><CardTitle>Assign Materials to Dept</CardTitle></div><Button disabled={!selectedToAssign.length} onClick={()=>setIsAssignDialogOpen(true)}>Assign ({selectedToAssign.length})</Button></CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto"><Table><TableHeader><TableRow><TableHead className="w-12 whitespace-nowrap"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead></TableRow></TableHeader>
-                                <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="w-12 whitespace-nowrap"><UiCheckbox onCheckedChange={checked => checked ? setSelectedToAssign(unassignedItems.map(i=>i.id)) : setSelectedToAssign([])}/></TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead></TableRow></TableHeader>
+                                    <TableBody>{unassignedItems.map(i => (<TableRow key={i.id}><TableCell><UiCheckbox checked={selectedToAssign.includes(i.id)} onCheckedChange={c => c ? setSelectedToAssign(p=>[...p, i.id]) : setSelectedToAssign(p=>p.filter(id=>id!==i.id))}/></TableCell><TableCell className="whitespace-nowrap">{i.name}</TableCell><TableCell>{i.quantity}</TableCell></TableRow>))}</TableBody>
+                                </Table>
                             </CardContent></Card>
                     </div>
                  )
