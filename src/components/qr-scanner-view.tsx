@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, CheckCircle, Loader2, X } from "lucide-react"
+import { QrCode, CornerDownLeft, CheckCircle, Loader2, X, ClipboardCheck, PackageCheck } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { useToast } from "@/hooks/use-toast"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { useFirestore, useUser } from "@/firebase"
-import { doc, writeBatch, collection, runTransaction, getDoc, getDocs, query, where } from "firebase/firestore"
+import { doc, writeBatch, collection } from "firebase/firestore"
 import { Html5Qrcode } from "html5-qrcode"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
@@ -58,6 +58,7 @@ type ClaimSession = {
   studentName: string;
   items: { name: string; quantity: number }[];
   records: BorrowHistory[];
+  reservationId: string;
 }
 
 type PendingReturnGroup = {
@@ -170,6 +171,7 @@ export function QrScannerView() {
                 studentName: student.displayName,
                 items: recordsToClaim.map(r => ({ name: r.itemName, quantity: r.itemQuantity || 1})),
                 records: recordsToClaim,
+                reservationId: reservationId
             });
         }
         else {
@@ -195,9 +197,6 @@ export function QrScannerView() {
     if (isScanning) {
         Html5Qrcode.getCameras().then(devices => {
             if (devices && devices.length > 0) {
-                // Heuristic to pick the primary (1x) camera. 
-                // Many multi-lens devices list the ultra-wide as "environment" or first.
-                // We look for labels that don't contain "wide" if possible.
                 const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
                 const primaryCamera = backCameras.find(d => !d.label.toLowerCase().includes('wide') && !d.label.toLowerCase().includes('0.5')) || backCameras[0] || devices[0];
                 
@@ -205,7 +204,14 @@ export function QrScannerView() {
                     primaryCamera.id,
                     { 
                         fps: 30,
-                        // No qrbox = scan full camera feed
+                        qrbox: (width, height) => {
+                            const minDim = Math.min(width, height);
+                            return { width: minDim * 0.8, height: minDim * 0.8 };
+                        },
+                        aspectRatio: 1.0,
+                        experimentalFeatures: {
+                            useBarCodeDetectorIfSupported: true
+                        }
                     },
                     (decodedText) => {
                         setIsScanning(false);
@@ -216,7 +222,6 @@ export function QrScannerView() {
                 .then(() => setHasCameraPermission(true))
                 .catch(() => setHasCameraPermission(false));
             } else {
-                // Fallback to basic constraints
                 html5QrCode.start(
                     { facingMode: "environment" },
                     { fps: 30 },
@@ -313,6 +318,55 @@ export function QrScannerView() {
     }
   }
 
+  const handleConfirmClaim = async () => {
+    if (!claimSessionInView || !firestore) return;
+    setIsProcessing(true);
+    try {
+        const batch = writeBatch(firestore);
+        const now = new Date().toISOString();
+        
+        // 1. Update each record in the reservation to 'Active'
+        // 2. Decrement the physical stock count
+        for (const record of claimSessionInView.records) {
+            const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
+            batch.update(historyDocRef, { status: 'Active', date: now });
+
+            if (record.inventoryItemId) {
+                const item = items.find(i => i.id === record.inventoryItemId);
+                if (item) {
+                    const requestedQty = record.itemQuantity || 1;
+                    if (item.quantity < requestedQty) throw new Error(`Not enough stock for ${item.name}.`);
+                    
+                    const newQty = item.quantity - requestedQty;
+                    batch.update(doc(firestore, 'inventory_items', item.id), {
+                        quantity: newQty,
+                        status: newQty > 0 ? item.status : 'Borrowed'
+                    });
+                }
+            }
+        }
+
+        await batch.commit();
+
+        createActivityLog(
+            firestore,
+            staffUser?.uid || 'sys',
+            staffUser?.displayName || 'Staff',
+            'Processed Reservation Claim',
+            `Student ${claimSessionInView.studentName} claimed reservation ${claimSessionInView.reservationId}`,
+            'Transaction'
+        );
+
+        toast({ title: "Reservation Claimed!", description: "Items are now marked as Active." });
+    } catch (e: any) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'Claim Failed', description: e.message });
+    } finally {
+        setIsProcessing(false);
+        handleResetScanner();
+    }
+  };
+
   const handleConfirmAllReturns = async (condition: 'Good' | 'Defected' | 'Broken' | 'Lost' | '') => {
     if (!selectedReturnGroup || !firestore || !condition) return;
     setIsProcessing(true);
@@ -369,7 +423,7 @@ export function QrScannerView() {
        <Card className="bg-card/80 backdrop-blur-sm border-border/50 overflow-hidden">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode /> Live QR Code Scanner</CardTitle>
-          <CardDescription>Scan student codes to process checkouts or returns.</CardDescription>
+          <CardDescription>Scan student codes to process checkouts, returns, or claims.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
             <div className="aspect-square md:aspect-video bg-black relative flex items-center justify-center">
@@ -383,27 +437,72 @@ export function QrScannerView() {
         </CardContent>
       </Card>
 
+      {/* Checkout Dialog */}
       <Dialog open={!!sessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
         <DialogContent>
-            <DialogHeader><DialogTitle>Confirm Checkout</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="flex items-center gap-2"><ClipboardCheck className="text-primary"/> Confirm Checkout</DialogTitle></DialogHeader>
             {sessionInView && (
                 <div className="py-4 space-y-4">
                     <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
                         <Avatar className="h-12 w-12"><AvatarFallback>{sessionInView.studentName.charAt(0)}</AvatarFallback></Avatar>
                         <div><p className="font-semibold">{sessionInView.studentName}</p></div>
                     </div>
-                    <ul className="space-y-2 list-disc list-inside bg-black/20 p-3 rounded-md">
-                        {sessionInView.items.map((item, index) => (<li key={index}>{item.name} (x{item.quantity})</li>))}
-                    </ul>
+                    <div>
+                        <h4 className="text-sm font-bold text-muted-foreground uppercase mb-2">Items to Issue</h4>
+                        <ul className="space-y-2 list-disc list-inside bg-black/20 p-3 rounded-md">
+                            {sessionInView.items.map((item, index) => (<li key={index}>{item.name} (x{item.quantity})</li>))}
+                        </ul>
+                    </div>
+                    {sessionInView.groupInfo && (
+                        <div className="p-3 rounded-md bg-primary/10 border border-primary/20 text-xs">
+                            <p className="font-bold">Group Session: {sessionInView.groupInfo.number} ({sessionInView.groupInfo.subject})</p>
+                            <p className="text-muted-foreground mt-1">Members: {sessionInView.groupInfo.members}</p>
+                        </div>
+                    )}
                 </div>
             )}
             <DialogFooter>
                 <Button variant="destructive" onClick={handleResetScanner} disabled={isProcessing}>Deny</Button>
-                <Button onClick={handleConfirmCheckout} disabled={isProcessing}>Confirm</Button>
+                <Button onClick={handleConfirmCheckout} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : null}
+                    Confirm Issue
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
       
+      {/* Reservation Claim Dialog */}
+      <Dialog open={!!claimSessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><PackageCheck className="text-green-500"/> Confirm Reservation Claim</DialogTitle>
+                <DialogDescription>Student is picking up their pre-approved reservation.</DialogDescription>
+            </DialogHeader>
+            {claimSessionInView && (
+                <div className="py-4 space-y-4">
+                    <div className="flex items-center gap-4 rounded-lg bg-secondary p-3">
+                        <Avatar className="h-12 w-12"><AvatarFallback>{claimSessionInView.studentName.charAt(0)}</AvatarFallback></Avatar>
+                        <div><p className="font-semibold">{claimSessionInView.studentName}</p></div>
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-muted-foreground uppercase mb-2">Reserved Materials</h4>
+                        <ul className="space-y-2 list-disc list-inside bg-black/20 p-3 rounded-md">
+                            {claimSessionInView.items.map((item, index) => (<li key={index}>{item.name} (x{item.quantity})</li>))}
+                        </ul>
+                    </div>
+                </div>
+            )}
+            <DialogFooter>
+                <Button variant="outline" onClick={handleResetScanner} disabled={isProcessing}>Cancel</Button>
+                <Button onClick={handleConfirmClaim} disabled={isProcessing}>
+                    {isProcessing ? <Loader2 className="animate-spin mr-2 h-4 w-4"/> : null}
+                    Confirm Claim
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+       {/* Return Dialog */}
        <Dialog open={!!selectedReturnGroup} onOpenChange={(open) => !open && handleResetScanner()}>
         <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>Confirm Return</DialogTitle></DialogHeader>
