@@ -39,7 +39,7 @@ type CheckoutFlowProps = {
 
 function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChange, isTeacherView }: CheckoutFlowProps) {
   const [isReserve, setIsReserve] = React.useState(false)
-  const [reservationDate, setReservationDate] = React.useState<Date>()
+  const [reservationDateStr, setReservationDateStr] = React.useState<string>("")
   const [startTime, setStartTime] = React.useState<string>("14:00")
   const [endTime, setEndTime] = React.useState<string>("16:00")
   
@@ -185,7 +185,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
       })
       return;
     }
-    if (!reservationDate || !startTime || !endTime) {
+    if (!reservationDateStr || !startTime || !endTime) {
          toast({
           variant: "destructive",
           title: "Incomplete Information",
@@ -195,6 +195,8 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
     }
     
     setIsLoading(true);
+
+    const reservationDate = new Date(reservationDateStr.replace(/-/g, '/'));
 
     if (borrowingType === 'Group' && !isTeacherView) {
         if (!groupNumber || !groupSubject || !groupMembers) {
@@ -407,12 +409,12 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 <div className="grid gap-3 p-3 rounded-lg bg-black/20 border border-border/50">
                     <Input
                         type="date"
-                        value={reservationDate ? format(reservationDate, 'yyyy-MM-dd') : ''}
-                        onChange={(e) => setReservationDate(e.target.value ? new Date(e.target.value.replace(/-/g, '/')) : undefined)}
+                        value={reservationDateStr}
+                        onChange={(e) => setReservationDateStr(e.target.value)}
                         min={format(new Date(), 'yyyy-MM-dd')}
                         className={cn(
                             "w-full justify-start text-left font-normal bg-input",
-                            !reservationDate && "text-muted-foreground"
+                            !reservationDateStr && "text-muted-foreground"
                         )}
                     />
                     <div className="flex items-center gap-2">
