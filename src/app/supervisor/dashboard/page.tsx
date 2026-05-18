@@ -351,7 +351,7 @@ export default function SupervisorDashboardPage() {
                     <CardTitle>Pending Item Verification</CardTitle>
                     <CardDescription>Confirm receipt of new items for your department.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="max-h-[60vh] overflow-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -367,7 +367,7 @@ export default function SupervisorDashboardPage() {
                                 <TableRow key={item.id}>
                                     <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
                                     <TableCell className="whitespace-nowrap">{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
-                                    <TableCell>{item.quantity}</TableCell>
+                                    <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
                                     <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
                                     <TableCell className="text-right space-x-2 whitespace-nowrap">
                                         <Button size="sm" onClick={() => handleVerificationAction(item.id, 'Available')}>
@@ -394,7 +394,7 @@ export default function SupervisorDashboardPage() {
                     <CardTitle>Verification History</CardTitle>
                     <CardDescription>A log of items that are pending, received, or flagged as inaccurate.</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="max-h-[60vh] overflow-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -413,7 +413,7 @@ export default function SupervisorDashboardPage() {
                                         <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
                                         <TableCell className="whitespace-nowrap">{dateToShow ? format(new Date(dateToShow), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                                         <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
-                                        <TableCell>{item.quantity}</TableCell>
+                                        <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
                                         <TableCell className="text-right whitespace-nowrap">
                                             {item.status === 'Available' && <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Received</Badge>}
                                             {item.status === 'Pending Receipt' && <Badge variant="outline">Pending</Badge>}
@@ -464,7 +464,7 @@ export default function SupervisorDashboardPage() {
                                 <CardTitle>Teacher Lab Access Requests</CardTitle>
                                 <CardDescription>Approve or deny requests from teachers to access labs in your department.</CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -478,7 +478,7 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {pendingAccessRequests.length > 0 ? pendingAccessRequests.map(req => (
                                             <TableRow key={req.id}>
-                                                <TableCell className="whitespace-nowrap">{req.teacherName}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{req.teacherName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{req.channelName.replace('#','')}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{req.subject}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
@@ -511,7 +511,7 @@ export default function SupervisorDashboardPage() {
                                     Assign Selected ({selectedForRoomAssignment.length}) to Room
                                 </Button>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -530,7 +530,7 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {itemsToAssign.length > 0 ? itemsToAssign.map(item => (
                                             <TableRow key={item.id}>
-                                                <TableCell>
+                                                <TableCell className="whitespace-nowrap">
                                                     <UiCheckbox
                                                         checked={selectedForRoomAssignment.includes(item.id)}
                                                         onCheckedChange={(checked) => handleToggleRoomAssignment(item.id, !!checked)}
@@ -538,7 +538,7 @@ export default function SupervisorDashboardPage() {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
                                             </TableRow>
                                         )) : (
@@ -571,7 +571,7 @@ export default function SupervisorDashboardPage() {
                                         Add Room
                                     </Button>
                                 </CardHeader>
-                                <CardContent>
+                                <CardContent className="max-h-[60vh] overflow-auto">
                                     <Table>
                                         <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Quantity</TableHead><TableHead className="whitespace-nowrap">Status</TableHead><TableHead className="whitespace-nowrap">Visibility</TableHead><TableHead className="whitespace-nowrap">Last Updated</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
@@ -581,9 +581,9 @@ export default function SupervisorDashboardPage() {
                                                 <TableRow key={item.id}>
                                                     <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
                                                     <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
-                                                    <TableCell>{item.quantity}</TableCell>
+                                                    <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
                                                     <TableCell className="whitespace-nowrap">{getStatusBadge(item.status)}</TableCell>
-                                                    <TableCell>
+                                                    <TableCell className="whitespace-nowrap">
                                                         <Switch
                                                             checked={item.isVisibleToStudents !== false}
                                                             onCheckedChange={(checked) => handleVisibilityChange(item, checked)}
@@ -609,10 +609,15 @@ export default function SupervisorDashboardPage() {
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50"><CardHeader><CardTitle>Currently Borrowed Items</CardTitle><CardDescription>Items that are currently checked out from your department.</CardDescription></CardHeader>
-                           <CardContent>
+                           <CardContent className="max-h-[60vh] overflow-auto">
                                <Table><TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date Borrowed</TableHead><TableHead className="text-right whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
                                    <TableBody>
-                                       {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell><TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell></TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
+                                       {activeBorrows.length > 0 ? activeBorrows.map(r => (<TableRow key={r.id}>
+                                            <TableCell className="whitespace-nowrap">{r.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{r.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">{getHistoryStatusBadge(r.status)}</TableCell>
+                                        </TableRow>)) : <TableRow><TableCell colSpan={4} className="text-center h-24">No items currently borrowed.</TableCell></TableRow>}
                                    </TableBody>
                                </Table>
                            </CardContent>
@@ -639,7 +644,7 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {indvHistory.map(r => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="whitespace-nowrap">{r.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{r.studentName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{r.itemName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                                                 <TableCell className="text-right whitespace-nowrap">
@@ -669,9 +674,9 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {groupHistory.length > 0 ? groupHistory.map(r => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="whitespace-nowrap">{r.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{r.studentName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">Group {r.groupNumber} ({r.groupSubject})</TableCell>
-                                                <TableCell className="max-w-[200px] truncate" title={r.groupMembers}>{r.groupMembers}</TableCell>
+                                                <TableCell className="whitespace-nowrap max-w-[200px] truncate" title={r.groupMembers}>{r.groupMembers}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{r.itemName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                                                 <TableCell className="text-right whitespace-nowrap">
@@ -708,10 +713,10 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {individualDamaged.length > 0 ? individualDamaged.map(h => (
                                             <TableRow key={h.id}>
-                                                <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{h.studentName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
-                                                <TableCell className="max-w-[200px]">
+                                                <TableCell className="whitespace-nowrap min-w-[200px]">
                                                     <div className="space-y-1">
                                                         {h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}
                                                         {h.returnNotes && (
@@ -763,11 +768,11 @@ export default function SupervisorDashboardPage() {
                                     <TableBody>
                                         {groupDamaged.length > 0 ? groupDamaged.map(h => (
                                             <TableRow key={h.id}>
-                                                <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
-                                                <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{h.studentName}</TableCell>
+                                                <TableCell className="whitespace-nowrap max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
-                                                <TableCell className="max-w-[200px]">
+                                                <TableCell className="whitespace-nowrap min-w-[200px]">
                                                     <div className="space-y-1">
                                                         {h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}
                                                         {h.returnNotes && (

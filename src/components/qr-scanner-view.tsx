@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { QrCode, CornerDownLeft, CheckCircle, Loader2, X, ClipboardCheck, PackageCheck } from "lucide-react"
+import { QrCode, CornerDownLeft, CheckCircle, Loader2, X, ClipboardCheck, PackageCheck, Scan, Smartphone, CheckSquare } from "lucide-react"
 import { useAppContext } from "@/context/app-context"
 import type { BorrowHistory } from "@/lib/types"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -68,6 +68,33 @@ type PendingReturnGroup = {
 };
 
 const qrCodeReaderId = "qr-reader";
+
+// Visual guide for staff members
+const QRWorkflowGuide = () => (
+    <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
+            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+                <Scan className="h-6 w-6 text-primary" />
+            </div>
+            <h4 className="font-headline font-semibold mb-1">1. Scan</h4>
+            <p className="text-xs text-muted-foreground">Point camera at the student's QR code. Full view is supported.</p>
+        </div>
+        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
+            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+                <Smartphone className="h-6 w-6 text-primary" />
+            </div>
+            <h4 className="font-headline font-semibold mb-1">2. Verify</h4>
+            <p className="text-xs text-muted-foreground">Check the items, student identity, and group info in the popup.</p>
+        </div>
+        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
+            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
+                <CheckSquare className="h-6 w-6 text-primary" />
+            </div>
+            <h4 className="font-headline font-semibold mb-1">3. Confirm</h4>
+            <p className="text-xs text-muted-foreground">Click "Confirm Issue" or "Return" to update inventory.</p>
+        </div>
+    </div>
+);
 
 export function QrScannerView() {
   const { items, borrowHistory, allUsers } = useAppContext();
@@ -196,23 +223,22 @@ export function QrScannerView() {
     
     if (isScanning) {
         Html5Qrcode.getCameras().then(devices => {
+            const startConfig = { 
+                fps: 30,
+                // Removing qrbox and aspectRatio to allow full-frame scanning without cropping
+                // This makes it work much better with webcams and wide phone sensors
+                experimentalFeatures: {
+                    useBarCodeDetectorIfSupported: true
+                }
+            };
+
             if (devices && devices.length > 0) {
                 const backCameras = devices.filter(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
                 const primaryCamera = backCameras.find(d => !d.label.toLowerCase().includes('wide') && !d.label.toLowerCase().includes('0.5')) || backCameras[0] || devices[0];
                 
                 html5QrCode.start(
                     primaryCamera.id,
-                    { 
-                        fps: 30,
-                        qrbox: (width, height) => {
-                            const minDim = Math.min(width, height);
-                            return { width: minDim * 0.8, height: minDim * 0.8 };
-                        },
-                        aspectRatio: 1.0,
-                        experimentalFeatures: {
-                            useBarCodeDetectorIfSupported: true
-                        }
-                    },
+                    startConfig,
                     (decodedText) => {
                         setIsScanning(false);
                         setScannedData(decodedText);
@@ -224,7 +250,7 @@ export function QrScannerView() {
             } else {
                 html5QrCode.start(
                     { facingMode: "environment" },
-                    { fps: 30 },
+                    startConfig,
                     (decodedText) => {
                         setIsScanning(false);
                         setScannedData(decodedText);
@@ -426,16 +452,19 @@ export function QrScannerView() {
           <CardDescription>Scan student codes to process checkouts, returns, or claims.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-            <div className="aspect-square md:aspect-video bg-black relative flex items-center justify-center">
-                 <div id={qrCodeReaderId} className="w-full h-full" />
+            <div className="aspect-square md:aspect-video bg-black relative flex items-center justify-center overflow-hidden">
+                 <div id={qrCodeReaderId} className="w-full h-full [&_video]:object-cover [&_video]:w-full [&_video]:h-full" />
                 {hasCameraPermission === false && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-center p-4">
                         <p className="text-destructive font-semibold">Camera Access Denied</p>
+                        <p className="text-sm text-muted-foreground mt-2">Please enable camera permissions in your browser settings to use the scanner.</p>
                     </div>
                 )}
             </div>
         </CardContent>
       </Card>
+
+      <QRWorkflowGuide />
 
       {/* Checkout Dialog */}
       <Dialog open={!!sessionInView} onOpenChange={(open) => !open && handleResetScanner()}>

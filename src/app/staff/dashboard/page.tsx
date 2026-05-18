@@ -284,9 +284,9 @@ export default function StaffDashboardPage() {
                                     <TableBody>
                                         {departmentItems.map(item => (
                                             <TableRow key={item.id}>
-                                                <TableCell className="whitespace-nowrap">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap font-medium">{item.name}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{channels.find(c=>c.id===item.channelId)?.name.replace('#','')}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
                                                 <TableCell className="whitespace-nowrap"><Badge variant={item.status === 'Available' ? 'secondary' : 'destructive'}>{item.status}</Badge></TableCell>
                                                 <TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy, h:mm a') : 'N/A'}</TableCell>
                                             </TableRow>
@@ -390,7 +390,11 @@ export default function StaffDashboardPage() {
                                        </TableRow>
                                    </TableHeader>
                                    <TableBody>
-                                       {activeBorrows.map(b => <TableRow key={b.id}><TableCell className="whitespace-nowrap">{b.studentName}</TableCell><TableCell className="whitespace-nowrap">{b.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell></TableRow>)}
+                                       {activeBorrows.map(b => <TableRow key={b.id}>
+                                            <TableCell className="whitespace-nowrap">{b.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{b.itemName}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{format(new Date(b.date), 'MMM d, yyyy, h:mm a')}</TableCell>
+                                        </TableRow>)}
                                    </TableBody>
                                </Table>
                            </CardContent>
@@ -456,9 +460,9 @@ export default function StaffDashboardPage() {
                                 <TableBody>
                                     {groupHist.length > 0 ? groupHist.map(h => (
                                         <TableRow key={h.id}>
-                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap font-medium">{h.studentName}</TableCell>
                                             <TableCell className="whitespace-nowrap">Group {h.groupNumber} ({h.groupSubject})</TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                            <TableCell className="whitespace-nowrap max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
                                             <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
                                             <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy, h:mm a')}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">
@@ -528,8 +532,8 @@ export default function StaffDashboardPage() {
                                 <TableBody>
                                     {groupDamaged.length > 0 ? groupDamaged.map(h => (
                                         <TableRow key={h.id}>
-                                            <TableCell className="whitespace-nowrap">{h.studentName}</TableCell>
-                                            <TableCell className="max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
+                                            <TableCell className="whitespace-nowrap font-medium">{h.studentName}</TableCell>
+                                            <TableCell className="whitespace-nowrap max-w-[200px] truncate" title={h.groupMembers}>{h.groupMembers}</TableCell>
                                             <TableCell className="whitespace-nowrap">{h.itemName}</TableCell>
                                             <TableCell className="whitespace-nowrap">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
                                             <TableCell className="whitespace-nowrap">{h.returnCondition && <ReturnConditionBadge condition={h.returnCondition}/>}</TableCell>
