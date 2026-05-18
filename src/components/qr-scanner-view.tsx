@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -68,33 +67,6 @@ type PendingReturnGroup = {
 };
 
 const qrCodeReaderId = "qr-reader";
-
-// Visual guide for staff members
-const QRWorkflowGuide = () => (
-    <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
-            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
-                <Scan className="h-6 w-6 text-primary" />
-            </div>
-            <h4 className="font-headline font-semibold mb-1">1. Scan</h4>
-            <p className="text-xs text-muted-foreground">Point camera at the student's QR code. Full view is supported.</p>
-        </div>
-        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
-            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
-                <Smartphone className="h-6 w-6 text-primary" />
-            </div>
-            <h4 className="font-headline font-semibold mb-1">2. Verify</h4>
-            <p className="text-xs text-muted-foreground">Check the items, student identity, and group info in the popup.</p>
-        </div>
-        <div className="flex flex-col items-center text-center p-4 rounded-xl bg-primary/5 border border-primary/10 transition-all hover:bg-primary/10">
-            <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3">
-                <CheckSquare className="h-6 w-6 text-primary" />
-            </div>
-            <h4 className="font-headline font-semibold mb-1">3. Confirm</h4>
-            <p className="text-xs text-muted-foreground">Click "Confirm Issue" or "Return" to update inventory.</p>
-        </div>
-    </div>
-);
 
 export function QrScannerView() {
   const { items, borrowHistory, allUsers } = useAppContext();
@@ -225,8 +197,6 @@ export function QrScannerView() {
         Html5Qrcode.getCameras().then(devices => {
             const startConfig = { 
                 fps: 30,
-                // Removing qrbox and aspectRatio to allow full-frame scanning without cropping
-                // This makes it work much better with webcams and wide phone sensors
                 experimentalFeatures: {
                     useBarCodeDetectorIfSupported: true
                 }
@@ -351,8 +321,6 @@ export function QrScannerView() {
         const batch = writeBatch(firestore);
         const now = new Date().toISOString();
         
-        // 1. Update each record in the reservation to 'Active'
-        // 2. Decrement the physical stock count
         for (const record of claimSessionInView.records) {
             const historyDocRef = doc(firestore, 'borrowing_transactions', record.id);
             batch.update(historyDocRef, { status: 'Active', date: now });
@@ -463,8 +431,6 @@ export function QrScannerView() {
             </div>
         </CardContent>
       </Card>
-
-      <QRWorkflowGuide />
 
       {/* Checkout Dialog */}
       <Dialog open={!!sessionInView} onOpenChange={(open) => !open && handleResetScanner()}>
