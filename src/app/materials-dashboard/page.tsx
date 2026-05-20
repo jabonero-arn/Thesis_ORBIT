@@ -37,12 +37,14 @@ import { ForcePasswordChangeDialog } from "@/components/force-password-change-di
 import { format } from "date-fns"
 import { AddMaterialsForm } from "@/components/materials-custodian/add-materials-form"
 import { createActivityLog } from "@/lib/logging"
+import { useToast } from "@/hooks/use-toast"
 
 export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { items, departments, channels, borrowHistory } = useAppContext();
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
@@ -117,8 +119,6 @@ export default function PropertyCustodianDashboardPage() {
     const handleConfirmReturn = async (item: InventoryItem) => {
         if (!firestore) return;
         try {
-            // Marking it back to Available but unassigned is one way, or deleting it as it's "retired" back to stock.
-            // Let's delete it from the lab inventory as it's returned to bulk storage.
             await deleteDoc(doc(firestore, "inventory_items", item.id));
             createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Custodian', 'Confirmed Return', `Received and retired ${item.name} from lab inventory`, 'Inventory');
             toast({ title: "Return Acknowledged", description: `${item.name} has been processed back into storage.` });
