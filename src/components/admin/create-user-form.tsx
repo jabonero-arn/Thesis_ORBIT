@@ -48,7 +48,6 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
 
   React.useEffect(() => {
     if(!open) {
-      // Reset form when dialog is closed
       resetForm();
     }
   }, [open]);
@@ -71,14 +70,6 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       });
       return;
     }
-     if ((roleToCreate === 'Supervisor' || roleToCreate === 'Staff') && !assignedDepartmentId) {
-      toast({
-        variant: "destructive",
-        title: "Missing assignment",
-        description: `Please assign a department for the ${roleToCreate}.`,
-      });
-      return;
-    }
 
     setIsLoading(true);
 
@@ -95,7 +86,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       const newUser = userCredential.user;
 
       if (!newUser) {
-        throw new Error("User creation failed in authentication step.");
+        throw new Error("User creation failed.");
       }
       
       await sendEmailVerification(newUser);
@@ -115,7 +106,7 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
         passwordChangeRequired: true,
       };
 
-      if (roleToCreate === 'Supervisor' || roleToCreate === 'Staff') {
+      if (roleToCreate === 'Supervisor' && assignedDepartmentId) {
         userProfileData.assignedDepartmentId = assignedDepartmentId;
       }
       
@@ -124,37 +115,31 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
       let roleCollectionName = "";
       switch (roleToCreate) {
           case "Supervisor": roleCollectionName = "roles_supervisor"; break;
-          case "Head Supervisor": roleCollectionName = "roles_head_supervisor"; break;
           case "Property Custodian": roleCollectionName = "roles_property_custodian"; break;
-          case "Staff": roleCollectionName = "roles_staff"; break;
           case "Teacher": roleCollectionName = "roles_teachers"; break;
       }
-      const roleDocRef = doc(firestore, roleCollectionName, newUser.uid);
-      batch.set(roleDocRef, {
-          role: roleToCreate,
-          assignedAt: serverTimestamp(),
-      });
+      if (roleCollectionName) {
+        const roleDocRef = doc(firestore, roleCollectionName, newUser.uid);
+        batch.set(roleDocRef, {
+            role: roleToCreate,
+            assignedAt: serverTimestamp(),
+        });
+      }
 
       await batch.commit();
 
       toast({
         title: "User Created Successfully",
-        description: `${displayName} (${email}) has been created with the role ${roleToCreate}.`,
+        description: `${displayName} has been created as ${roleToCreate}.`,
       });
 
       onOpenChange(false);
     } catch (error: any) {
-      console.error("User creation error:", error);
-      let description = "An unknown error occurred.";
-      if (error.code === 'auth/email-already-in-use') {
-          description = "An account with this email address already exists.";
-      } else if (error.code === 'auth/weak-password') {
-          description = "The password is too weak. It must be at least 6 characters.";
-      }
+      console.error(error);
        toast({
         variant: "destructive",
         title: "Creation Failed",
-        description: description,
+        description: error.message,
       });
     } finally {
       setIsLoading(false);
@@ -168,29 +153,29 @@ export function CreateUserForm({ open, onOpenChange, roleToCreate }: CreateUserF
         <DialogHeader>
           <DialogTitle>Create New {roleToCreate}</DialogTitle>
           <DialogDescription>
-            Create an account for a new member. They will be assigned the {roleToCreate} role.
+            Account for a new member. They will be assigned the {roleToCreate} role.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleCreateUser}>
             <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                     <Label htmlFor="displayName">Full Name</Label>
-                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Juan Dela Cruz" required />
+                    <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Full Name" required />
                 </div>
                  <div className="grid gap-2">
                     <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" required />
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
                 </div>
                  <div className="grid gap-2">
                     <Label htmlFor="password">Temporary Password</Label>
-                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Must be at least 6 characters" required />
+                    <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" required />
                 </div>
-                {(roleToCreate === 'Supervisor' || roleToCreate === 'Staff') && (
+                {roleToCreate === 'Supervisor' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="department-id">Assign Department</Label>
-                    <Select value={assignedDepartmentId} onValueChange={setAssignedDepartmentId} required>
+                    <Label htmlFor="department-id">Assign Lab Department (Optional)</Label>
+                    <Select value={assignedDepartmentId} onValueChange={setAssignedDepartmentId}>
                       <SelectTrigger id="department-id">
-                        <SelectValue placeholder="Select a department to assign" />
+                        <SelectValue placeholder="Select a department" />
                       </SelectTrigger>
                       <SelectContent>
                         {departments?.map(department => (

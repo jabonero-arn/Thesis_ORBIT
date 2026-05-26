@@ -25,10 +25,8 @@
           "enum": [
             "Student",
             "Teacher",
-            "Staff",
             "Supervisor",
-            "Property Custodian",
-            "Head Supervisor"
+            "Property Custodian"
           ]
         },
         "idNumber": {
@@ -248,23 +246,11 @@
       },
       "description": "Grants a user the 'Teacher' role."
     },
-    "/roles_staff/{userId}": {
-      "schema": {
-        "$ref": "#/entities/RoleFlag"
-      },
-      "description": "Grants a user the 'Staff' role."
-    },
     "/roles_supervisor/{userId}": {
       "schema": {
         "$ref": "#/entities/RoleFlag"
       },
       "description": "Grants a user the 'Supervisor' role."
-    },
-    "/roles_head_supervisor/{userId}": {
-      "schema": {
-        "$ref": "#/entities/RoleFlag"
-      },
-      "description": "Grants a user the 'Head Supervisor' role."
     },
     "/roles_property_custodian/{userId}": {
       "schema": {

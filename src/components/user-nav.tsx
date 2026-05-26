@@ -33,22 +33,6 @@ export function UserNav({ role }: { role?: Role }) {
     router.push('/')
   }
 
-  const getDashboardPath = () => {
-    switch (displayRole) {
-        case 'Head Supervisor':
-            return '/primary-custodian/dashboard';
-        case 'Admin':
-            return '/admin/dashboard';
-        case 'Staff':
-            return '/staff/dashboard';
-        case 'Teacher':
-            return '/teacher/dashboard';
-        case 'Student':
-        default:
-            return '/dashboard';
-    }
-  }
-
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

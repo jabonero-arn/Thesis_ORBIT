@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/logo"
-import { User, Shield, ClipboardList, BookUser, CheckCircle, Crown, Warehouse } from "lucide-react"
+import { User, Shield, BookUser, CheckCircle, Warehouse } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 export default function RoleSelectionPage() {
@@ -22,19 +22,9 @@ export default function RoleSelectionPage() {
       icon: <Warehouse className="mr-2 h-5 w-5" />,
     },
     {
-      name: "Head Supervisor",
-      href: "/login?role=head-supervisor",
-      icon: <Crown className="mr-2 h-5 w-5" />,
-    },
-    {
-      name: "Supervisor",
+      name: "Lab Supervisor",
       href: "/login?role=supervisor",
       icon: <Shield className="mr-2 h-5 w-5" />,
-    },
-    {
-      name: "Staff",
-      href: "/login?role=staff",
-      icon: <ClipboardList className="mr-2 h-5 w-5" />,
     },
     {
       name: "Teacher",
@@ -67,9 +57,7 @@ export default function RoleSelectionPage() {
             </CardTitle>
              <div className="flex flex-wrap gap-2 pt-2">
                 <Badge variant="secondary">Property Custodian</Badge>
-                <Badge variant="secondary">Head Supervisor</Badge>
-                <Badge variant="secondary">Supervisor</Badge>
-                <Badge variant="secondary">Staff</Badge>
+                <Badge variant="secondary">Lab Supervisor</Badge>
                 <Badge variant="secondary">Teacher</Badge>
                 <Badge variant="secondary">Student</Badge>
             </div>

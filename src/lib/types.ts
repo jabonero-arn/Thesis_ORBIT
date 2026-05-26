@@ -1,5 +1,5 @@
 
-export type Role = "Student" | "Teacher" | "Supervisor" | "Staff" | "Head Supervisor" | "Property Custodian";
+export type Role = "Student" | "Teacher" | "Supervisor" | "Property Custodian";
 
 export type User = {
   id: string;
@@ -11,7 +11,7 @@ export type User = {
   idNumber?: string;
   educationLevel?: string;
   
-  // Teacher/Staff/Supervisor specific
+  // Teacher/Supervisor specific
   employeeId?: string;
   passwordChangeRequired?: boolean;
   assignedDepartmentId?: string;

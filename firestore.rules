@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -17,19 +18,13 @@ service cloud.firestore {
     function isTeacher() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
     }
-    function isStaff() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
-    }
     function isSupervisor() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid));
-    }
-     function isHeadSupervisor() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid));
     }
     function isPropertyCustodian() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
-    function getStaffAssignedDept() {
+    function getSupervisorAssignedDept() {
         return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId;
     }
 
@@ -38,18 +33,18 @@ service cloud.firestore {
     // User Profile Rules
     // --------------------------------------------------------------------------------
     match /users/{userId} {
-      allow get: if isOwner(userId) || isHeadSupervisor();
-      allow list: if isHeadSupervisor();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isHeadSupervisor();
-      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isHeadSupervisor();
-      allow delete: if isHeadSupervisor();
+      allow get: if isOwner(userId) || isSupervisor();
+      allow list: if isSupervisor();
+      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isSupervisor();
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isSupervisor();
+      allow delete: if isSupervisor();
     }
 
     // --------------------------------------------------------------------------------
     // Activity Log Rules
     // --------------------------------------------------------------------------------
     match /activity_logs/{logId} {
-        allow list, get: if isHeadSupervisor();
+        allow list, get: if isSupervisor();
         allow create: if isSignedIn();
     }
 
@@ -58,27 +53,17 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /roles_teachers/{userId} {
       allow read: if false; // No client-side reads
-      allow create, delete: if isHeadSupervisor();
-      allow update: if false;
-    }
-    match /roles_staff/{userId} {
-      allow read: if false;
-      allow create, delete: if isHeadSupervisor();
+      allow create, delete: if isSupervisor();
       allow update: if false;
     }
     match /roles_supervisor/{userId} {
       allow read: if false;
-      allow create, delete: if isHeadSupervisor();
+      allow create, delete: if isSupervisor();
       allow update: if false;
-    }
-    match /roles_head_supervisor/{userId} {
-        allow read: if false;
-        allow create, delete: if isHeadSupervisor();
-        allow update: if false;
     }
     match /roles_property_custodian/{userId} {
         allow read: if false;
-        allow create, delete: if isHeadSupervisor();
+        allow create, delete: if isSupervisor();
         allow update: if false;
     }
     
@@ -87,20 +72,20 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /departments/{departmentId} {
       allow read: if isSignedIn();
-      allow create, update, delete: if isHeadSupervisor();
+      allow create, update, delete: if isSupervisor();
     }
     match /channels/{channelId} {
       allow read: if isSignedIn();
-      allow create: if isHeadSupervisor() || (isSupervisor() && request.resource.data.departmentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId);
-      allow update, delete: if isHeadSupervisor() || (isSupervisor() && resource.data.departmentId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.assignedDepartmentId);
+      allow create, update, delete: if isSupervisor();
     }
+
      // --------------------------------------------------------------------------------
     // Teacher Access Request Rules
     // --------------------------------------------------------------------------------
     match /channel_access_requests/{requestId} {
         allow create: if isTeacher() && isOwner(request.resource.data.teacherId);
         allow list, get: if isOwner(resource.data.teacherId) || isSupervisor();
-        allow update: if (isSupervisor() && request.resource.data.keys().hasOnly(['status'])) || (isTeacher() && isOwner(resource.data.teacherId));
+        allow update: if isSupervisor() || (isTeacher() && isOwner(resource.data.teacherId));
         allow delete: if isOwner(resource.data.teacherId);
     }
 
@@ -109,9 +94,9 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /student_department_access_requests/{requestId} {
         allow create: if isOwner(request.resource.data.studentId);
-        allow get: if isOwner(request.resource.data.studentId) || isStaff();
+        allow get: if isOwner(request.resource.data.studentId) || isSupervisor();
         allow list: if isSignedIn();
-        allow update: if isStaff() && request.resource.data.keys().hasOnly(['status']) && resource.data.departmentId == getStaffAssignedDept();
+        allow update: if isSupervisor();
         allow delete: if isOwner(request.resource.data.studentId);
     }
 
@@ -122,19 +107,17 @@ service cloud.firestore {
      match /inventory_items/{itemId} {
         allow get, list: if isSignedIn();
         allow create: if isPropertyCustodian();
-        allow delete: if isHeadSupervisor() || isSupervisor();
-        allow update: if isStaff() || isSupervisor() || isHeadSupervisor();
+        allow delete, update: if isSupervisor();
       }
 
     // --------------------------------------------------------------------------------
     // Borrowing Transaction Rules
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
-      allow get: if isStaff() || isOwner(resource.data.borrowerUserId) || isHeadSupervisor() || isSupervisor();
+      allow get: if isOwner(resource.data.borrowerUserId) || isSupervisor();
       allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data.borrowerUserId);
-      allow update: if (isStaff() && isExistingDoc()) || (isOwner(resource.data.borrowerUserId) && isExistingDoc()) || isHeadSupervisor() || isSupervisor();
-      allow delete: if isStaff() && isExistingDoc() || isHeadSupervisor() || isSupervisor();
+      allow update, delete: if isOwner(resource.data.borrowerUserId) || isSupervisor();
     }
   }
 }

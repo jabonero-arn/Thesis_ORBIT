@@ -52,10 +52,7 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
   const displayEmail = user?.email || "user@example.com";
   const avatarUrl = user?.photoURL || `https://avatar.vercel.sh/${user?.email}`;
   
-  const idNumber = userProfile?.idNumber;
-
   const departmentName = departments.find(d => d.id === userProfile?.assignedDepartmentId)?.name;
-  const employeeId = userProfile?.employeeId;
 
   const teacherAccessRequests = React.useMemo(() => {
       if (!user || displayRole !== 'Teacher') return [];
@@ -77,149 +74,20 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
     if (!firestore) return;
     const collectionName = type === 'teacher' ? 'channel_access_requests' : 'student_department_access_requests';
     try {
-      const docRef = doc(firestore, collectionName, requestId);
-      await deleteDoc(docRef);
-      toast({
-        title: "Request Removed",
-        description: "Your access request has been removed.",
-      });
+      await deleteDoc(doc(firestore, collectionName, requestId));
+      toast({ title: "Request Removed" });
     } catch (e) {
-      console.error("Error removing request:", e);
-      toast({
-        variant: 'destructive',
-        title: "Error",
-        description: "Could not remove the request.",
-      });
+      console.error(e);
     }
   };
   
   const getStatusBadge = (status: 'pending' | 'approved' | 'denied') => {
     switch (status) {
-        case 'pending':
-            return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>;
-        case 'approved':
-            return <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Approved</Badge>;
-        case 'denied':
-            return <Badge variant="destructive" className="bg-red-900/80 border-red-700 text-red-300">Denied</Badge>;
+        case 'pending': return <Badge variant="outline" className="border-amber-500 text-amber-400">Pending</Badge>;
+        case 'approved': return <Badge variant="secondary" className="bg-green-800/80 border-green-700 text-green-300">Approved</Badge>;
+        case 'denied': return <Badge variant="destructive" className="bg-red-900/80 border-red-700 text-red-300">Denied</Badge>;
     }
   };
-
-
-  const TeacherLabRequests = () => (
-      <div className="mt-4">
-          <div className="p-3 rounded-lg bg-black/30">
-              <div className="flex justify-between items-center mb-2">
-                 <h3 className="text-xs font-bold uppercase text-gray-400">My Laboratory Access</h3>
-                 <Button size="sm" variant="ghost" onClick={() => setIsRequestAccessOpen(true)}>
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Request New Access
-                 </Button>
-              </div>
-              <div className="space-y-2 text-sm max-h-40 overflow-y-auto pr-2">
-                  {teacherAccessRequests.length > 0 ? teacherAccessRequests.map(req => (
-                      <AlertDialog key={req.id}>
-                        <div className="text-xs p-2 rounded bg-black/30">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-semibold text-white">{req.channelName.replace('#','')}</p>
-                                    <p className="text-gray-400">For: {req.subject}</p>
-                                    <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    {getStatusBadge(req.status)}
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"><Edit className="h-4 w-4" /></Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => { setRequestToEdit(req); setIsEditAccessOpen(true);}}>
-                                          Edit Request
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <AlertDialogTrigger asChild>
-                                          <DropdownMenuItem className="text-destructive focus:bg-destructive/80 focus:text-destructive-foreground" onSelect={(e) => e.preventDefault()}>
-                                            Delete Request
-                                          </DropdownMenuItem>
-                                        </AlertDialogTrigger>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </div>
-                        </div>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                  This will remove your access request for {req.channelName.replace('#','')}. This action cannot be undone.
-                              </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteRequest(req.id, 'teacher')}>
-                                  Continue
-                              </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                  )) : (
-                      <p className="text-center text-xs text-gray-500 py-4">You have not requested access to any labs.</p>
-                  )}
-              </div>
-          </div>
-      </div>
-  );
-
-    const StudentDeptRequests = () => (
-      <div className="mt-4">
-          <div className="p-3 rounded-lg bg-black/30">
-              <div className="flex justify-between items-center mb-2">
-                 <h3 className="text-xs font-bold uppercase text-gray-400">My Department Access</h3>
-                 <Button size="sm" variant="ghost" onClick={() => setIsStudentRequestOpen(true)}>
-                    <KeyRound className="mr-2 h-4 w-4" />
-                    Request Access
-                 </Button>
-              </div>
-              <div className="space-y-2 text-sm max-h-40 overflow-y-auto pr-2">
-                  {studentAccessRequests.length > 0 ? studentAccessRequests.map(req => (
-                      <AlertDialog key={req.id}>
-                        <div className="text-xs p-2 rounded bg-black/30">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <p className="font-semibold text-white">{req.departmentName}</p>
-                                    <p className="text-gray-500">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {getStatusBadge(req.status)}
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                </div>
-                            </div>
-                        </div>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                  This will remove your access request for the {req.departmentName}. This action cannot be undone.
-                              </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteRequest(req.id, 'student')}>
-                                  Continue
-                              </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                  )) : (
-                      <p className="text-center text-xs text-gray-500 py-4">You have not requested access to any departments.</p>
-                  )}
-              </div>
-          </div>
-      </div>
-  );
 
   return (
     <>
@@ -227,7 +95,6 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
         <DialogTrigger asChild>{children}</DialogTrigger>
         <DialogContent className="max-w-md bg-[#111214] border-none p-0 overflow-hidden">
           <DialogTitle className="sr-only">{displayName}'s Profile</DialogTitle>
-          <DialogDescription className="sr-only">Detailed profile information for {displayName}.</DialogDescription>
           <div className="relative">
               <div className="h-24 bg-zinc-700"></div>
               <div className="absolute top-16 left-4">
@@ -245,25 +112,19 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
 
           <div className="px-4 pb-4">
               <div className="p-3 rounded-lg bg-black/30">
-                  <h3 className="text-xs font-bold uppercase text-gray-400 mb-2">
-                    {displayRole === 'Student' ? 'Student Information' : 'Member Information'}
-                  </h3>
+                  <h3 className="text-xs font-bold uppercase text-gray-400 mb-2">Member Information</h3>
                   <div className="space-y-1 text-sm">
-                      {displayRole === 'Student' ? (
-                          <>
-                              {idNumber && <div className="flex justify-between"><span className="text-gray-400">ID Number</span><span className="font-mono text-white">{idNumber}</span></div>}
-                          </>
-                      ) : (
-                          <>
-                              {employeeId && <div className="flex justify-between"><span className="text-gray-400">Employee ID</span><span className="font-mono text-white">{employeeId}</span></div>}
-                              {departmentName && <div className="flex justify-between"><span className="text-gray-400">Department</span><span className="text-white">{departmentName}</span></div>}
-                              <div className="flex justify-between"><span className="text-gray-400">Role</span><span className="text-white">{displayRole}</span></div>
-                          </>
-                      )}
+                      {userProfile?.employeeId && <div className="flex justify-between"><span className="text-gray-400">Employee ID</span><span className="font-mono text-white">{userProfile.employeeId}</span></div>}
+                      {departmentName && <div className="flex justify-between"><span className="text-gray-400">Department</span><span className="text-white">{departmentName}</span></div>}
+                      <div className="flex justify-between"><span className="text-gray-400">Role</span><span className="text-white">{displayRole}</span></div>
                   </div>
               </div>
-              {displayRole === 'Teacher' && <TeacherLabRequests />}
-              {displayRole === 'Student' && <StudentDeptRequests />}
+              {displayRole === 'Teacher' && (
+                  <div className="mt-4"><Button size="sm" variant="ghost" className="w-full justify-start" onClick={() => setIsRequestAccessOpen(true)}><KeyRound className="mr-2 h-4 w-4" />Request Lab Access</Button></div>
+              )}
+              {displayRole === 'Student' && (
+                  <div className="mt-4"><Button size="sm" variant="ghost" className="w-full justify-start" onClick={() => setIsStudentRequestOpen(true)}><KeyRound className="mr-2 h-4 w-4" />Request Dept Access</Button></div>
+              )}
               <Button onClick={handleEditClick} variant="secondary" className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white">
                   <Edit className="mr-2 h-4 w-4" /> Edit Profile
               </Button>
@@ -271,21 +132,10 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
         </DialogContent>
       </Dialog>
       
-      <EditProfileDialog 
-        open={isEditOpen} 
-        onOpenChange={setIsEditOpen}
-        userProfile={userProfile}
-        displayRole={displayRole}
-      />
+      <EditProfileDialog open={isEditOpen} onOpenChange={setIsEditOpen} userProfile={userProfile} displayRole={displayRole} />
       <RequestLabAccessDialog open={isRequestAccessOpen} onOpenChange={setIsRequestAccessOpen} />
-      <EditLabAccessDialog 
-        open={isEditAccessOpen} 
-        onOpenChange={setIsEditAccessOpen}
-        request={requestToEdit}
-      />
+      <EditLabAccessDialog open={isEditAccessOpen} onOpenChange={setIsEditAccessOpen} request={requestToEdit} />
       <StudentRequestDepartmentAccessDialog open={isStudentRequestOpen} onOpenChange={setIsStudentRequestOpen} />
     </>
   )
 }
-
-    

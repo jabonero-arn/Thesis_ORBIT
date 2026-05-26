@@ -102,7 +102,6 @@ export default function LoginPage() {
       if (userDocSnap.exists()) {
           userRoleInDb = userDocSnap.data().role;
       } else {
-          // This case might happen if signup process failed to create a user doc.
           await signOut(auth);
           toast({
             variant: "destructive",
@@ -113,12 +112,9 @@ export default function LoginPage() {
           return;
       }
 
-      // Convert URL role (e.g., 'head-supervisor') to DB role (e.g., 'Head Supervisor')
       const targetRole = role ? role.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : "";
 
-      // Check if the user's role matches the role they're trying to log in as
       if (userRoleInDb !== targetRole) {
-          // If roles don't match, sign them out and show an error
           await signOut(auth);
           toast({
             variant: "destructive",
@@ -129,7 +125,6 @@ export default function LoginPage() {
           return;
       }
 
-      // Roles match, proceed with redirection
       toast({
         title: "Logged In!",
         description: `Welcome back. Redirecting...`,
@@ -140,14 +135,9 @@ export default function LoginPage() {
           redirectPath = "/teacher/dashboard";
       } else if (role === "supervisor") {
           redirectPath = "/supervisor/dashboard";
-      } else if (role === "staff") {
-          redirectPath = "/staff/dashboard";
-      } else if (role === "head-supervisor") {
-          redirectPath = "/primary-custodian/dashboard";
       } else if (role === "property-custodian") {
           redirectPath = "/materials-dashboard";
       }
-
 
       router.push(redirectPath)
     } catch (e) {
@@ -170,7 +160,7 @@ export default function LoginPage() {
   }
 
   if (!role) {
-    return null // Prevent rendering the page if role is missing while redirecting
+    return null 
   }
 
   return (
