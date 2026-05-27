@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -28,7 +29,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { departments, studentDepartmentAccessRequests } = useAppContext();
+  const { departments } = useAppContext();
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedDeptIds, setSelectedDeptIds] = React.useState<Set<string>>(new Set());
@@ -46,19 +47,10 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     setIsLoading(false);
   }
 
-  const alreadyRequestedDeptIds = React.useMemo(() =>
-    new Set(studentDepartmentAccessRequests.filter(r => r.studentId === user?.uid).map(r => r.departmentId))
-  , [studentDepartmentAccessRequests, user]);
-
-  // All departments that haven't been requested yet
-  const availableDepartments = React.useMemo(() =>
-    departments.filter(d => !alreadyRequestedDeptIds.has(d.id))
-  , [departments, alreadyRequestedDeptIds]);
-
-  // Departments that are not requested AND not currently selected in the modal
+  // Show all departments that are not currently selected in the modal
   const unselectedDepartments = React.useMemo(() =>
-    availableDepartments.filter(d => !selectedDeptIds.has(d.id))
-  , [availableDepartments, selectedDeptIds]);
+    departments.filter(d => !selectedDeptIds.has(d.id))
+  , [departments, selectedDeptIds]);
 
   const handleToggleDept = (departmentId: string) => {
     setSelectedDeptIds(prev => {

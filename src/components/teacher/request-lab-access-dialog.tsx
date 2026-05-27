@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -27,7 +28,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { departments, channels, channelAccessRequests } = useAppContext();
+  const { departments, channels } = useAppContext();
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [selectedDeptIds, setSelectedDeptIds] = React.useState<Set<string>>(new Set());
@@ -45,22 +46,10 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
-  // Find IDs of departments where the teacher already has an active or pending request
-  const alreadyRequestedDeptIds = React.useMemo(() => {
-    if (!user) return new Set<string>();
-    const teacherReqs = channelAccessRequests.filter(r => r.teacherId === user.uid);
-    return new Set(teacherReqs.map(r => r.departmentId));
-  }, [channelAccessRequests, user]);
-
-  // All departments that haven't been requested yet
-  const availableDepartments = React.useMemo(() =>
-    departments.filter(d => !alreadyRequestedDeptIds.has(d.id))
-  , [departments, alreadyRequestedDeptIds]);
-
-  // Departments that are not requested AND not currently selected in the modal
+  // Show all departments that are not currently selected in the modal
   const unselectedDepartments = React.useMemo(() =>
-    availableDepartments.filter(d => !selectedDeptIds.has(d.id))
-  , [availableDepartments, selectedDeptIds]);
+    departments.filter(d => !selectedDeptIds.has(d.id))
+  , [departments, selectedDeptIds]);
 
   const handleToggleDept = (departmentId: string) => {
     setSelectedDeptIds(prev => {

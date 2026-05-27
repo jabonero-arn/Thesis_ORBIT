@@ -57,6 +57,7 @@ import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-rol
 import { AssignMaterialsDialog } from "@/components/primary-custodian/assign-materials-dialog"
 import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Separator } from "@/components/ui/separator"
 
 type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests' | 'users' | 'platformLogs';
 
@@ -362,7 +363,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle>Student Dept Access</CardTitle></CardHeader>
                             <CardContent className="max-h-[50vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableHeader>
                                     <TableBody>{pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}><TableCell>{req.studentName}</TableCell><TableCell>{req.departmentName}</TableCell>
                                         <TableCell className="text-right space-x-2">
@@ -446,11 +447,11 @@ export default function SupervisorDashboardPage() {
                             <div className="p-2 mb-2"><Logo /></div>
                             <div className="flex flex-col gap-2">
                                 {navItems.slice(0, 6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => setActiveView(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
                                 ))}
                                 <Separator className="bg-border/50 my-2" />
                                 {navItems.slice(6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => setActiveView(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
                                 ))}
                             </div>
                         </div>
@@ -459,7 +460,7 @@ export default function SupervisorDashboardPage() {
                             <div className="py-4 space-y-4">
                                 <ul className="space-y-1">
                                     {navItems.map(item => (
-                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setActiveView(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
+                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
                                     ))}
                                 </ul>
                             </div>
