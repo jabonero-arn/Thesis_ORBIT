@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -74,15 +73,6 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
       return;
     }
     
-    if (!purpose.trim()) {
-        toast({
-            variant: "destructive",
-            title: "Missing Information",
-            description: "Please provide a purpose for your access request.",
-        });
-        return;
-    }
-    
     setIsLoading(true);
 
     try {
@@ -99,7 +89,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
                 studentName: user.displayName || 'Unknown Student',
                 departmentId: department.id,
                 departmentName: department.name,
-                subject: purpose,
+                subject: purpose || "Not specified",
                 status: 'pending',
                 requestedAt: now,
             };
@@ -175,14 +165,13 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
                 {/* Right Side: Purpose Area */}
                 <div className="space-y-4 border-l border-border/30 pl-6">
                     <div className="grid gap-2">
-                        <Label htmlFor="purpose" className="text-sm font-bold text-white">Purpose of Request:</Label>
+                        <Label htmlFor="purpose" className="text-sm font-bold text-white">Purpose of Request (Optional):</Label>
                         <Textarea
                             id="purpose"
                             placeholder="Please provide the specific reason for your access request here..."
                             value={purpose}
                             onChange={(e) => setPurpose(e.target.value)}
                             className="min-h-[250px] bg-black/20 border-border/50 resize-none focus-visible:ring-primary/50"
-                            required
                         />
                     </div>
                 </div>
