@@ -33,18 +33,18 @@ import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
 import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, ChannelAccessRequest, ChannelAccessRequestStatus, Department, Role, ActivityLog, StudentDepartmentAccessRequestStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { useAppContext } from "@/context/app-context"
-import { UserProfileModal } from "@/components/user-profile-modal"
-import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
-import { InventoryGrid } from "@/components/inventory-grid"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { useAppContext } from "@/context/app-context"
+import { UserProfileModal } from "@/components/user-profile-modal"
+import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
+import { InventoryGrid } from "@/components/inventory-grid"
 import { ReturnConditionBadge } from "@/components/return-condition-badge"
 import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
@@ -363,7 +363,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle>Student Dept Access</CardTitle></CardHeader>
                             <CardContent className="max-h-[50vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableHeader>
+                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}><TableCell>{req.studentName}</TableCell><TableCell>{req.departmentName}</TableCell>
                                         <TableCell className="text-right space-x-2">
