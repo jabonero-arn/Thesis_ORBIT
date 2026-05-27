@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2, X, Building2 } from "lucide-react";
+import { Loader2, X, Building2, Search } from "lucide-react";
 import { useFirestore, useUser } from "@/firebase";
 import { collection, doc, writeBatch } from "firebase/firestore";
 import { useAppContext } from "@/context/app-context";
@@ -50,9 +50,15 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     new Set(studentDepartmentAccessRequests.filter(r => r.studentId === user?.uid).map(r => r.departmentId))
   , [studentDepartmentAccessRequests, user]);
 
+  // All departments that haven't been requested yet
   const availableDepartments = React.useMemo(() =>
     departments.filter(d => !alreadyRequestedDeptIds.has(d.id))
   , [departments, alreadyRequestedDeptIds]);
+
+  // Departments that are not requested AND not currently selected in the modal
+  const unselectedDepartments = React.useMemo(() =>
+    availableDepartments.filter(d => !selectedDeptIds.has(d.id))
+  , [availableDepartments, selectedDeptIds]);
 
   const handleToggleDept = (departmentId: string) => {
     setSelectedDeptIds(prev => {
@@ -126,44 +132,61 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
         <form onSubmit={handleSubmit} className="flex flex-col">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 min-h-[400px]">
                 {/* Left Side: Selection Area */}
-                <div className="space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">Available Facilities</h3>
-                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2">
-                        {availableDepartments.length > 0 ? availableDepartments.map(d => {
-                            const isSelected = selectedDeptIds.has(d.id);
-                            return (
-                                <div 
-                                    key={d.id}
-                                    onClick={() => handleToggleDept(d.id)}
-                                    className="cursor-pointer group"
-                                >
-                                    {isSelected ? (
-                                        <div className="flex items-center gap-2 p-1 pl-1 pr-2 rounded-full border border-zinc-500 bg-zinc-800/50 w-fit animate-in fade-in zoom-in-95 duration-200">
+                <div className="space-y-6">
+                    {/* Search Bar / Selection Bar style container */}
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Selected Facilities</Label>
+                        <div className="min-h-[50px] p-1.5 rounded-lg border border-border/40 bg-black/40 flex flex-wrap gap-2 items-center">
+                            <Search className="h-4 w-4 text-muted-foreground/50 ml-2 mr-1" />
+                            {selectedDeptIds.size > 0 ? (
+                                Array.from(selectedDeptIds).map(id => {
+                                    const d = departments.find(dept => dept.id === id);
+                                    if (!d) return null;
+                                    return (
+                                        <div 
+                                            key={id}
+                                            onClick={() => handleToggleDept(id)}
+                                            className="flex items-center gap-2 p-1 pl-1 pr-2 rounded-full border border-zinc-600 bg-zinc-800/80 w-fit animate-in fade-in zoom-in-95 duration-200 cursor-pointer hover:bg-zinc-700 transition-colors"
+                                        >
                                             <Avatar className="h-6 w-6">
                                                 <AvatarFallback className="bg-zinc-700 text-[10px]">
                                                     <Building2 className="h-3 w-3" />
                                                 </AvatarFallback>
                                             </Avatar>
-                                            <span className="text-sm font-medium text-white">{d.name}</span>
+                                            <span className="text-xs font-medium text-white">{d.name}</span>
                                             <X className="h-3 w-3 text-muted-foreground hover:text-white transition-colors ml-1" />
                                         </div>
-                                    ) : (
-                                        <div className="py-2 px-2 rounded-md hover:bg-white/5 transition-colors text-white font-medium">
-                                            {d.name}
-                                        </div>
-                                    )}
+                                    );
+                                })
+                            ) : (
+                                <span className="text-sm text-muted-foreground/40 px-2 italic">Select facilities below...</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Available Facilities</h3>
+                        <div className="flex flex-col gap-1 max-h-[250px] overflow-y-auto pr-2">
+                            {unselectedDepartments.length > 0 ? unselectedDepartments.map(d => (
+                                <div 
+                                    key={d.id}
+                                    onClick={() => handleToggleDept(d.id)}
+                                    className="py-2.5 px-3 rounded-md hover:bg-white/5 transition-all text-white/90 text-sm font-medium cursor-pointer flex items-center justify-between group"
+                                >
+                                    <span>{d.name}</span>
+                                    <span className="opacity-0 group-hover:opacity-100 text-[10px] uppercase text-primary font-bold">Select</span>
                                 </div>
-                            );
-                        }) : (
-                            <p className="text-sm text-muted-foreground py-8">
-                                No more facilities available to request.
-                            </p>
-                        )}
+                            )) : (
+                                <p className="text-sm text-muted-foreground/60 py-8 text-center italic">
+                                    No more facilities available.
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </div>
 
                 {/* Right Side: Purpose Area */}
-                <div className="space-y-4 border-l border-border/30 pl-6">
+                <div className="space-y-4 border-l border-border/20 pl-6">
                     <div className="grid gap-2">
                         <Label htmlFor="purpose" className="text-sm font-bold text-white">Purpose of Request (Optional):</Label>
                         <Textarea
@@ -171,7 +194,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
                             placeholder="Please provide the specific reason for your access request here..."
                             value={purpose}
                             onChange={(e) => setPurpose(e.target.value)}
-                            className="min-h-[250px] bg-black/20 border-border/50 resize-none focus-visible:ring-primary/50"
+                            className="min-h-[280px] bg-black/20 border-border/50 resize-none focus-visible:ring-primary/50 text-sm"
                         />
                     </div>
                 </div>
