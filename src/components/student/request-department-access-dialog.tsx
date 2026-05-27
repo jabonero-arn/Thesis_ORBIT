@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -6,40 +7,33 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, X, Building2 } from "lucide-react";
 import { useFirestore, useUser } from "@/firebase";
-import { collection, addDoc, writeBatch, doc } from "firebase/firestore";
+import { collection, doc, writeBatch } from "firebase/firestore";
 import { useAppContext } from "@/context/app-context";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { StudentDepartmentAccessRequest, User } from "@/lib/types";
-import { Checkbox } from "../ui/checkbox";
-import { Input } from "../ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 type RequestDepartmentAccessDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
-// State for each request line
-type RequestLine = {
-    subject: string;
-    teacherId: string;
-};
-
 export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: RequestDepartmentAccessDialogProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const firestore = useFirestore();
-  const { departments, studentDepartmentAccessRequests, allUsers, channels, channelAccessRequests } = useAppContext();
+  const { departments, studentDepartmentAccessRequests } = useAppContext();
 
   const [isLoading, setIsLoading] = React.useState(false);
-  const [selectedDepts, setSelectedDepts] = React.useState<Map<string, RequestLine>>(new Map());
+  const [selectedDeptIds, setSelectedDeptIds] = React.useState<Set<string>>(new Set());
+  const [purpose, setPurpose] = React.useState("");
 
   React.useEffect(() => {
     if (!open) {
@@ -48,7 +42,8 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
   }, [open]);
 
   const resetForm = () => {
-    setSelectedDepts(new Map());
+    setSelectedDeptIds(new Set());
+    setPurpose("");
     setIsLoading(false);
   }
 
@@ -60,76 +55,32 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     departments.filter(d => !alreadyRequestedDeptIds.has(d.id))
   , [departments, alreadyRequestedDeptIds]);
 
-  const teachersByDepartment = React.useMemo(() => {
-    const map = new Map<string, { id: string; displayName: string }[]>();
-
-    if (!departments || !channels || !channelAccessRequests || !allUsers) {
-        return map;
-    }
-
-    departments.forEach(dept => {
-        const channelsInDept = channels.filter(c => c.departmentId === dept.id).map(c => c.id);
-        const channelsInDeptSet = new Set(channelsInDept);
-
-        const approvedTeacherIds = new Set(
-            channelAccessRequests
-                .filter(req => req.status === 'approved' && channelsInDeptSet.has(req.channelId))
-                .map(req => req.teacherId)
-        );
-
-        const teachersForDept = allUsers
-            .filter(u => u.role === 'Teacher' && approvedTeacherIds.has(u.id))
-            .map(u => ({ id: u.id, displayName: u.displayName }));
-
-        map.set(dept.id, teachersForDept);
+  const handleToggleDept = (departmentId: string) => {
+    setSelectedDeptIds(prev => {
+        const next = new Set(prev);
+        if (next.has(departmentId)) {
+            next.delete(departmentId);
+        } else {
+            next.add(departmentId);
+        }
+        return next;
     });
-
-    return map;
-  }, [departments, channels, channelAccessRequests, allUsers]);
-
-
-  const handleDeptToggle = (checked: boolean, departmentId: string) => {
-      setSelectedDepts(prev => {
-          const newMap = new Map(prev);
-          if (checked) {
-              newMap.set(departmentId, { subject: '', teacherId: '' });
-          } else {
-              newMap.delete(departmentId);
-          }
-          return newMap;
-      });
   };
-
-  const handleRequestChange = (departmentId: string, field: 'subject' | 'teacherId', value: string) => {
-      setSelectedDepts(prev => {
-          const newMap = new Map(prev);
-          const current = newMap.get(departmentId);
-          if (current) {
-              newMap.set(departmentId, { ...current, [field]: value });
-          }
-          return newMap;
-      });
-  };
-
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!user || !firestore || selectedDepts.size === 0) {
+    if (!user || !firestore || selectedDeptIds.size === 0) {
       return;
     }
     
-    // Validate that all selected departments have both a subject and a teacher
-    for (const [deptId, req] of selectedDepts.entries()) {
-        if (!req.subject.trim() || !req.teacherId) {
-            const deptName = departments.find(d => d.id === deptId)?.name || 'the selected department';
-            toast({
-                variant: "destructive",
-                title: "Missing Information",
-                description: `Please provide a subject and select a teacher for ${deptName}.`,
-            });
-            return;
-        }
+    if (!purpose.trim()) {
+        toast({
+            variant: "destructive",
+            title: "Missing Information",
+            description: "Please provide a purpose for your access request.",
+        });
+        return;
     }
     
     setIsLoading(true);
@@ -139,17 +90,16 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
         const requestsCollection = collection(firestore, 'student_department_access_requests');
         const now = new Date().toISOString();
 
-        selectedDepts.forEach((requestData, departmentId) => {
+        selectedDeptIds.forEach((departmentId) => {
             const department = departments.find(d => d.id === departmentId);
             if (!department) return;
 
-            const newRequest: Omit<StudentDepartmentAccessRequest, 'id'> = {
+            const newRequest = {
                 studentId: user.uid,
                 studentName: user.displayName || 'Unknown Student',
                 departmentId: department.id,
                 departmentName: department.name,
-                subject: requestData.subject,
-                teacherId: requestData.teacherId,
+                subject: purpose,
                 status: 'pending',
                 requestedAt: now,
             };
@@ -178,79 +128,86 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Request Department Access</DialogTitle>
-          <DialogDescription>
-            Select the departments you need access to, then provide the subject and teacher for each.
-          </DialogDescription>
+      <DialogContent className="max-w-3xl bg-[#141821] border-border/50 p-0 overflow-hidden">
+        <DialogHeader className="p-6 pb-0">
+          <DialogTitle className="text-2xl font-bold text-white">Request Laboratory Access</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-            <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto pr-4">
-                 {availableDepartments.length > 0 ? availableDepartments.map(d => (
-                    <div key={d.id} className="space-y-3 rounded-lg border border-transparent p-2 data-[checked=true]:border-border data-[checked=true]:bg-black/20" data-checked={selectedDepts.has(d.id)}>
-                        <div className="flex items-center space-x-3">
-                            <Checkbox 
-                                id={`dept-${d.id}`}
-                                checked={selectedDepts.has(d.id)}
-                                onCheckedChange={(checked) => handleDeptToggle(!!checked, d.id)}
-                            />
-                             <Label htmlFor={`dept-${d.id}`} className="font-semibold text-base cursor-pointer">
-                                {d.name}
-                            </Label>
-                        </div>
-                        {selectedDepts.has(d.id) && (
-                            <div className="pl-8 space-y-3">
-                                <div className="grid gap-1.5">
-                                    <Label htmlFor={`subject-${d.id}`}>Subject Name</Label>
-                                    <Input
-                                        id={`subject-${d.id}`}
-                                        placeholder="e.g., CPE 101"
-                                        value={selectedDepts.get(d.id)?.subject || ''}
-                                        onChange={(e) => handleRequestChange(d.id, 'subject', e.target.value)}
-                                        required
-                                    />
+        
+        <form onSubmit={handleSubmit} className="flex flex-col">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 min-h-[400px]">
+                {/* Left Side: Selection Area */}
+                <div className="space-y-4">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">Available Facilities</h3>
+                    <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-2">
+                        {availableDepartments.length > 0 ? availableDepartments.map(d => {
+                            const isSelected = selectedDeptIds.has(d.id);
+                            return (
+                                <div 
+                                    key={d.id}
+                                    onClick={() => handleToggleDept(d.id)}
+                                    className="cursor-pointer group"
+                                >
+                                    {isSelected ? (
+                                        <div className="flex items-center gap-2 p-1 pl-1 pr-2 rounded-full border border-zinc-500 bg-zinc-800/50 w-fit animate-in fade-in zoom-in-95 duration-200">
+                                            <Avatar className="h-6 w-6">
+                                                <AvatarFallback className="bg-zinc-700 text-[10px]">
+                                                    <Building2 className="h-3 w-3" />
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-sm font-medium text-white">{d.name}</span>
+                                            <X className="h-3 w-3 text-muted-foreground hover:text-white transition-colors ml-1" />
+                                        </div>
+                                    ) : (
+                                        <div className="py-2 px-2 rounded-md hover:bg-white/5 transition-colors text-white font-medium">
+                                            {d.name}
+                                        </div>
+                                    )}
                                 </div>
-                                 <div className="grid gap-1.5">
-                                    <Label htmlFor={`teacher-${d.id}`}>Teacher</Label>
-                                    <Select
-                                        value={selectedDepts.get(d.id)?.teacherId || ''}
-                                        onValueChange={(value) => handleRequestChange(d.id, 'teacherId', value)}
-                                        required
-                                    >
-                                        <SelectTrigger id={`teacher-${d.id}`}>
-                                            <SelectValue placeholder="Select a teacher..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {teachersByDepartment.get(d.id)?.length ?? 0 > 0 ? (
-                                                teachersByDepartment.get(d.id)!.map(t => (
-                                                    <SelectItem key={t.id} value={t.id}>{t.displayName}</SelectItem>
-                                                ))
-                                            ) : (
-                                                <SelectItem value="no-teachers" disabled>
-                                                    No approved teachers for this department.
-                                                </SelectItem>
-                                            )}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            );
+                        }) : (
+                            <p className="text-sm text-muted-foreground py-8">
+                                No more facilities available to request.
+                            </p>
                         )}
                     </div>
-                 )) : (
-                    <p className="text-center text-sm text-muted-foreground py-8">
-                        You have already requested access to all available departments.
-                    </p>
-                 )}
+                </div>
+
+                {/* Right Side: Purpose Area */}
+                <div className="space-y-4 border-l border-border/30 pl-6">
+                    <div className="grid gap-2">
+                        <Label htmlFor="purpose" className="text-sm font-bold text-white">Purpose of Request:</Label>
+                        <Textarea
+                            id="purpose"
+                            placeholder="Please provide the specific reason for your access request here..."
+                            value={purpose}
+                            onChange={(e) => setPurpose(e.target.value)}
+                            className="min-h-[250px] bg-black/20 border-border/50 resize-none focus-visible:ring-primary/50"
+                            required
+                        />
+                    </div>
+                </div>
             </div>
-            <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-                    Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading || selectedDepts.size === 0}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Submit Request(s)
-                </Button>
+
+            <DialogFooter className="p-6 bg-black/20 border-t border-border/30">
+                <div className="flex gap-3">
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        onClick={() => onOpenChange(false)} 
+                        disabled={isLoading}
+                        className="text-muted-foreground hover:text-white hover:bg-white/5"
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        type="submit" 
+                        disabled={isLoading || selectedDeptIds.size === 0}
+                        className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-8"
+                    >
+                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Submit Request(s)
+                    </Button>
+                </div>
             </DialogFooter>
         </form>
       </DialogContent>

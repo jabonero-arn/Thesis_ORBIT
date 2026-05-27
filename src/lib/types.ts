@@ -87,7 +87,7 @@ export type StudentDepartmentAccessRequest = {
     departmentId: string;
     departmentName: string;
     subject: string;
-    teacherId: string;
+    teacherId?: string;
     status: StudentDepartmentAccessRequestStatus;
     requestedAt: string;
 }

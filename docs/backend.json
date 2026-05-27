@@ -207,7 +207,7 @@
             "status": { "type": "string", "enum": ["pending", "approved", "denied"] },
             "requestedAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["studentId", "studentName", "departmentId", "departmentName", "subject", "teacherId", "status", "requestedAt"]
+        "required": ["studentId", "studentName", "departmentId", "departmentName", "subject", "status", "requestedAt"]
     }
   },
   "auth": {
