@@ -45,8 +45,8 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
-  // Always show all departments that are not in the current selection bar
-  const unselectedDepartments = React.useMemo(() =>
+  // Ensure all available departments are shown in the list unless selected
+  const availableDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);
 
@@ -162,7 +162,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
                     <div className="space-y-3">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Available Facilities</h3>
                         <div className="flex flex-col gap-1 max-h-[250px] overflow-y-auto pr-2">
-                            {unselectedDepartments.length > 0 ? unselectedDepartments.map(d => (
+                            {availableDepartments.length > 0 ? availableDepartments.map(d => (
                                 <div 
                                     key={d.id}
                                     onClick={() => handleToggleDept(d.id)}

@@ -347,13 +347,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle>Student Dept Access</CardTitle></CardHeader>
                             <CardContent className="max-h-[50vh] overflow-auto">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student</TableHead>
-                                            <TableHead>Dept</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
+                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}><TableCell>{req.studentName}</TableCell><TableCell>{req.departmentName}</TableCell>
                                         <TableCell className="text-right space-x-2">
