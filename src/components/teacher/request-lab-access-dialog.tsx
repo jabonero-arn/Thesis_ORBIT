@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -46,7 +45,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
-  // Show all departments that are not currently selected in the modal
+  // Always show all departments that are not in the current selection bar
   const unselectedDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);
@@ -174,7 +173,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
                                 </div>
                             )) : (
                                 <p className="text-sm text-muted-foreground/60 py-8 text-center italic">
-                                    No more facilities available to request.
+                                    No more facilities available.
                                 </p>
                             )}
                         </div>

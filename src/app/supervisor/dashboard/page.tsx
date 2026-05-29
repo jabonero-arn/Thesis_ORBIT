@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -107,41 +106,29 @@ export default function SupervisorDashboardPage() {
         }
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
-    // View state
     const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
-    const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall');
     const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table' | 'all' | 'inaccurate'>('table');
-    const [verificationSubView, setVerificationSubView] = React.useState<'pending' | 'history'>('pending');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
 
-    const [selectedForRoomAssignment, setSelectedForRoomAssignment] = React.useState<string[]>([]);
-    const [isAssignRoomDialogOpen, setIsAssignRoomDialogOpen] = React.useState(false);
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
     const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
     const [isEditUserRoleOpen, setIsEditUserRoleOpen] = React.useState(false);
     const [userToEdit, setUserToEdit] = React.useState<UserType | null>(null);
-    const [selectedToAssign, setSelectedToAssign] = React.useState<string[]>([]);
     const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
 
-    // Rejection State
     const [rejectItem, setRejectItem] = React.useState<InventoryItem | null>(null);
     const [rejectReasonType, setRejectReasonType] = React.useState<'damaged' | 'not-functioning' | ''>('');
     const [rejectDescription, setRejectDescription] = React.useState('');
 
-    // Data Filtering
     const departmentItems = React.useMemo(() => {
-        if (!assignedDepartmentId) return items; // Platform view
+        if (!assignedDepartmentId) return items;
         return items.filter(item => item.departmentId === assignedDepartmentId);
     }, [items, assignedDepartmentId]);
-
-    const itemsToAssign = React.useMemo(() => {
-        return departmentItems.filter(item => !item.channelId && item.status === 'Available');
-    }, [departmentItems]);
 
     const departmentHistory = React.useMemo(() => {
         if (!assignedDepartmentId) return borrowHistory;
@@ -162,7 +149,6 @@ export default function SupervisorDashboardPage() {
         return allUsers.filter(u => u.role === usersSubView);
     }, [usersSubView, allUsers]);
 
-    // Handlers
     const handleViewChange = (view: SupervisorView) => {
         setActiveView(view);
         setIsMobileMenuOpen(false);
@@ -280,13 +266,11 @@ export default function SupervisorDashboardPage() {
         }
     }
 
-    // Nav Items
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
         { id: 'scanner', label: 'QR Scanner', icon: <QrCode /> },
         { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
         { id: 'accessRequests', label: 'Access Requests', icon: <KeyRound /> },
-        { id: 'assignment', label: 'Material Assignment', icon: <PackageCheck /> },
         { id: 'inventory', label: 'Inventory', icon: <Package /> },
         { id: 'transactions', label: 'Active Transactions', icon: <PackageOpen /> },
         { id: 'history', label: 'History', icon: <HistoryIcon /> },
@@ -446,7 +430,6 @@ export default function SupervisorDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                {/* Combined Sidebar */}
                 <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
                         <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
@@ -486,13 +469,11 @@ export default function SupervisorDashboardPage() {
                     </div>
                 </main>
 
-                {/* Dialogs */}
                 <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} roleToCreate="Supervisor" />
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={assignedDepartment || departments[0] || null} />
                 <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
                 
-                {/* Rejection Dialog */}
                 <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
                     <DialogContent><DialogHeader><DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle></DialogHeader>
                         <div className="grid gap-4 py-4">
@@ -506,7 +487,6 @@ export default function SupervisorDashboardPage() {
                     </DialogContent>
                 </Dialog>
 
-                {/* Edit Item Dialog */}
                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
                     <DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -18,7 +17,6 @@ import { collection, doc, writeBatch } from "firebase/firestore";
 import { useAppContext } from "@/context/app-context";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
 
 type RequestDepartmentAccessDialogProps = {
   open: boolean;
@@ -47,7 +45,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     setIsLoading(false);
   }
 
-  // Show all departments that are not currently selected in the modal
+  // Always show all departments that are not in the current active selection bar
   const unselectedDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);
@@ -125,7 +123,6 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 min-h-[400px]">
                 {/* Left Side: Selection Area */}
                 <div className="space-y-6">
-                    {/* Search Bar / Selection Bar style container */}
                     <div className="space-y-2">
                         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Selected Facilities</Label>
                         <div className="min-h-[50px] p-1.5 rounded-lg border border-border/40 bg-black/40 flex flex-wrap gap-2 items-center">
