@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -30,7 +31,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   , [firestore, user]);
   const { data: userProfile } = useDoc<User>(userProfileRef);
 
-  // Core Data Queries - Gated by authentication
+  // Core Data Queries - Gated by authentication and split get/list for performance/security
   const itemsQuery = useMemoFirebase(() => 
     (firestore && user) ? query(collection(firestore, 'inventory_items'), orderBy('name')) : null
   , [firestore, user]);
@@ -73,16 +74,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const { data: usersData } = useCollection<Omit<User, 'id'>>(usersQuery);
 
 
-  // This ref is to prevent the effect from running multiple times for the same set of cancellations
+  // Auto-cancellation logic for reservations
   const processedReservationIds = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     if (!firestore || !historyData) return;
 
-    // --- Timezone-aware logic for PHT (UTC+8) ---
     const PHT_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-    // Function to get 'YYYY-MM-DD' string in PHT
     const toPHTDateString = (date: Date): string => {
         const phtDate = new Date(date.getTime() + PHT_OFFSET_MS);
         return phtDate.toISOString().split('T')[0];
@@ -101,19 +99,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           if (reservationDayInPHT === todayInPHT) {
             const [hours, minutes] = record.startTime.split(':').map(Number);
-            
-            // Construct the exact reservation datetime in UTC by adding the start time to the reservation date (which is midnight PHT in UTC)
             const reservationDateTimeUtc = new Date(
                 reservationDateUtc.getTime() + (hours * 60 * 60 * 1000) + (minutes * 60 * 1000)
             );
-
-            // Check if current time (UTC) is 10 minutes past the reservation time (UTC)
             if (now.getTime() > reservationDateTimeUtc.getTime() + tenMinutes) {
               reservationsToCancel.push(record as BorrowHistory);
             }
           }
         } catch (e) {
-          console.error("Error parsing reservation date/time for auto-cancellation:", e);
+          console.error("Error parsing reservation date/time:", e);
         }
       }
     });
@@ -126,7 +120,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const docRef = doc(firestore, 'borrowing_transactions', record.id);
         batch.update(docRef, { status: 'Cancelled' });
         studentNames.add(record.studentName);
-        processedReservationIds.current.add(record.id); // Mark as processed
+        processedReservationIds.current.add(record.id);
       });
 
       batch.commit().then(() => {

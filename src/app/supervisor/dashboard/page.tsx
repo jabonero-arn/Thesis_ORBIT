@@ -4,7 +4,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, deleteDoc, writeBatch, collection } from "firebase/firestore"
+import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, ChannelAccessRequest, ChannelAccessRequestStatus, Department, Role, ActivityLog, StudentDepartmentAccessRequestStatus } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, User as UserType, ChannelAccessRequest, Department, Role, ItemStatus, ActivityLog, StudentDepartmentAccessRequestStatus, ChannelAccessRequestStatus } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -44,20 +44,14 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
-import { InventoryGrid } from "@/components/inventory-grid"
-import { ReturnConditionBadge } from "@/components/return-condition-badge"
-import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
-import { AssignRoomDialog } from "@/components/supervisor/assign-room-dialog"
-import { Switch } from "@/components/ui/switch"
+import { Separator } from "@/components/ui/separator"
 import { AddChannelForm } from "@/components/primary-custodian/add-channel-form"
 import { QrScannerView } from "@/components/qr-scanner-view"
 import { AddDepartmentForm } from "@/components/primary-custodian/add-department-form"
 import { CreateUserForm } from "@/components/admin/create-user-form"
 import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
-import { AssignMaterialsDialog } from "@/components/primary-custodian/assign-materials-dialog"
 import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Separator } from "@/components/ui/separator"
 
 type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests' | 'users' | 'platformLogs';
 
@@ -86,11 +80,6 @@ export default function SupervisorDashboardPage() {
     const assignedDepartmentId = userProfile?.assignedDepartmentId;
     const assignedDepartment = React.useMemo(() => departments.find(d => d.id === assignedDepartmentId), [departments, assignedDepartmentId]);
 
-    const assignedChannels = React.useMemo(() => {
-        if (!assignedDepartmentId) return [];
-        return channels.filter(c => c.departmentId === assignedDepartmentId);
-    }, [channels, assignedDepartmentId]);
-    
     React.useEffect(() => {
       if (isUserLoading) return;
       if (!user) {
@@ -108,7 +97,6 @@ export default function SupervisorDashboardPage() {
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
     const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
-    const [inventorySubView, setInventorySubView] = React.useState<'grid' | 'table' | 'all' | 'inaccurate'>('table');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -120,7 +108,6 @@ export default function SupervisorDashboardPage() {
     const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
     const [isEditUserRoleOpen, setIsEditUserRoleOpen] = React.useState(false);
     const [userToEdit, setUserToEdit] = React.useState<UserType | null>(null);
-    const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false);
 
     const [rejectItem, setRejectItem] = React.useState<InventoryItem | null>(null);
     const [rejectReasonType, setRejectReasonType] = React.useState<'damaged' | 'not-functioning' | ''>('');
@@ -187,7 +174,7 @@ export default function SupervisorDashboardPage() {
             name: formData.get("name") as string,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
-            status: formData.get("status") as InventoryItem['status'],
+            status: formData.get("status") as ItemStatus,
         };
         try {
             await updateDoc(doc(firestore, "inventory_items", editingItem.id), { ...itemData, verifiedAt: new Date().toISOString() } as any);
@@ -268,28 +255,24 @@ export default function SupervisorDashboardPage() {
     }
 
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'scanner', label: 'QR Scanner', icon: <QrCode /> },
-        { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
-        { id: 'accessRequests', label: 'Access Requests', icon: <KeyRound /> },
-        { id: 'inventory', label: 'Inventory', icon: <Package /> },
-        { id: 'transactions', label: 'Active Transactions', icon: <PackageOpen /> },
-        { id: 'history', label: 'History', icon: <HistoryIcon /> },
-        { id: 'damaged', label: 'Damaged Items', icon: <AlertTriangle /> },
-        { id: 'users', label: 'User Directory', icon: <Users /> },
-        { id: 'platformLogs', label: 'Audit Logs', icon: <FileText /> },
+        { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid /> },
+        { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode /> },
+        { id: 'verification' as SupervisorView, label: 'Verification', icon: <ClipboardCheck /> },
+        { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound /> },
+        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package /> },
+        { id: 'transactions' as SupervisorView, label: 'Active Transactions', icon: <PackageOpen /> },
+        { id: 'history' as SupervisorView, label: 'History', icon: <HistoryIcon /> },
+        { id: 'damaged' as SupervisorView, label: 'Damaged Items', icon: <AlertTriangle /> },
+        { id: 'users' as SupervisorView, label: 'User Directory', icon: <Users /> },
+        { id: 'platformLogs' as SupervisorView, label: 'Audit Logs', icon: <FileText /> },
     ];
 
-    const getStatusBadge = (status: InventoryItem['status']) => {
+    const getStatusBadge = (status: ItemStatus) => {
         const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive", "Returning": "outline" } as const;
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
 
     const renderContent = () => {
-        const damagedHistory = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
-        const individualDamaged = damagedHistory.filter(h => h.borrowingType !== 'Group');
-        const groupDamaged = damagedHistory.filter(h => h.borrowingType === 'Group');
-
         switch (activeView) {
             case 'scanner': return <QrScannerView />;
             case 'dashboard':
@@ -437,11 +420,11 @@ export default function SupervisorDashboardPage() {
                             <div className="p-2 mb-2"><Logo /></div>
                             <div className="flex flex-col gap-2">
                                 {navItems.slice(0, 6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
                                 ))}
                                 <Separator className="bg-border/50 my-2" />
                                 {navItems.slice(6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id as SupervisorView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
                                 ))}
                             </div>
                         </div>
@@ -450,7 +433,7 @@ export default function SupervisorDashboardPage() {
                             <div className="py-4 space-y-4">
                                 <ul className="space-y-1">
                                     {navItems.map(item => (
-                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
+                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
                                     ))}
                                 </ul>
                             </div>
@@ -461,7 +444,7 @@ export default function SupervisorDashboardPage() {
                 <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
-                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id as any); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
+                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
                         </div>
                     </header>
