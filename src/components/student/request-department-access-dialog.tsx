@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -45,7 +46,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     setIsLoading(false);
   }
 
-  // All facilities that are NOT currently selected
+  // All facilities that are NOT currently selected in the top bar
   const availableDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);

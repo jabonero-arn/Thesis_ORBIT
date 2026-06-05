@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -45,7 +46,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
-  // Facilities NOT currently selected
+  // Facilities NOT currently selected in the top bar
   const availableDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);
@@ -143,7 +144,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
                                             onClick={() => handleToggleDept(id)}
                                             className="flex items-center gap-2 p-1 pl-1 pr-2 rounded-full border border-zinc-600 bg-zinc-800/80 w-fit animate-in fade-in zoom-in-95 duration-200 cursor-pointer hover:bg-zinc-700 transition-colors"
                                         >
-                                            <Avatar className="h-6 w-6">
+                                            <Avatar className="h-6 v-6">
                                                 <AvatarFallback className="bg-zinc-700 text-[10px]">
                                                     <Building2 className="h-3 w-3" />
                                                 </AvatarFallback>

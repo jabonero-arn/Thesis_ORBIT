@@ -33,9 +33,9 @@ service cloud.firestore {
     // User Profile Rules
     // --------------------------------------------------------------------------------
     match /users/{userId} {
-      allow get: if isOwner(userId) || isSupervisor();
+      allow get: if isSignedIn() && (request.auth.uid == userId || isSupervisor());
       allow list: if isSupervisor();
-      allow create: if (isOwner(userId) && request.resource.data.id == userId) || isSupervisor();
+      allow create: if (isSignedIn() && request.auth.uid == userId && request.resource.data.id == userId) || isSupervisor();
       allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isSupervisor();
       allow delete: if isSupervisor();
     }
@@ -52,17 +52,17 @@ service cloud.firestore {
     // Role-Based Access Control (RBAC) Rules
     // --------------------------------------------------------------------------------
     match /roles_teachers/{userId} {
-      allow read: if false; // No client-side reads
+      allow read: if isSignedIn() && request.auth.uid == userId;
       allow create, delete: if isSupervisor();
       allow update: if false;
     }
     match /roles_supervisor/{userId} {
-      allow read: if false;
+      allow read: if isSignedIn() && request.auth.uid == userId;
       allow create, delete: if isSupervisor();
       allow update: if false;
     }
     match /roles_property_custodian/{userId} {
-        allow read: if false;
+        allow read: if isSignedIn() && request.auth.uid == userId;
         allow create, delete: if isSupervisor();
         allow update: if false;
     }
@@ -94,10 +94,10 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /student_department_access_requests/{requestId} {
         allow create: if isOwner(request.resource.data.studentId);
-        allow get: if isOwner(request.resource.data.studentId) || isSupervisor();
+        allow get: if isOwner(resource.data.studentId) || isSupervisor();
         allow list: if isSignedIn();
         allow update: if isSupervisor();
-        allow delete: if isOwner(request.resource.data.studentId);
+        allow delete: if isOwner(resource.data.studentId);
     }
 
 
