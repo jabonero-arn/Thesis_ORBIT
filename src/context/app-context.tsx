@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { InventoryItem, BorrowHistory, User, Department, Channel, ChannelAccessRequest, StudentDepartmentAccessRequest, ActivityLog } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, writeBatch, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,49 +22,55 @@ const AppContext = React.createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { user } = useUser();
 
+  // Fetch user profile to check roles for sensitive data
+  const userProfileRef = useMemoFirebase(() => 
+    (firestore && user) ? doc(firestore, 'users', user.uid) : null
+  , [firestore, user]);
+  const { data: userProfile } = useDoc<User>(userProfileRef);
+
+  // Core Data Queries - Gated by authentication
   const itemsQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'inventory_items'), orderBy('name')) : null
-  , [firestore]);
-  
+    (firestore && user) ? query(collection(firestore, 'inventory_items'), orderBy('name')) : null
+  , [firestore, user]);
   const { data: itemsData } = useCollection<Omit<InventoryItem, 'id'>>(itemsQuery);
 
   const historyQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'borrowing_transactions'), orderBy('date', 'desc')) : null
-  , [firestore]);
-
+    (firestore && user) ? query(collection(firestore, 'borrowing_transactions'), orderBy('date', 'desc')) : null
+  , [firestore, user]);
   const { data: historyData } = useCollection<Omit<BorrowHistory, 'id'>>(historyQuery);
 
-  const logsQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'activity_logs'), orderBy('timestamp', 'desc')) : null
-  , [firestore]);
-  const { data: logsData } = useCollection<Omit<ActivityLog, 'id'>>(logsQuery);
-
-  const usersQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'users'), orderBy('displayName', 'asc')) : null
-  , [firestore]);
-  
-  const { data: usersData } = useCollection<Omit<User, 'id'>>(usersQuery);
-  
   const departmentsQuery = useMemoFirebase(() => 
-      firestore ? query(collection(firestore, 'departments'), orderBy('name', 'asc')) : null
-  , [firestore]);
+      (firestore && user) ? query(collection(firestore, 'departments'), orderBy('name', 'asc')) : null
+  , [firestore, user]);
   const { data: departmentsData } = useCollection<Omit<Department, 'id'>>(departmentsQuery);
 
   const channelsQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'channels'), orderBy('name', 'asc')) : null
-  , [firestore]);
+    (firestore && user) ? query(collection(firestore, 'channels'), orderBy('name', 'asc')) : null
+  , [firestore, user]);
   const { data: channelsData } = useCollection<Omit<Channel, 'id'>>(channelsQuery);
 
   const accessRequestsQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'channel_access_requests'), orderBy('requestedAt', 'desc')) : null
-  , [firestore]);
+    (firestore && user) ? query(collection(firestore, 'channel_access_requests'), orderBy('requestedAt', 'desc')) : null
+  , [firestore, user]);
   const { data: accessRequestsData } = useCollection<Omit<ChannelAccessRequest, 'id'>>(accessRequestsQuery);
 
   const studentAccessRequestsQuery = useMemoFirebase(() =>
-    firestore ? query(collection(firestore, 'student_department_access_requests'), orderBy('requestedAt', 'desc')) : null
-  , [firestore]);
+    (firestore && user) ? query(collection(firestore, 'student_department_access_requests'), orderBy('requestedAt', 'desc')) : null
+  , [firestore, user]);
   const { data: studentAccessRequestsData } = useCollection<Omit<StudentDepartmentAccessRequest, 'id'>>(studentAccessRequestsQuery);
+
+  // Sensitive Data Queries - Gated by Supervisor role
+  const logsQuery = useMemoFirebase(() =>
+    (firestore && userProfile?.role === 'Supervisor') ? query(collection(firestore, 'activity_logs'), orderBy('timestamp', 'desc')) : null
+  , [firestore, userProfile]);
+  const { data: logsData } = useCollection<Omit<ActivityLog, 'id'>>(logsQuery);
+
+  const usersQuery = useMemoFirebase(() =>
+    (firestore && userProfile?.role === 'Supervisor') ? query(collection(firestore, 'users'), orderBy('displayName', 'asc')) : null
+  , [firestore, userProfile]);
+  const { data: usersData } = useCollection<Omit<User, 'id'>>(usersQuery);
 
 
   // This ref is to prevent the effect from running multiple times for the same set of cancellations

@@ -45,7 +45,7 @@ export function StudentRequestDepartmentAccessDialog({ open, onOpenChange }: Req
     setIsLoading(false);
   }
 
-  // Ensure all departments are shown in the available list unless they are already selected in the UI state
+  // All facilities that are NOT currently selected
   const availableDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);

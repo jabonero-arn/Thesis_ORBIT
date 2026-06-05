@@ -45,7 +45,7 @@ export function RequestLabAccessDialog({ open, onOpenChange }: RequestLabAccessD
     setIsLoading(false);
   }
 
-  // Ensure all available departments are shown in the list unless selected
+  // Facilities NOT currently selected
   const availableDepartments = React.useMemo(() =>
     departments.filter(d => !selectedDeptIds.has(d.id))
   , [departments, selectedDeptIds]);
