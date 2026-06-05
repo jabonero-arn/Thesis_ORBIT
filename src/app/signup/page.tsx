@@ -29,14 +29,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useAppContext } from "@/context/app-context"
-import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SignUpPage() {
   const router = useRouter()
   const { toast } = useToast()
   const auth = useAuth()
   const firestore = useFirestore()
-  const { departments } = useAppContext();
 
   const [name, setName] = React.useState('');
   const [email, setEmail] = React.useState('');
@@ -94,7 +92,6 @@ export default function SignUpPage() {
                   requestResourceData: userProfile,
                 });
                 errorEmitter.emit('permission-error', permissionError);
-                // We might still want to inform the user something went wrong with profile creation
                 toast({
                     variant: "destructive",
                     title: "Profile Creation Failed",
@@ -134,8 +131,8 @@ export default function SignUpPage() {
       <Card className="w-full max-w-md bg-card/80 backdrop-blur-sm border-border/50">
         <CardHeader className="items-center text-center">
           <Logo />
-          <CardTitle className="font-headline text-2xl pt-2">Create a Student Account</CardTitle>
-          <CardDescription>Join LabFlow to start borrowing equipment.</CardDescription>
+          <CardTitle className="font-headline text-2xl pt-2 uppercase tracking-tighter">Create Student Account</CardTitle>
+          <CardDescription>Join Orbit to start borrowing equipment.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
@@ -143,21 +140,23 @@ export default function SignUpPage() {
               <Label htmlFor="name">Full Name</Label>
               <Input id="name" placeholder="Juan Dela Cruz" required value={name} onChange={(e) => setName(e.target.value)} />
             </div>
-            <div className="grid gap-2">
-                <Label htmlFor="id-number">ID Number</Label>
-                <Input id="id-number" name="id-number" placeholder="2021-01234" required value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
-            </div>
-             <div className="grid gap-2">
-                <Label htmlFor="education-level">Education Level</Label>
-                <Select onValueChange={(value: "college" | "shs") => setEducationLevel(value)} required>
-                    <SelectTrigger id="education-level">
-                        <SelectValue placeholder="Select education level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="college">College</SelectItem>
-                        <SelectItem value="shs">Senior High School</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="id-number">ID Number</Label>
+                    <Input id="id-number" name="id-number" placeholder="2021-01234" required value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="education-level">Education Level</Label>
+                    <Select onValueChange={(value: "college" | "shs") => setEducationLevel(value)} required>
+                        <SelectTrigger id="education-level">
+                            <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="college">College</SelectItem>
+                            <SelectItem value="shs">SHS</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             
             <div className="grid gap-2">
@@ -182,7 +181,7 @@ export default function SignUpPage() {
         <CardFooter className="flex-col gap-2 text-center text-sm">
             <p className="text-muted-foreground">
                 Already have an account?{" "}
-                <Link href="/" className="font-semibold text-primary hover:underline">
+                <Link href="/login" className="font-semibold text-primary hover:underline">
                     Sign In
                 </Link>
             </p>
