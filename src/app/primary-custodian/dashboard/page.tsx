@@ -8,7 +8,7 @@ import { collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/fire
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw, ChevronDown, ChevronRight
 } from "lucide-react"
 import {
   Card,
@@ -54,6 +54,7 @@ import { Checkbox as UiCheckbox } from "@/components/ui/checkbox"
 import { AssignMaterialsDialog } from "@/components/primary-custodian/assign-materials-dialog"
 import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Separator } from "@/components/ui/separator"
 
 const userRoles = [
     { id: 'all', name: 'All Users', icon: <Users /> },
@@ -118,6 +119,7 @@ export default function HeadSupervisorDashboardPage() {
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
     const [formStatus, setFormStatus] = React.useState<ItemStatus | "">("");
     const [formInaccuracyReason, setFormInaccuracyReason] = React.useState("");
+    const [isLabsOpen, setIsLabsOpen] = React.useState(true);
 
     const [isCreateUserOpen, setIsCreateUserOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
@@ -566,7 +568,19 @@ export default function HeadSupervisorDashboardPage() {
                         <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
                             <div className="py-4 space-y-4">
-                                {activeView === 'dashboard' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Scope</h2><ul className="space-y-1"><li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>{departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department. Associated records and rooms may become unmanaged.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}</ul><Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button></div>)}
+                                {activeView === 'dashboard' && (<div>
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
+                                        <h2 className="text-xs font-bold uppercase">Scope</h2>
+                                        {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </button>
+                                    {isLabsOpen && (
+                                        <ul className="space-y-1">
+                                            <li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>
+                                            {departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department. Associated records and rooms may become unmanaged.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}
+                                        </ul>
+                                    )}
+                                    <Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button>
+                                </div>)}
                                 {activeView === 'inventory' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Inventory View</h2><ul className="space-y-1"><li><Button variant={inventorySubView === 'all' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('all')}><Package className="mr-2 h-4 w-4"/>Full List</Button></li><li><Button variant={inventorySubView === 'inaccurate' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('inaccurate')}><AlertTriangle className="mr-2 h-4 w-4"/>Inaccurate</Button></li>{departments.map(d=>(<li key={d.id}><Button variant={inventorySubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2">{d.name}</span></Button></li>))}</ul></div>)}
                                 {activeView === 'transactions' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Audit</h2><ul className="space-y-1"><li><Button variant={transactionSubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('borrowed')}><PackageCheck className="mr-2 h-4 w-4"/>Active Borrows</Button></li><li><Button variant={transactionSubView === 'logs' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('logs')}><FileText className="mr-2 h-4 w-4"/>Platform Logs</Button></li></ul></div>)}
                                 {activeView === 'users' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Directory</h2><ul className="space-y-1">{userRoles.map(r=>(<li key={r.id}><Button variant={usersSubView === r.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setUsersSubView(r.id as any)}>{r.icon} <span className="ml-2">{r.name}</span></Button></li>))}</ul></div>)}
@@ -576,10 +590,16 @@ export default function HeadSupervisorDashboardPage() {
                     <div className="p-2 border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 items-center gap-2 cursor-pointer p-1"><Avatar className="h-8 w-8"><AvatarFallback>A</AvatarFallback></Avatar><div className="overflow-hidden"><p className="text-sm font-semibold truncate">{userProfile?.displayName}</p><p className="text-[10px] text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>
                 </div>
                 <main className="flex-1 flex flex-col h-dvh">
-                    <header className="flex h-16 items-center p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
+                    <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id as any); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                                {userProfile?.role || 'Head Supervisor'}
+                            </Badge>
+                            <UserNav role="Head Supervisor" />
                         </div>
                     </header>
                     {renderContent()}

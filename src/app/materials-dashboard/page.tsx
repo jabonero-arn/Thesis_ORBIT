@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle
+    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight
 } from "lucide-react"
 import {
   Card,
@@ -69,6 +69,7 @@ export default function PropertyCustodianDashboardPage() {
     const [activeView, setActiveView] = React.useState<'dashboard' | 'add-materials' | 'outgoing-items' | 'returned-items'>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall'); // 'overall' or dept prefix
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isLabsOpen, setIsLabsOpen] = React.useState(true);
     
     const dashboardItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
@@ -247,13 +248,18 @@ export default function PropertyCustodianDashboardPage() {
             </div>
             {activeView === 'dashboard' && (
                 <div className="p-2">
-                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments?.map(dept => (
-                            <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                        ))}
-                    </ul>
+                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
+                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                    </button>
+                    {isLabsOpen && (
+                        <ul className="flex flex-col gap-1">
+                            <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
+                            {departments?.map(dept => (
+                                <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             )}
           </div>
@@ -287,13 +293,18 @@ export default function PropertyCustodianDashboardPage() {
                             </div>
                             {activeView === 'dashboard' && (
                                 <div className="py-4">
-                                    <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">LABORATORIES</h2>
-                                    <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                        {departments?.map(dept => (
-                                            <li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                                        ))}
-                                    </ul>
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
+                                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                    </button>
+                                    {isLabsOpen && (
+                                        <ul className="flex flex-col gap-1">
+                                            <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
+                                            {departments?.map(dept => (
+                                                <li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             )}
                              {(activeView === 'add-materials' || activeView === 'outgoing-items' || activeView === 'returned-items') && (
@@ -325,6 +336,12 @@ export default function PropertyCustodianDashboardPage() {
                                 <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">{mobileSidebarContent}</SheetContent>
                             </Sheet>
                             {getHeaderContent()}
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                                {userProfile?.role || 'Property Custodian'}
+                            </Badge>
+                            <UserNav role="Property Custodian" />
                         </div>
                     </header>
                     {renderContent()}

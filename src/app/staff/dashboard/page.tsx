@@ -7,7 +7,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, PackageOpen, History as HistoryIcon, Edit, Trash, QrCode, Loader2, Menu,
-    Hourglass, PackageCheck, LayoutGrid, List, AlertTriangle, ClipboardCheck, Check, X
+    Hourglass, PackageCheck, LayoutGrid, List, AlertTriangle, ClipboardCheck, Check, X, ChevronDown, ChevronRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -118,6 +118,7 @@ export default function StaffDashboardPage() {
     const [transactionSubView, setTransactionSubView] = React.useState<TransactionSubView>('reservations');
     const [inventorySubView, setInventorySubView] = React.useState<InventorySubView>('grid');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+    const [isMenuOpen, setIsMenuOpen] = React.useState(true);
 
 
     // Handlers
@@ -637,33 +638,40 @@ export default function StaffDashboardPage() {
                         <div className="w-64 flex-col bg-[#141821] p-2">
                              <div className="p-4 font-headline text-lg font-bold border-b border-border/50">{assignedDepartment?.name || "Staff"}</div>
                              <div className="py-4">
-                                <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                    {activeView === 'inventory' ? 'VIEW OPTIONS' : (activeView === 'transactions' ? 'QUEUES' : 'MENU')}
-                                </h2>
+                                <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        {activeView === 'inventory' ? 'VIEW OPTIONS' : (activeView === 'transactions' ? 'QUEUES' : 'MENU')}
+                                    </h2>
+                                    {isMenuOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                </button>
 
-                                {activeView === 'inventory' ? (
-                                    <ul className="flex flex-col gap-1">
-                                        <li>
-                                            <button onClick={() => setInventorySubView('grid')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'grid' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                <LayoutGrid className="h-5 w-5" /> Grid View
+                                {isMenuOpen && (
+                                    <>
+                                        {activeView === 'inventory' ? (
+                                            <ul className="flex flex-col gap-1">
+                                                <li>
+                                                    <button onClick={() => setInventorySubView('grid')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'grid' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                        <LayoutGrid className="h-5 w-5" /> Grid View
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button onClick={() => setInventorySubView('table')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'table' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
+                                                        <List className="h-5 w-5" /> Table View
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        ) : activeView === 'transactions' ? (
+                                            <ul className="flex flex-col gap-1">
+                                                <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
+                                                <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
+                                            </ul>
+                                        ) : (
+                                            <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
+                                                {navItems.find(i => i.id === activeView)?.icon}
+                                                {navItems.find(i => i.id === activeView)?.label}
                                             </button>
-                                        </li>
-                                        <li>
-                                            <button onClick={() => setInventorySubView('table')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${inventorySubView === 'table' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>
-                                                <List className="h-5 w-5" /> Table View
-                                            </button>
-                                        </li>
-                                    </ul>
-                                ) : activeView === 'transactions' ? (
-                                     <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setTransactionSubView('reservations')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'reservations' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><Hourglass className="h-5 w-5" /> Reservations</button></li>
-                                        <li><button onClick={() => setTransactionSubView('borrowed')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${transactionSubView === 'borrowed' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><PackageCheck className="h-5 w-5" /> Currently Borrowed</button></li>
-                                    </ul>
-                                ) : (
-                                    <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
-                                        {navItems.find(i => i.id === activeView)?.icon}
-                                        {navItems.find(i => i.id === activeView)?.label}
-                                    </button>
+                                        )}
+                                    </>
                                 )}
                              </div>
                         </div>
@@ -696,6 +704,12 @@ export default function StaffDashboardPage() {
                                 </SheetContent>
                             </Sheet>
                             {getHeaderContent()}
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                                {userProfile?.role || 'Staff'}
+                            </Badge>
+                            <UserNav role="Staff" />
                         </div>
                     </header>
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">

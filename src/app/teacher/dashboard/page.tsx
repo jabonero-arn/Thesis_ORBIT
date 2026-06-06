@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, writeBatch } from "firebase/firestore"
-import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, Building, Inbox, PackageCheck, CalendarDays, XCircle } from "lucide-react"
+import { User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, LayoutGrid, ClipboardCheck, CornerDownLeft, Settings, History, Hourglass, Loader2, Building, Inbox, PackageCheck, CalendarDays, XCircle, ChevronDown, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, isToday } from "date-fns"
 import Image from "next/image"
@@ -46,6 +46,7 @@ export default function TeacherDashboardPage() {
   
   const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
   const [showLabSelectionDialog, setShowLabSelectionDialog] = React.useState(false);
+  const [isLabsOpen, setIsLabsOpen] = React.useState(true);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -487,21 +488,8 @@ export default function TeacherDashboardPage() {
         <>
         <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
                 <div className="flex items-center gap-2">
-                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                    <SheetTrigger asChild>
-                        <Button variant="ghost" size="icon" className="md:hidden">
-                        <Menu />
-                        <span className="sr-only">Open Menu</span>
-                        </Button>
-                    </SheetTrigger>
-                    <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
-                        {mobileSidebarContent}
-                    </SheetContent>
-                    </Sheet>
-                    <div className="flex items-center gap-2">
-                        <Hash className="text-muted-foreground" />
-                        <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
-                    </div>
+                    <Hash className="text-muted-foreground" />
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name.replace('#', '')}</h1>
                 </div>
             </header>
             <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -520,17 +508,6 @@ export default function TeacherDashboardPage() {
     <>
         <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden">
-                      <Menu />
-                      <span className="sr-only">Open Menu</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
-                     {mobileSidebarContent}
-                  </SheetContent>
-                </Sheet>
                 <div className="flex items-center gap-2">
                     {requestSubView === 'pending' ? <Hourglass className="text-muted-foreground" /> : <History className="text-muted-foreground" />}
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
@@ -549,17 +526,6 @@ export default function TeacherDashboardPage() {
      <>
         <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
             <div className="flex items-center gap-2">
-                <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="md:hidden">
-                      <Menu />
-                      <span className="sr-only">Open Menu</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
-                     {mobileSidebarContent}
-                  </SheetContent>
-                </Sheet>
                 <div className="flex items-center gap-2">
                     {React.cloneElement(activityNavItems.find(i => i.id === activitySubView)?.icon || <Inbox/>, { className: "text-muted-foreground" })}
                     <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
@@ -670,15 +636,21 @@ export default function TeacherDashboardPage() {
                 {/* Channel List or Sub-menu */}
                 {activeView === 'borrow' && selectedDepartmentId && (
                     <div className="w-64 flex-col bg-[#141821] p-2">
-                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                        {selectedDepartment?.name}
-                    </div>
-                    <AppSidebar
-                        department={selectedDepartment}
-                        channelsInDept={channelsForSidebar}
-                        selectedChannelId={selectedChannelId}
-                        onChannelSelect={handleChannelSelect}
-                    />
+                        <button 
+                            onClick={() => setIsLabsOpen(!isLabsOpen)}
+                            className="flex w-full items-center justify-between p-4 font-headline text-lg font-bold border-b border-border/50 group"
+                        >
+                            <span>{selectedDepartment?.name}</span>
+                            {isLabsOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />}
+                        </button>
+                        {isLabsOpen && (
+                            <AppSidebar
+                                department={selectedDepartment}
+                                channelsInDept={channelsForSidebar}
+                                selectedChannelId={selectedChannelId}
+                                onChannelSelect={handleChannelSelect}
+                            />
+                        )}
                     </div>
                 )}
                 {(activeView === 'requests' || activeView === 'my-activity') && (
@@ -728,7 +700,36 @@ export default function TeacherDashboardPage() {
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col h-dvh">
-          {renderActiveView()}
+            <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
+                <div className="flex items-center gap-4">
+                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                        <SheetTrigger asChild>
+                            <Button variant="ghost" size="icon" className="md:hidden">
+                                <Menu />
+                                <span className="sr-only">Open Menu</span>
+                            </Button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                            {mobileSidebarContent}
+                        </SheetContent>
+                    </Sheet>
+                    <div className="flex items-center gap-2">
+                        {activeView === 'borrow' ? <Hash className="text-muted-foreground" /> : <LayoutGrid className="text-muted-foreground" />}
+                        <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                            {activeView === 'borrow' ? (selectedChannel?.name.replace('#', '') || 'Dashboard') : (activeView === 'requests' ? 'Approvals' : 'My Activity')}
+                        </h1>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <Badge variant="outline" className="hidden md:flex bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                        {userProfile?.role || 'Teacher'}
+                    </Badge>
+                    <UserNav role="Teacher" />
+                </div>
+            </header>
+            <div className="flex-1 overflow-y-auto">
+                {renderActiveView()}
+            </div>
         </main>
 
         {/* Cart */}

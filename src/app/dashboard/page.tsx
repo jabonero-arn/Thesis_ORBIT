@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch, ChevronDown, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { isToday } from "date-fns"
@@ -26,6 +26,7 @@ import { RequestApprovalDialog } from "@/components/request-approval-dialog"
 import { StudentActivity } from "@/components/student-activity"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { Badge } from "@/components/ui/badge"
 
 export default function Home() {
   const router = useRouter()
@@ -39,6 +40,7 @@ export default function Home() {
   
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null);
+  const [isLabsOpen, setIsLabsOpen] = React.useState(true);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -489,15 +491,21 @@ export default function Home() {
                 {/* Channel List */}
                 {activeView === 'borrow' ? (
                     <div className="w-64 flex-col bg-[#141821] p-2">
-                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                          {selectedDepartment?.name}
-                        </div>
-                        <AppSidebar
-                          department={selectedDepartment}
-                          channelsInDept={channelsForSidebar}
-                          selectedChannelId={selectedChannelId}
-                          onChannelSelect={handleChannelSelect}
-                        />
+                        <button 
+                            onClick={() => setIsLabsOpen(!isLabsOpen)}
+                            className="flex w-full items-center justify-between p-4 font-headline text-lg font-bold border-b border-border/50 group"
+                        >
+                            <span>{selectedDepartment?.name}</span>
+                            {isLabsOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />}
+                        </button>
+                        {isLabsOpen && (
+                            <AppSidebar
+                                department={selectedDepartment}
+                                channelsInDept={channelsForSidebar}
+                                selectedChannelId={selectedChannelId}
+                                onChannelSelect={handleChannelSelect}
+                            />
+                        )}
                     </div>
                 ) : (
                     <div className="w-64 flex-col bg-[#141821] p-2">
@@ -623,6 +631,12 @@ export default function Home() {
                 </div>
               )}
             </div>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className="hidden md:flex bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                  {userProfile?.role || 'Student'}
+              </Badge>
+              <UserNav role="Student" />
+            </div>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             {activeView === 'borrow' ? (
@@ -722,7 +736,3 @@ export default function Home() {
     </TooltipProvider>
   )
 }
-
-    
-
-    

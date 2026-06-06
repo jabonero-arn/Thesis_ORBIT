@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch, collection } from "firebase/fire
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -114,6 +114,7 @@ export default function SupervisorDashboardPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+    const [isLabsOpen, setIsLabsOpen] = React.useState(true);
 
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
@@ -348,13 +349,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle>Student Dept Access</CardTitle></CardHeader>
                             <CardContent className="max-h-[50vh] overflow-auto">
                                 <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Student</TableHead>
-                                            <TableHead>Dept</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
+                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{pendingStudentRequests.map(req => (
                                         <TableRow key={req.id}><TableCell>{req.studentName}</TableCell><TableCell>{req.departmentName}</TableCell>
                                         <TableCell className="text-right space-x-2">
@@ -448,11 +443,17 @@ export default function SupervisorDashboardPage() {
                         <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
                             <div className="py-4 space-y-4">
-                                <ul className="space-y-1">
-                                    {navItems.map(item => (
-                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
-                                    ))}
-                                </ul>
+                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dashboard View</h2>
+                                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                </button>
+                                {isLabsOpen && (
+                                    <ul className="space-y-1">
+                                        {navItems.map(item => (
+                                            <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
+                                        ))}
+                                    </ul>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -463,6 +464,12 @@ export default function SupervisorDashboardPage() {
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id as any); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
+                                {userProfile?.role || 'Lab Supervisor'}
+                            </Badge>
+                            <UserNav role="Supervisor" />
                         </div>
                     </header>
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
