@@ -14,8 +14,7 @@ service cloud.firestore {
     }
     function isSupervisor() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
-        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid))
+        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid))
       );
     }
     function isTeacher() {
