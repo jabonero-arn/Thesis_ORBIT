@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ArrowRight, UserCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -257,16 +257,16 @@ export default function SupervisorDashboardPage() {
     }
 
     const navItems = [
-        { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode /> },
-        { id: 'verification' as SupervisorView, label: 'Verification', icon: <ClipboardCheck /> },
-        { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound /> },
-        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package /> },
-        { id: 'transactions' as SupervisorView, label: 'Active Transactions', icon: <PackageOpen /> },
-        { id: 'history' as SupervisorView, label: 'History', icon: <HistoryIcon /> },
-        { id: 'damaged' as SupervisorView, label: 'Damaged Items', icon: <AlertTriangle /> },
-        { id: 'users' as SupervisorView, label: 'User Directory', icon: <Users /> },
-        { id: 'platformLogs' as SupervisorView, label: 'Audit Logs', icon: <FileText /> },
+        { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid />, description: 'Overview of laboratory performance and status.' },
+        { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode />, description: 'Process checkouts and returns instantly.' },
+        { id: 'verification' as SupervisorView, label: 'Verification', icon: <ClipboardCheck />, description: 'Confirm new items from Property Custodian.' },
+        { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound />, description: 'Manage teacher and student access permissions.' },
+        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package />, description: 'Audit and update laboratory equipment lists.' },
+        { id: 'transactions' as SupervisorView, label: 'Active Transactions', icon: <PackageOpen />, description: 'Monitor items currently in use.' },
+        { id: 'history' as SupervisorView, label: 'History', icon: <HistoryIcon />, description: 'Review past borrowing activities.' },
+        { id: 'damaged' as SupervisorView, label: 'Damaged Items', icon: <AlertTriangle />, description: 'Track malfunctioning or broken materials.' },
+        { id: 'users' as SupervisorView, label: 'User Directory', icon: <Users />, description: 'Manage laboratory staff and teachers.' },
+        { id: 'platformLogs' as SupervisorView, label: 'Audit Logs', icon: <FileText />, description: 'System-wide activity logs for security.' },
     ];
 
     const getStatusBadge = (status: ItemStatus) => {
@@ -283,12 +283,56 @@ export default function SupervisorDashboardPage() {
                  const borrowedCount = departmentHistory.filter(h => h.status === 'Active').length;
                  const reservedCount = departmentHistory.filter(h => h.status === 'Reserved').length;
                 return (
-                     <div className="space-y-8">
+                     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">Welcome back, {userProfile?.displayName || 'Supervisor'}</h2>
+                            <p className="text-muted-foreground">System status for {assignedDepartment?.name || 'All Labs'} is operational.</p>
+                        </div>
+
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Items</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemTypes}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Stock</CardTitle><PackageOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalStock}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Borrowed</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedCount}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Reserved</CardTitle><Hourglass className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{reservedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Unique Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItemTypes}</div><p className="text-xs text-muted-foreground mt-1">Cataloged in inventory</p></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Stock</CardTitle><PackageOpen className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div><p className="text-xs text-muted-foreground mt-1">Available physical units</p></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div><p className="text-xs text-muted-foreground mt-1">Currently checked out</p></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Reserved</CardTitle><Hourglass className="h-4 w-4 text-amber-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{reservedCount}</div><p className="text-xs text-muted-foreground mt-1">Pending pick-up today</p></CardContent></Card>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold font-headline text-muted-foreground uppercase tracking-widest px-1">Management Hub</h3>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {navItems.filter(i => i.id !== 'dashboard').map(item => (
+                                    <Card 
+                                        key={item.id} 
+                                        className="group hover:border-primary/50 transition-all cursor-pointer bg-card/40 backdrop-blur-sm hover:shadow-lg hover:shadow-primary/5"
+                                        onClick={() => setActiveView(item.id)}
+                                    >
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                                            <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                                {React.cloneElement(item.icon as React.ReactElement, { className: "h-6 w-6" })}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <CardTitle className="text-lg font-headline">{item.label}</CardTitle>
+                                                    <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                                </div>
+                                                <CardDescription className="line-clamp-1">{item.description}</CardDescription>
+                                            </div>
+                                        </CardHeader>
+                                    </Card>
+                                ))}
+                                <UserProfileModal role="Supervisor">
+                                    <Card className="group hover:border-primary/50 transition-all cursor-pointer bg-card/40 backdrop-blur-sm border-dashed border-primary/20">
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                                            <div className="p-3 rounded-xl bg-primary/5 text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-all duration-300">
+                                                <UserCircle className="h-6 w-6" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <CardTitle className="text-lg font-headline">My Profile</CardTitle>
+                                                <CardDescription>View settings and access history.</CardDescription>
+                                            </div>
+                                        </CardHeader>
+                                    </Card>
+                                </UserProfileModal>
+                            </div>
                         </div>
                      </div>
                 );
@@ -410,91 +454,60 @@ export default function SupervisorDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
-                    <div className="flex flex-1">
-                        {/* Only show the icon rail on the main dashboard view */}
-                        {activeView === 'dashboard' && (
-                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
-                                <div className="p-2 mb-2"><Logo /></div>
-                                <div className="flex flex-col gap-2">
-                                    {navItems.slice(0, 6).map(item => (
-                                        <Tooltip key={item.id}>
-                                            <TooltipTrigger asChild>
-                                                <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right"><p>{item.label}</p></TooltipContent>
-                                        </Tooltip>
-                                    ))}
-                                    <Separator className="bg-border/50 my-2" />
-                                    {navItems.slice(6).map(item => (
-                                        <Tooltip key={item.id}>
-                                            <TooltipTrigger asChild>
-                                                <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right"><p>{item.label}</p></TooltipContent>
-                                        </Tooltip>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
-                            {/* Brand header for sub-views */}
-                            {activeView !== 'dashboard' && (
-                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
+                {/* Conditionally hide sidebar on Dashboard Hub */}
+                {activeView !== 'dashboard' && (
+                    <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50 animate-in slide-in-from-left duration-500">
+                        <div className="flex flex-1">
+                            <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
+                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4">
                                     <Logo />
                                 </div>
-                            )}
-                            
-                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
-                            <div className="py-4 space-y-4">
-                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
-                                    <h2 className="text-xs font-bold uppercase tracking-wider">Dashboard View</h2>
-                                    {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                </button>
-                                {isLabsOpen && (
-                                    <ul className="space-y-1">
-                                        {navItems.map(item => (
-                                            <li key={item.id}>
-                                                <Button 
-                                                    variant={activeView === item.id ? 'secondary' : 'ghost'} 
-                                                    className="w-full justify-start" 
-                                                    onClick={()=>handleViewChange(item.id as SupervisorView)}
-                                                >
-                                                    {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
-                                                    {item.label}
-                                                </Button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
+                                <div className="py-4 space-y-4">
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
+                                        <h2 className="text-xs font-bold uppercase tracking-wider">Navigation</h2>
+                                        {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                    </button>
+                                    {isLabsOpen && (
+                                        <ul className="space-y-1">
+                                            {navItems.map(item => (
+                                                <li key={item.id}>
+                                                    <Button 
+                                                        variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                        className="w-full justify-start" 
+                                                        onClick={()=>handleViewChange(item.id as SupervisorView)}
+                                                    >
+                                                        {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
+                                                        {item.label}
+                                                    </Button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-2 border-t border-border/50 bg-[#141821]">
+                            <div className="flex items-center justify-between">
+                                <UserProfileModal role="Supervisor">
+                                    <div className="flex flex-1 items-center gap-2 cursor-pointer p-1">
+                                        <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
+                                        <div className="overflow-hidden">
+                                            <p className="text-sm font-semibold truncate">{userProfile?.displayName}</p>
+                                            <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
+                                        </div>
+                                    </div>
+                                </UserProfileModal>
+                                <UserNav role="Supervisor" />
                             </div>
                         </div>
                     </div>
-                    
-                    {/* Dynamic sidebar footer background */}
-                    <div className={cn(
-                        "p-2 border-t border-border/50",
-                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
-                    )}>
-                        <div className="flex items-center justify-between">
-                            <UserProfileModal role="Supervisor">
-                                <div className="flex flex-1 items-center gap-2 cursor-pointer p-1">
-                                    <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
-                                    <div className="overflow-hidden">
-                                        <p className="text-sm font-semibold truncate">{userProfile?.displayName}</p>
-                                        <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
-                                    </div>
-                                </div>
-                            </UserProfileModal>
-                            <UserNav role="Supervisor" />
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-1">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                 <SheetTrigger asChild>
                                     <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
@@ -515,6 +528,10 @@ export default function SupervisorDashboardPage() {
                                     </div>
                                 </SheetContent>
                             </Sheet>
+                            
+                            {/* Logo shown in header only when sidebar is hidden */}
+                            {activeView === 'dashboard' && <Logo />}
+                            
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">
                                 {navItems.find(i=>i.id===activeView)?.label}
                             </h1>

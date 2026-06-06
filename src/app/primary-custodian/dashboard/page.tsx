@@ -8,7 +8,7 @@ import { collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/fire
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw, ChevronDown, ChevronRight
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw, ChevronDown, ChevronRight, ArrowRight
 } from "lucide-react"
 import {
   Card,
@@ -372,12 +372,12 @@ export default function HeadSupervisorDashboardPage() {
     }
 
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'verification', label: 'Verification', icon: <ClipboardCheck /> },
-        { id: 'inventory', label: 'Inventory', icon: <Package /> },
-        { id: 'transactions', label: 'Transactions', icon: <PackageOpen /> },
-        { id: 'activityLogs', label: 'Teacher Approvals', icon: <HistoryIcon /> },
-        { id: 'users', label: 'User Management', icon: <Users /> },
+        { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid />, description: 'High-level metrics and system hub.' },
+        { id: 'verification', label: 'Verification', icon: <ClipboardCheck />, description: 'Approve items from materials custodian.' },
+        { id: 'inventory', label: 'Inventory', icon: <Package />, description: 'View and manage all items globally.' },
+        { id: 'transactions', label: 'Transactions', icon: <PackageOpen />, description: 'Audit active borrowing sessions.' },
+        { id: 'activityLogs', label: 'Teacher Approvals', icon: <HistoryIcon />, description: 'Track teacher approval history.' },
+        { id: 'users', label: 'User Management', icon: <Users />, description: 'Control access and roles for all users.' },
     ];
     
     const renderContent = () => {
@@ -388,12 +388,43 @@ export default function HeadSupervisorDashboardPage() {
                  const borrowedCount = dashboardHistory.filter(h => h.status === 'Active').length;
                  const reservedCount = dashboardHistory.filter(h => h.status === 'Reserved').length;
                 return (
-                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
+                     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+                        <div className="flex flex-col gap-1">
+                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">System Console</h2>
+                            <p className="text-muted-foreground">Manage laboratory infrastructure and user access.</p>
+                        </div>
+
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Items</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemTypes}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Stock</CardTitle><PackageOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalStock}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Borrowed</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedCount}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Reserved</CardTitle><Hourglass className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{reservedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Global Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItemTypes}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Stock</CardTitle><PackageOpen className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Reserved</CardTitle><Hourglass className="h-4 w-4 text-amber-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{reservedCount}</div></CardContent></Card>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h3 className="text-lg font-bold font-headline text-muted-foreground uppercase tracking-widest px-1">Management Modules</h3>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {navItems.filter(i => i.id !== 'dashboard').map(item => (
+                                    <Card 
+                                        key={item.id} 
+                                        className="group hover:border-primary/50 transition-all cursor-pointer bg-card/40 backdrop-blur-sm"
+                                        onClick={() => setActiveView(item.id as AdminView)}
+                                    >
+                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
+                                            <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                                {React.cloneElement(item.icon as React.ReactElement, { className: "h-6 w-6" })}
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between">
+                                                    <CardTitle className="text-lg font-headline">{item.label}</CardTitle>
+                                                    <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                                </div>
+                                                <CardDescription className="line-clamp-1">{item.description}</CardDescription>
+                                            </div>
+                                        </CardHeader>
+                                    </Card>
+                                ))}
+                            </div>
                         </div>
                      </div>
                 );
@@ -555,79 +586,65 @@ export default function HeadSupervisorDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
-                    <div className="flex flex-1">
-                        {/* Only show the icon rail on the main dashboard view */}
-                        {activeView === 'dashboard' && (
-                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
-                                <div className="p-2 mb-2"><Logo /></div>
-                                <div className="flex flex-col items-center gap-2 w-full">
-                                    {navItems.map(item => (
-                                        <Tooltip key={item.id}><TooltipTrigger asChild>
-                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => setActiveView(item.id as AdminView)}>{item.icon}</Button>
-                                        </TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        
-                        <div className="w-64 flex-col bg-[#141821] p-2">
-                             {/* Brand header for sub-views */}
-                            {activeView !== 'dashboard' && (
+                {activeView !== 'dashboard' && (
+                    <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50 animate-in slide-in-from-left duration-500">
+                        <div className="flex flex-1">
+                            <div className="w-64 flex-col bg-[#141821] p-2">
                                 <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
                                     <Logo />
                                 </div>
-                            )}
 
-                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
-                            <div className="py-4 space-y-4">
-                                {activeView === 'dashboard' && (<div>
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
+                                <div className="py-4 space-y-4">
                                     <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
-                                        <h2 className="text-xs font-bold uppercase tracking-wider">Scope</h2>
+                                        <h2 className="text-xs font-bold uppercase tracking-wider">Navigation</h2>
                                         {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </button>
                                     {isLabsOpen && (
                                         <ul className="space-y-1">
-                                            <li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>
-                                            {departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}
+                                            {navItems.map(item => (
+                                                <li key={item.id}>
+                                                    <Button 
+                                                        variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                        className="w-full justify-start" 
+                                                        onClick={()=>setActiveView(item.id as AdminView)}
+                                                    >
+                                                        {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
+                                                        {item.label}
+                                                    </Button>
+                                                </li>
+                                            ))}
                                         </ul>
                                     )}
-                                    <Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button>
-                                </div>)}
-                                {activeView === 'inventory' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Inventory View</h2><ul className="space-y-1"><li><Button variant={inventorySubView === 'all' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('all')}><Package className="mr-2 h-4 w-4"/>Full List</Button></li><li><Button variant={inventorySubView === 'inaccurate' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView('inaccurate')}><AlertTriangle className="mr-2 h-4 w-4"/>Inaccurate</Button></li>{departments.map(d=>(<li key={d.id}><Button variant={inventorySubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setInventorySubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2">{d.name}</span></Button></li>))}</ul></div>)}
-                                {activeView === 'transactions' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Audit</h2><ul className="space-y-1"><li><Button variant={transactionSubView === 'borrowed' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('borrowed')}><PackageCheck className="mr-2 h-4 w-4"/>Active Borrows</Button></li><li><Button variant={transactionSubView === 'logs' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setTransactionSubView('logs')}><FileText className="mr-2 h-4 w-4"/>Platform Logs</Button></li></ul></div>)}
-                                {activeView === 'users' && (<div><h2 className="px-2 text-xs font-bold text-muted-foreground uppercase mb-2">Directory</h2><ul className="space-y-1">{userRoles.map(r=>(<li key={r.id}><Button variant={usersSubView === r.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setUsersSubView(r.id as any)}>{r.icon} <span className="ml-2">{r.name}</span></Button></li>))}</ul></div>)}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-2 border-t border-border/50 bg-[#141821]">
+                            <div className="flex items-center justify-between">
+                                <UserProfileModal role="Property Custodian">
+                                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                        <Avatar className="h-8 w-8 flex-shrink-0"><AvatarFallback>P</AvatarFallback></Avatar>
+                                        <div className="overflow-hidden">
+                                            <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || "Custodian"}</p>
+                                            <p className="text-xs text-muted-foreground">Head Supervisor</p>
+                                        </div>
+                                    </div>
+                                </UserProfileModal>
+                                <UserNav role="Property Custodian" />
                             </div>
                         </div>
                     </div>
-                    
-                    <div className={cn(
-                        "p-2 border-t border-border/50",
-                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
-                    )}>
-                        <div className="flex items-center justify-between">
-                            <UserProfileModal role="Property Custodian">
-                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
-                                    <Avatar className="h-8 w-8 flex-shrink-0"><AvatarFallback>P</AvatarFallback></Avatar>
-                                    <div className="overflow-hidden">
-                                        <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || "Custodian"}</p>
-                                        <p className="text-xs text-muted-foreground">Property Custodian</p>
-                                    </div>
-                                </div>
-                            </UserProfileModal>
-                            <UserNav role="Property Custodian" />
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-1">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                 <SheetTrigger asChild>
                                     <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
                                 </SheetTrigger>
-                                <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                                <SheetContent side="left" className="bg-[#141821] p-0 border-none">
                                     <div className="p-4 font-bold border-b border-border/50">Menu</div>
                                     <div className="p-2 space-y-1">
                                         {navItems.map(item => (
@@ -636,16 +653,19 @@ export default function HeadSupervisorDashboardPage() {
                                     </div>
                                 </SheetContent>
                             </Sheet>
+                            {activeView === 'dashboard' && <Logo />}
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
                         </div>
                         <div className="flex items-center gap-4">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
-                                {userProfile?.role || 'Property Custodian'}
+                                {userProfile?.role || 'Head Supervisor'}
                             </Badge>
                             <UserNav role="Property Custodian" />
                         </div>
                     </header>
-                    {renderContent()}
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        {renderContent()}
+                    </div>
                 </main>
             </div>
             

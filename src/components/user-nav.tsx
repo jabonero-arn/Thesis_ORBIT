@@ -6,6 +6,7 @@ import {
   Settings,
   HelpCircle,
   LogOut,
+  User,
 } from "lucide-react"
 
 import {
@@ -21,6 +22,7 @@ import { signOut } from "firebase/auth"
 import { HelpDialog } from "./help-dialog"
 import type { Role } from "@/lib/types"
 import { Button } from "./ui/button"
+import { UserProfileModal } from "./user-profile-modal"
 
 export function UserNav({ role }: { role?: Role }) {
   const router = useRouter()
@@ -51,6 +53,12 @@ export function UserNav({ role }: { role?: Role }) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <UserProfileModal role={displayRole}>
+          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
+            <User className="mr-2 h-4 w-4" />
+            <span>My Profile</span>
+          </DropdownMenuItem>
+        </UserProfileModal>
         <HelpDialog>
           <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="cursor-pointer">
             <HelpCircle className="mr-2 h-4 w-4" />
