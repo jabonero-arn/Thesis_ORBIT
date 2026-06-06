@@ -6,32 +6,13 @@ export type User = {
   displayName: string;
   email: string;
   role: Role;
-  
-  // Student specific
   idNumber?: string;
   educationLevel?: string;
-  
-  // Teacher/Supervisor specific
   employeeId?: string;
   passwordChangeRequired?: boolean;
   assignedDepartmentId?: string;
   hasCompletedLabSetup?: boolean;
-
-  // This is not in Firestore, can be added from auth user if needed for display
   avatarUrl?: string;
-};
-
-export type Department = {
-  id: string;
-  name: string;
-  prefix: string;
-};
-
-export type Channel = {
-  id: string;
-  name: string;
-  description: string;
-  departmentId: string;
 };
 
 export type ItemStatus = "Available" | "Locked" | "Borrowed" | "Pending Receipt" | "Inaccurate" | "Returning";
@@ -52,10 +33,44 @@ export type InventoryItem = {
   isVisibleToStudents?: boolean;
 };
 
+export type DamagedItemStatus = "Returned" | "Under Review" | "Repaired" | "Disposed";
+
+export type DamagedItem = {
+  id: string;
+  itemName: string;
+  quantity: number;
+  serialNumber: string;
+  department: string;
+  remarks: string;
+  returnedBy: string;
+  notedBy: string;
+  recommendedAction: string;
+  receivedBy: string;
+  custodianNote: "Recommend" | "Does not Recommend" | null;
+  status: DamagedItemStatus;
+  dateAdded: string;
+};
+
+export type InventoryEntryStatus = "Pending Verification" | "Verified" | "Inaccurate";
+
+export type InventoryEntry = {
+  id: string;
+  itemDescription: string;
+  uom: string;
+  quantity: number;
+  dateReceived: string;
+  receivedBy: string;
+  requisitionRef: string;
+  purpose: string;
+  requestedBy: string;
+  deptHead: string;
+  status: InventoryEntryStatus;
+  custodianNote: "Recommend" | "Does not Recommend" | null;
+};
+
 export type BorrowHistoryStatus = 'Pending' | 'Approved' | 'Denied' | 'Active' | 'Returned' | 'Pending Return' | 'Cancelled' | 'Reserved';
 export type ChannelAccessRequestStatus = 'pending' | 'approved' | 'denied';
 export type StudentDepartmentAccessRequestStatus = 'pending' | 'approved' | 'denied';
-
 export type ActivityLogCategory = 'Transaction' | 'Inventory' | 'Management' | 'User';
 
 export type ActivityLog = {
@@ -67,6 +82,19 @@ export type ActivityLog = {
     timestamp: string;
     category: ActivityLogCategory;
 }
+
+export type Department = {
+  id: string;
+  name: string;
+  prefix: string;
+};
+
+export type Channel = {
+  id: string;
+  name: string;
+  description: string;
+  departmentId: string;
+};
 
 export type ChannelAccessRequest = {
     id: string;
