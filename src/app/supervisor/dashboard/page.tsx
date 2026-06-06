@@ -426,7 +426,6 @@ export default function SupervisorDashboardPage() {
                         <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
                             <div className="py-4 space-y-4">
-<<<<<<< HEAD
                                 <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
                                     <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dashboard View</h2>
                                     {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
@@ -438,13 +437,6 @@ export default function SupervisorDashboardPage() {
                                         ))}
                                     </ul>
                                 )}
-=======
-                                <ul className="space-y-1">
-                                    {navItems.map(item => (
-                                        <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
-                                    ))}
-                                </ul>
->>>>>>> 82e5b88e707517e98ba275401ce4b77593505ca9
                             </div>
                         </div>
                     </div>
