@@ -52,6 +52,7 @@ import { CreateUserForm } from "@/components/admin/create-user-form"
 import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-role-dialog"
 import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { cn } from "@/lib/utils"
 
 type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests' | 'users' | 'platformLogs';
 
@@ -411,42 +412,112 @@ export default function SupervisorDashboardPage() {
             <div className="flex h-dvh bg-[#1e2430]">
                 <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
-                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
-                            <div className="p-2 mb-2"><Logo /></div>
-                            <div className="flex flex-col gap-2">
-                                {navItems.slice(0, 6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
-                                ))}
-                                <Separator className="bg-border/50 my-2" />
-                                {navItems.slice(6).map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
-                                ))}
+                        {/* Only show the icon rail on the main dashboard view */}
+                        {activeView === 'dashboard' && (
+                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
+                                <div className="p-2 mb-2"><Logo /></div>
+                                <div className="flex flex-col gap-2">
+                                    {navItems.slice(0, 6).map(item => (
+                                        <Tooltip key={item.id}>
+                                            <TooltipTrigger asChild>
+                                                <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right"><p>{item.label}</p></TooltipContent>
+                                        </Tooltip>
+                                    ))}
+                                    <Separator className="bg-border/50 my-2" />
+                                    {navItems.slice(6).map(item => (
+                                        <Tooltip key={item.id}>
+                                            <TooltipTrigger asChild>
+                                                <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => handleViewChange(item.id)}>{item.icon}</Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent side="right"><p>{item.label}</p></TooltipContent>
+                                        </Tooltip>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        
                         <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
+                            {/* Brand header for sub-views */}
+                            {activeView !== 'dashboard' && (
+                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
+                                    <Logo />
+                                </div>
+                            )}
+                            
                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
                             <div className="py-4 space-y-4">
-                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
-                                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Dashboard View</h2>
-                                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
+                                    <h2 className="text-xs font-bold uppercase tracking-wider">Dashboard View</h2>
+                                    {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                 </button>
                                 {isLabsOpen && (
                                     <ul className="space-y-1">
                                         {navItems.map(item => (
-                                            <li key={item.id}><Button variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>handleViewChange(item.id as SupervisorView)}>{React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}{item.label}</Button></li>
+                                            <li key={item.id}>
+                                                <Button 
+                                                    variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                    className="w-full justify-start" 
+                                                    onClick={()=>handleViewChange(item.id as SupervisorView)}
+                                                >
+                                                    {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
+                                                    {item.label}
+                                                </Button>
+                                            </li>
                                         ))}
                                     </ul>
                                 )}
                             </div>
                         </div>
                     </div>
-                    <div className="p-2 border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between"><UserProfileModal role="Supervisor"><div className="flex flex-1 items-center gap-2 cursor-pointer p-1"><Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar><div className="overflow-hidden"><p className="text-sm font-semibold truncate">{userProfile?.displayName}</p><p className="text-[10px] text-muted-foreground">Lab Supervisor</p></div></div></UserProfileModal><UserNav role="Supervisor" /></div></div>
+                    
+                    {/* Dynamic sidebar footer background */}
+                    <div className={cn(
+                        "p-2 border-t border-border/50",
+                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
+                    )}>
+                        <div className="flex items-center justify-between">
+                            <UserProfileModal role="Supervisor">
+                                <div className="flex flex-1 items-center gap-2 cursor-pointer p-1">
+                                    <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
+                                    <div className="overflow-hidden">
+                                        <p className="text-sm font-semibold truncate">{userProfile?.displayName}</p>
+                                        <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
+                                    </div>
+                                </div>
+                            </UserProfileModal>
+                            <UserNav role="Supervisor" />
+                        </div>
+                    </div>
                 </div>
+
                 <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
-                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
-                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
+                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="bg-[#141821] p-0 border-none">
+                                    <div className="p-4 font-bold border-b border-border/50">Menu</div>
+                                    <div className="p-2 space-y-1">
+                                        {navItems.map(i=>(
+                                            <Button 
+                                                key={i.id} 
+                                                variant={activeView === i.id ? 'secondary' : 'ghost'} 
+                                                className="w-full justify-start" 
+                                                onClick={()=> {setActiveView(i.id); setIsMobileMenuOpen(false);}}
+                                            >
+                                                {i.icon} <span className="ml-2">{i.label}</span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
+                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider">
+                                {navItems.find(i=>i.id===activeView)?.label}
+                            </h1>
                         </div>
                         <div className="flex items-center gap-4">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
@@ -460,32 +531,52 @@ export default function SupervisorDashboardPage() {
                     </div>
                 </main>
 
+                {/* Dialogs */}
                 <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} roleToCreate="Supervisor" />
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={assignedDepartment || departments[0] || null} />
                 <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
                 
                 <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
-                    <DialogContent><DialogHeader><DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle></DialogHeader>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle></DialogHeader>
                         <div className="grid gap-4 py-4">
-                            <div className="space-y-2"><Label>Issue Category</Label><RadioGroup value={rejectReasonType} onValueChange={(v) => setRejectReasonType(v as any)} className="flex gap-4">
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="damaged" id="rej-damaged" /><Label htmlFor="rej-damaged">Damaged</Label></div>
-                                <div className="flex items-center space-x-2"><RadioGroupItem value="not-functioning" id="rej-func" /><Label htmlFor="rej-func">Not Functioning</Label></div>
-                            </RadioGroup></div>
-                            <div className="grid gap-2"><Label htmlFor="reject-desc">Details</Label><Textarea id="reject-desc" placeholder="Details..." value={rejectDescription} onChange={(e) => setRejectDescription(e.target.value)} /></div>
+                            <div className="space-y-2">
+                                <Label>Issue Category</Label>
+                                <RadioGroup value={rejectReasonType} onValueChange={(v) => setRejectReasonType(v as any)} className="flex gap-4">
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="damaged" id="rej-damaged" /><Label htmlFor="rej-damaged">Damaged</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="not-functioning" id="rej-func" /><Label htmlFor="rej-func">Not Functioning</Label></div>
+                                </RadioGroup>
+                            </div>
+                            <div className="grid gap-2">
+                                <Label htmlFor="reject-desc">Details</Label>
+                                <Textarea id="reject-desc" placeholder="Details..." value={rejectDescription} onChange={(e) => setRejectDescription(e.target.value)} />
+                            </div>
                         </div>
-                        <DialogFooter><Button variant="outline" onClick={() => setRejectItem(null)}>Cancel</Button><Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>Flag Inaccurate</Button></DialogFooter>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setRejectItem(null)}>Cancel</Button>
+                            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>Flag Inaccurate</Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
-                    <DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label>Name</Label><Input name="name" defaultValue={editingItem?.name} required /></div>
                             <div className="grid gap-2"><Label>Description</Label><Textarea name="description" defaultValue={editingItem?.description} /></div>
-                            <div className="grid gap-2"><Label>Status</Label><Select name="status" defaultValue={editingItem?.status}><SelectTrigger><SelectValue/></SelectTrigger>
-                                <SelectContent><SelectItem value="Available">Available</SelectItem><SelectItem value="Locked">Locked</SelectItem><SelectItem value="Inaccurate">Inaccurate</SelectItem></SelectContent>
-                            </Select></div>
+                            <div className="grid gap-2">
+                                <Label>Status</Label>
+                                <Select name="status" defaultValue={editingItem?.status}>
+                                    <SelectTrigger><SelectValue/></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Available">Available</SelectItem>
+                                        <SelectItem value="Locked">Locked</SelectItem>
+                                        <SelectItem value="Inaccurate">Inaccurate</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <DialogFooter><Button type="submit">Save Changes</Button></DialogFooter>
                         </form>
                     </DialogContent>

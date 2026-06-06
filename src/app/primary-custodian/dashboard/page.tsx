@@ -458,7 +458,7 @@ export default function HeadSupervisorDashboardPage() {
                             <Card className="bg-card/80"><CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
                                 <CardContent className="max-h-[60vh] overflow-auto">
                                     <Table>
-                                        <TableHeader><TableRow><TableHead className="whitespace-nowrap">User</TableHead><TableHead className="whitespace-nowrap">Action</TableHead><TableHead className="whitespace-nowrap">Details</TableHead><TableHead className="text-right whitespace-nowrap">Timestamp</TableHead></TableRow></TableHeader>
+                                        <TableHeader><TableRow><TableHead className="whitespace-nowrap">User</TableHead><TableHead className="whitespace-nowrap">Action</TableHead><TableHead className="whitespace-nowrap">Details</TableHead><TableHead className="text-right whitespace-nowrap">Timestamp</TableHead></TableHeader>
                                         <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell className="whitespace-nowrap">{log.userName}</TableCell><TableCell className="whitespace-nowrap"><Badge variant="outline">{log.action}</Badge></TableCell><TableCell className="max-w-md min-w-[200px] whitespace-nowrap">{log.details}</TableCell><TableCell className="text-right text-xs opacity-70 whitespace-nowrap">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell></TableRow>))}</TableBody>
                                     </Table>
                                 </CardContent>
@@ -549,7 +549,7 @@ export default function HeadSupervisorDashboardPage() {
         }
     };
 
-    if (isUserLoading || isProfileLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin" /></div>;
+    if (isUserLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin" /></div>;
 
     return (
         <TooltipProvider>
@@ -557,26 +557,39 @@ export default function HeadSupervisorDashboardPage() {
             <div className="flex h-dvh bg-[#1e2430]">
                 <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
-                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
-                            <div className="p-2 mb-2"><Logo /></div>
-                            <div className="flex flex-col gap-2">
-                                {navItems.map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild><Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" onClick={() => setActiveView(item.id as AdminView)}>{item.icon}</Button></TooltipTrigger><TooltipContent side="right"><p>{item.label}</p></TooltipContent></Tooltip>
-                                ))}
+                        {/* Only show the icon rail on the main dashboard view */}
+                        {activeView === 'dashboard' && (
+                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
+                                <div className="p-2 mb-2"><Logo /></div>
+                                <div className="flex flex-col items-center gap-2 w-full">
+                                    {navItems.map(item => (
+                                        <Tooltip key={item.id}><TooltipTrigger asChild>
+                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => setActiveView(item.id as AdminView)}>{item.icon}</Button>
+                                        </TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                        <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
-                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
+                        )}
+                        
+                        <div className="w-64 flex-col bg-[#141821] p-2">
+                             {/* Brand header for sub-views */}
+                            {activeView !== 'dashboard' && (
+                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
+                                    <Logo />
+                                </div>
+                            )}
+
+                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
                             <div className="py-4 space-y-4">
                                 {activeView === 'dashboard' && (<div>
                                     <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
-                                        <h2 className="text-xs font-bold uppercase">Scope</h2>
+                                        <h2 className="text-xs font-bold uppercase tracking-wider">Scope</h2>
                                         {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </button>
                                     {isLabsOpen && (
                                         <ul className="space-y-1">
                                             <li><Button variant={dashboardSubView === 'overall' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=>setDashboardSubView('overall')}><LayoutGrid className="mr-2 h-4 w-4"/>Overall</Button></li>
-                                            {departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department. Associated records and rooms may become unmanaged.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}
+                                            {departments.map(d=>(<li key={d.id} className="group relative"><Button variant={dashboardSubView === d.prefix ? 'secondary' : 'ghost'} className="w-full justify-start pr-10" onClick={()=>setDashboardSubView(d.prefix)}>{getDeptIcon(d.prefix)} <span className="ml-2 truncate">{d.name}</span></Button><div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity"><AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Department?</AlertDialogTitle><AlertDialogDescription>This will permanently remove the "{d.name}" department.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => handleDeleteDepartment(d.id, d.name, d.prefix)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog></div></li>))}
                                         </ul>
                                     )}
                                     <Button onClick={()=>setIsAddDeptOpen(true)} className="w-full mt-4" variant="outline"><PlusCircle className="mr-2 h-4 w-4"/>Add Dept</Button>
@@ -587,73 +600,61 @@ export default function HeadSupervisorDashboardPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="p-2 border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between"><UserProfileModal role="Head Supervisor"><div className="flex flex-1 items-center gap-2 cursor-pointer p-1"><Avatar className="h-8 w-8"><AvatarFallback>A</AvatarFallback></Avatar><div className="overflow-hidden"><p className="text-sm font-semibold truncate">{userProfile?.displayName}</p><p className="text-[10px] text-muted-foreground">Head Supervisor</p></div></div></UserProfileModal><UserNav role="Head Supervisor" /></div></div>
+                    
+                    <div className={cn(
+                        "p-2 border-t border-border/50",
+                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
+                    )}>
+                        <div className="flex items-center justify-between">
+                            <UserProfileModal role="Property Custodian">
+                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                    <Avatar className="h-8 w-8 flex-shrink-0"><AvatarFallback>P</AvatarFallback></Avatar>
+                                    <div className="overflow-hidden">
+                                        <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || "Custodian"}</p>
+                                        <p className="text-xs text-muted-foreground">Property Custodian</p>
+                                    </div>
+                                </div>
+                            </UserProfileModal>
+                            <UserNav role="Property Custodian" />
+                        </div>
+                    </div>
                 </div>
+
                 <main className="flex-1 flex flex-col h-dvh">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
-                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}><SheetTrigger asChild><Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button></SheetTrigger><SheetContent side="left" className="bg-[#141821] p-0 border-none"><div className="p-4 font-bold border-b border-border/50">Menu</div><div className="p-2 space-y-1">{navItems.map(i=>(<Button key={i.id} variant={activeView === i.id ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={()=> {setActiveView(i.id as any); setIsMobileMenuOpen(false);}}>{i.icon} <span className="ml-2">{i.label}</span></Button>))}</div></SheetContent></Sheet>
+                            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                                <SheetTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
+                                </SheetTrigger>
+                                <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
+                                    <div className="p-4 font-bold border-b border-border/50">Menu</div>
+                                    <div className="p-2 space-y-1">
+                                        {navItems.map(item => (
+                                            <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView(item.id as any); setIsMobileMenuOpen(false); }}>{item.icon} {item.label}</Button>
+                                        ))}
+                                    </div>
+                                </SheetContent>
+                            </Sheet>
                             <h1 className="font-headline text-xl font-bold uppercase tracking-wider">{navItems.find(i=>i.id===activeView)?.label}</h1>
                         </div>
                         <div className="flex items-center gap-4">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 px-3 py-1 font-headline uppercase tracking-widest text-[10px]">
-                                {userProfile?.role || 'Head Supervisor'}
+                                {userProfile?.role || 'Property Custodian'}
                             </Badge>
-                            <UserNav role="Head Supervisor" />
+                            <UserNav role="Property Custodian" />
                         </div>
                     </header>
                     {renderContent()}
                 </main>
-
-                {/* Shared Dialogs */}
-                <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} roleToCreate={usersSubView === 'all' || usersSubView === 'Student' ? 'Staff' : usersSubView as any} />
-                <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
-                <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
-                <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
-                <AssignMaterialsDialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen} onAssign={handleAssignItems} />
-                
-                {/* Rejection Details Dialog */}
-                <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle>
-                            <DialogDescription>Specify why this provisioned material is being rejected.</DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="space-y-2">
-                                <Label>Issue Category</Label>
-                                <RadioGroup value={rejectReasonType} onValueChange={(v) => setRejectReasonType(v as any)} className="flex gap-4">
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="damaged" id="rej-damaged" />
-                                        <Label htmlFor="rej-damaged">Damaged</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="not-functioning" id="rej-func" />
-                                        <Label htmlFor="rej-func">Not Functioning</Label>
-                                    </div>
-                                </RadioGroup>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="reject-desc">Details / Description</Label>
-                                <Textarea 
-                                    id="reject-desc" 
-                                    placeholder="Explain the issue in detail..." 
-                                    value={rejectDescription}
-                                    onChange={(e) => setRejectDescription(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setRejectItem(null)}>Cancel</Button>
-                            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>
-                                Flag as Inaccurate
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                <Dialog open={isFormOpen} onOpenChange={closeForm}><DialogContent><DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader><form onSubmit={handleFormSubmit} className="grid gap-4 py-4"><div className="grid gap-2"><Label>Name</Label><Input name="name" defaultValue={editingItem?.name} required /></div><div className="grid gap-2"><Label>Description</Label><Textarea name="description" defaultValue={editingItem?.description} /></div><div className="grid gap-2"><Label>Room</Label><Select name="channelId" defaultValue={editingItem?.channelId}><SelectTrigger><SelectValue placeholder="Room" /></SelectTrigger><SelectContent>{dialogChannels.map(c=>(<SelectItem key={c.id} value={c.id}>{c.name.replace('#','')}</SelectItem>))}</SelectContent></Select></div><div className="grid gap-2"><Label>Qty</Label><Input name="quantity" type="number" defaultValue={editingItem?.quantity} required /></div><DialogFooter><Button type="submit">Save</Button></DialogFooter></form></DialogContent></Dialog>
             </div>
+            
+            {/* Dialogs */}
+            <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} roleToCreate="Staff" />
+            <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
+            <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={formDepartmentContext} />
+            <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
+            <AssignMaterialsDialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen} onAssign={handleAssignItems} />
         </TooltipProvider>
     )
 }
