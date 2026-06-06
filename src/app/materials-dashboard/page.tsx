@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight
+    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight, MapPin
 } from "lucide-react"
 import {
   Card,
@@ -85,9 +85,28 @@ export default function PropertyCustodianDashboardPage() {
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, dashboardItems]);
 
-    const getItemChannelName = (channelId?: string) => {
-        if (!channelId) return "Unassigned";
-        return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown";
+    const getDeptIcon = (prefix: string) => {
+        if (prefix.startsWith('comp')) return <Cpu />;
+        if (prefix.startsWith('chem')) return <FlaskConical />;
+        if (prefix.startsWith('robo')) return <Cog />;
+        return <Building />;
+    }
+
+    const renderLabCell = (item: InventoryItem) => {
+        const channel = channels.find(c => c.id === item.channelId);
+        if (!channel) return <span className="text-muted-foreground/60 italic text-sm">Unassigned</span>;
+        
+        const dept = departments.find(d => d.id === channel.departmentId);
+        const icon = dept ? getDeptIcon(dept.prefix) : <MapPin className="h-3 w-3" />;
+        
+        return (
+            <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="flex items-center gap-1.5 py-0.5 px-2 bg-accent/30 hover:bg-accent/50 border-border/50 text-foreground font-medium">
+                    {React.cloneElement(icon as React.ReactElement, { className: "h-3 w-3 text-primary" })}
+                    {channel.name.replace('#', '')}
+                </Badge>
+            </div>
+        );
     }
     
     const getStatusBadge = (item: InventoryItem) => {
@@ -95,13 +114,13 @@ export default function PropertyCustodianDashboardPage() {
         let badge: JSX.Element;
 
         if (item.status === 'Pending Receipt') {
-            badge = <Badge variant="outline">Pending Verification</Badge>;
+            badge = <Badge variant="outline" className="border-primary/30 text-primary/80">Pending Verification</Badge>;
         } else if (item.status === 'Inaccurate') {
             badge = <Badge variant="destructive">Inaccurate</Badge>;
         } else if (item.status === 'Returning') {
             badge = <Badge variant="outline" className="border-amber-500 text-amber-500">Returning</Badge>;
         } else {
-            badge = <Badge variant="secondary">Received</Badge>;
+            badge = <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Received</Badge>;
         }
 
         if (tooltipContent) {
@@ -135,13 +154,6 @@ export default function PropertyCustodianDashboardPage() {
         { id: 'returned-items', label: 'Head Supervisor Returns', icon: <ListRestart /> },
     ];
     
-    const getDeptIcon = (prefix: string) => {
-        if (prefix.startsWith('comp')) return <Cpu />;
-        if (prefix.startsWith('chem')) return <FlaskConical />;
-        if (prefix.startsWith('robo')) return <Cog />;
-        return <Building />;
-    }
-    
     const renderContent = () => {
         switch(activeView) {
             case 'dashboard':
@@ -170,22 +182,46 @@ export default function PropertyCustodianDashboardPage() {
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader>
-                                <div><CardTitle>Outgoing Items</CardTitle><CardDescription>Monitor the verification status of materials you have provisioned.</CardDescription></div>
+                                <div className="flex items-center gap-3">
+                                    <Warehouse className="h-6 w-6 text-primary" />
+                                    <div>
+                                        <CardTitle className="text-xl font-bold">Outgoing Provisioned Materials</CardTitle>
+                                        <CardDescription>Track items sent to laboratories and their verification status.</CardDescription>
+                                    </div>
+                                </div>
                             </CardHeader>
                             <CardContent className="max-h-[60vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Quantity</TableHead><TableHead className="whitespace-nowrap">Date Added</TableHead><TableHead className="whitespace-nowrap">Date Verified</TableHead><TableHead className="whitespace-nowrap">Status</TableHead></TableRow></TableHeader>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent border-border/50">
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Name</TableHead>
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Requesting Lab</TableHead>
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Quantity</TableHead>
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Date Added</TableHead>
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Date Verified</TableHead>
+                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Status</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                     <TableBody>
                                         {items.length > 0 ? items.map(item => (
-                                            <TableRow key={item.id}>
-                                                <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{getItemChannelName(item.channelId)}</TableCell>
-                                                <TableCell>{item.quantity}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                            <TableRow key={item.id} className="border-border/40 hover:bg-white/5 transition-colors">
+                                                <TableCell className="font-semibold whitespace-nowrap text-foreground">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{renderLabCell(item)}</TableCell>
+                                                <TableCell className="font-mono text-primary font-medium">{item.quantity}</TableCell>
+                                                <TableCell className="whitespace-nowrap text-muted-foreground text-sm">{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
+                                                <TableCell className="whitespace-nowrap text-muted-foreground text-sm">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
                                                 <TableCell className="whitespace-nowrap">{getStatusBadge(item)}</TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={6} className="h-24 text-center">No items in inventory.</TableCell></TableRow>}
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Package className="h-8 w-8 opacity-20" />
+                                                        <p>No provisioned materials currently in transit.</p>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
                                     </TableBody>
                                 </Table>
                             </CardContent>
