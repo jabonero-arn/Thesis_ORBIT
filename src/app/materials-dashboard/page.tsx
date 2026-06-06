@@ -219,8 +219,6 @@ export default function PropertyCustodianDashboardPage() {
                     </div>
                 );
             case 'returned-items':
-                // For demonstration, we'll use actual data supplemented by placeholders if empty
-                const returningItems = items.filter(i => i.status === 'Returning');
                 const sampleReturns = [
                     { id: '1', supervisor: 'John Doe', lab: 'Computer Lab 1', item: 'Arduino Uno Kit', quantity: 2, status: 'Reviewed', date: '2024-03-20', issue: 'Burnt microcontroller chip' },
                     { id: '2', supervisor: 'Jane Smith', lab: 'Electronics Lab', item: 'Digital Oscilloscope', quantity: 1, status: 'Pending', date: '2024-03-21', issue: 'Display flickering intermittently' },
@@ -253,7 +251,6 @@ export default function PropertyCustodianDashboardPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {/* Mapping over sample data for high-fidelity demonstration as requested */}
                                         {sampleReturns.map(row => (
                                             <TableRow key={row.id} className="border-border/40 hover:bg-white/5 transition-colors">
                                                 <TableCell className="font-medium">
@@ -360,53 +357,65 @@ export default function PropertyCustodianDashboardPage() {
             <div className="flex h-dvh bg-[#1e2430]">
                 <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
                     <div className="flex flex-1">
-                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
-                            <div className="p-2 mb-2"><Logo /></div>
-                            <div className="flex flex-col items-center gap-2 w-full">
-                                {navItems.map(item => (
-                                    <Tooltip key={item.id}><TooltipTrigger asChild>
-                                        <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => setActiveView(item.id as any)}>{item.icon}</Button>
-                                    </TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
-                                ))}
+                        {/* Only show the icon rail on the main dashboard view */}
+                        {activeView === 'dashboard' && (
+                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
+                                <div className="p-2 mb-2"><Logo /></div>
+                                <div className="flex flex-col items-center gap-2 w-full">
+                                    {navItems.map(item => (
+                                        <Tooltip key={item.id}><TooltipTrigger asChild>
+                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => setActiveView(item.id as any)}>{item.icon}</Button>
+                                        </TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
+                        
                         <div className="w-64 flex-col bg-[#141821] p-2">
-                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                                {navItems.find(i => i.id === activeView)?.label || 'View'}
-                            </div>
-                            {activeView === 'dashboard' && (
-                                <div className="py-4">
-                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
-                                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
-                                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
-                                    </button>
-                                    {isLabsOpen && (
-                                        <ul className="flex flex-col gap-1">
-                                            <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                            {departments?.map(dept => (
-                                                <li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                                            ))}
-                                        </ul>
-                                    )}
+                            {/* Brand header for sub-views */}
+                            {activeView !== 'dashboard' && (
+                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
+                                    <Logo />
                                 </div>
                             )}
-                             {(activeView === 'add-materials' || activeView === 'outgoing-items' || activeView === 'returned-items') && (
-                                <div className="py-4">
+
+                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
+                            <div className="py-4 space-y-4">
+                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
+                                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                </button>
+                                {isLabsOpen && (
                                     <ul className="flex flex-col gap-1">
-                                        {navItems.filter(item => item.id === activeView).map(item => (
-                                            <li key={item.id}>
-                                                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors bg-accent text-white">
-                                                    {React.cloneElement(item.icon as React.ReactElement, { className: "h-5 w-5" })}
-                                                    {item.label}
-                                                </button>
-                                            </li>
+                                        <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
+                                        {departments?.map(dept => (
+                                            <li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
                                         ))}
                                     </ul>
-                                </div>
-                             )}
+                                )}
+                            </div>
                         </div>
                     </div>
-                     <div className="border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
+                     <div className={cn(
+                        "p-2 border-t border-border/50",
+                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
+                    )}>
+                        <div className="flex items-center justify-between">
+                            <UserProfileModal role="Property Custodian">
+                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                    <Avatar className="h-8 w-8 flex-shrink-0">
+                                        <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                        <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="overflow-hidden">
+                                        <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p>
+                                        <p className="text-xs text-muted-foreground">Property Custodian</p>
+                                    </div>
+                                </div>
+                            </UserProfileModal>
+                            <UserNav role="Property Custodian" />
+                        </div>
+                    </div>
                 </div>
 
                 <main className="flex-1 flex flex-col h-dvh">
