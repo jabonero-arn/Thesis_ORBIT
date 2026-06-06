@@ -38,6 +38,7 @@ import { format } from "date-fns"
 import { AddMaterialsForm } from "@/components/materials-custodian/add-materials-form"
 import { createActivityLog } from "@/lib/logging"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
