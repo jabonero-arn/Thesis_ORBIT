@@ -8,7 +8,7 @@ import { collection, doc, updateDoc, deleteDoc, writeBatch } from "firebase/fire
 import { 
     User, Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle, 
     Edit, Trash, CheckCircle, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw, ChevronDown, ChevronRight, ArrowRight
+    Shield, ClipboardList, BookUser, Crown, Activity, Loader2, UserPlus, Building, AlertTriangle, Check, X, ClipboardCheck, CheckSquare, FileText, Search, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight
 } from "lucide-react"
 import {
   Card,
@@ -86,6 +86,8 @@ export default function HeadSupervisorDashboardPage() {
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+
     const userProfileRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
@@ -667,6 +669,20 @@ export default function HeadSupervisorDashboardPage() {
                         {renderContent()}
                     </div>
                 </main>
+                
+                {/* FLOATING TOGGLE FOR SUBVIEWS */}
+                {activeView !== 'dashboard' && (
+                    <button 
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className={cn(
+                            "hidden md:flex absolute left-[310px] top-1/2 -translate-y-1/2 z-50 h-8 w-8 rounded-full bg-[#141821] border border-border/50 items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
+                            isSidebarCollapsed && "left-[60px]"
+                        )}
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+                    </button>
+                )}
             </div>
             
             {/* Dialogs */}

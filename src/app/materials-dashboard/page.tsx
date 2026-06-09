@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 import { 
-    Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, ChevronDown, ChevronRight, MapPin, AlertTriangle, Clock, ListFilter, ArrowRight
+    Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, ChevronDown, ChevronRight, ChevronLeft, MapPin, AlertTriangle, Clock, ListFilter, ArrowRight
 } from "lucide-react"
 import {
   Card,
@@ -14,6 +14,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -150,6 +151,12 @@ export default function PropertyCustodianDashboardPage() {
         const borrowedItemsCount = labHistory.filter(h => h.status === 'Active').length;
         const reservedItemsCount = labHistory.filter(h => h.status === 'Reserved').length;
 
+        const returnsData = [
+            { id: 1, supervisor: "Dr. Maria Santos", lab: "Comp-Lab 1", item: "Arduino Kit", qty: 2, status: "Pending", date: "2024-05-20", issue: "Broken USB port" },
+            { id: 2, supervisor: "Engr. Robert Chen", lab: "Robo-Lab 2", item: "DC Motor", qty: 5, status: "Reviewed", date: "2024-05-21", issue: "Delayed repair" },
+            { id: 3, supervisor: "Prof. Sarah Lee", lab: "Chem-Lab 3", item: "Digital Scale", qty: 1, status: "Confirmed", date: "2024-05-22", issue: "Calibration error" },
+        ];
+
         return (
             <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -194,14 +201,12 @@ export default function PropertyCustodianDashboardPage() {
                 <div className="grid gap-6 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-6">
                         <Card className="bg-card/80 border-border/50 shadow-sm overflow-hidden">
-                            <CardHeader className="border-b border-border/50 bg-white/[0.02]">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <ListFilter className="h-5 w-5 text-primary" />
-                                        <CardTitle className="text-lg font-headline">Inventory Overview</CardTitle>
-                                    </div>
-                                    <Badge variant="outline" className="font-mono">{labItems.length} items</Badge>
+                            <CardHeader className="border-b border-border/50 bg-white/[0.02] flex flex-row items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <ListFilter className="h-5 w-5 text-primary" />
+                                    <CardTitle className="text-lg font-headline">Inventory Overview</CardTitle>
                                 </div>
+                                <Badge variant="outline" className="font-mono">{labItems.length} items</Badge>
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="max-h-[500px] overflow-auto">
@@ -209,7 +214,7 @@ export default function PropertyCustodianDashboardPage() {
                                         <TableHeader className="bg-white/[0.01]">
                                             <TableRow className="hover:bg-transparent">
                                                 <TableHead>Item Name</TableHead>
-                                                <TableHead>Laboratory</TableHead>
+                                                <TableHead>Requesting Lab</TableHead>
                                                 <TableHead>Quantity</TableHead>
                                                 <TableHead className="text-right">Status</TableHead>
                                             </TableRow>
@@ -218,7 +223,18 @@ export default function PropertyCustodianDashboardPage() {
                                             {labItems.length > 0 ? labItems.map((item) => (
                                                 <TableRow key={item.id} className="border-border/40 hover:bg-white/[0.02] transition-colors">
                                                     <TableCell className="font-medium text-foreground">{item.name}</TableCell>
-                                                    <TableCell className="text-muted-foreground text-xs">{getItemChannelName(item.channelId)}</TableCell>
+                                                    <TableCell>
+                                                        {item.channelId ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="p-1 rounded bg-primary/10 text-primary">
+                                                                    {getDeptIcon(departments?.find(d => d.id === channels.find(c => c.id === item.channelId)?.departmentId)?.prefix || 'comp')}
+                                                                </div>
+                                                                <span className="text-xs font-semibold">{getItemChannelName(item.channelId)}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                                                        )}
+                                                    </TableCell>
                                                     <TableCell className="font-mono font-bold text-primary">{item.quantity}</TableCell>
                                                     <TableCell className="text-right">{getStatusBadge(item)}</TableCell>
                                                 </TableRow>
@@ -231,6 +247,57 @@ export default function PropertyCustodianDashboardPage() {
                                     </Table>
                                 </div>
                             </CardContent>
+                        </Card>
+
+                        <Card className="bg-card/80 border-border/50 shadow-sm overflow-hidden">
+                            <CardHeader className="border-b border-border/50 bg-white/[0.02]">
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                                    <CardTitle className="text-lg font-headline">Returned Damage Item</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <Table>
+                                    <TableHeader className="bg-white/[0.01]">
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead>Lab Supervisor Name</TableHead>
+                                            <TableHead>Laboratory</TableHead>
+                                            <TableHead>Item Name</TableHead>
+                                            <TableHead>Quantity</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Issue</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {returnsData.map((row) => (
+                                            <TableRow key={row.id} className="border-border/40 hover:bg-white/[0.02]">
+                                                <TableCell className="font-medium text-foreground">{row.supervisor}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{row.lab}</TableCell>
+                                                <TableCell className="font-semibold text-primary">{row.item}</TableCell>
+                                                <TableCell className="font-mono">{row.qty}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={
+                                                        row.status === 'Pending' ? 'outline' : 
+                                                        row.status === 'Reviewed' ? 'secondary' : 'default'
+                                                    } className={cn(
+                                                        row.status === 'Pending' && "border-amber-500/50 text-amber-500",
+                                                        row.status === 'Reviewed' && "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                                                        row.status === 'Confirmed' && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                                    )}>
+                                                        {row.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-[10px] uppercase text-muted-foreground">{format(new Date(row.date), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell className="text-xs italic text-muted-foreground max-w-[200px] truncate" title={row.issue}>{row.issue}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                            <CardFooter className="px-6 py-4 border-t border-border/40 bg-white/[0.01]">
+                                <p className="text-xs text-muted-foreground">Detailed logs of all reported maintenance issues.</p>
+                            </CardFooter>
                         </Card>
                     </div>
 
@@ -303,8 +370,10 @@ export default function PropertyCustodianDashboardPage() {
     const getHeaderContent = () => {
         return (
             <div className="flex items-center gap-2">
-                <LayoutGrid className="text-muted-foreground" />
-                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Custodian Dashboard</h1>
+                {dashboardSubView === 'overall' ? <LayoutGrid className="text-muted-foreground" /> : React.cloneElement(getDeptIcon(dashboardSubView) as React.ReactElement, { className: "text-muted-foreground" })}
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                    {dashboardSubView === 'overall' ? 'Custodian Dashboard' : departments.find(d => d.prefix === dashboardSubView)?.name}
+                </h1>
             </div>
         );
     };
@@ -346,7 +415,7 @@ export default function PropertyCustodianDashboardPage() {
                             <div className="flex-1 flex flex-col items-center gap-2 w-full">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="secondary" size="icon" className="h-12 w-12 rounded-lg"><LayoutGrid /></Button>
+                                        <Button variant="secondary" size="icon" className="h-12 w-12 rounded-lg" onClick={() => setDashboardSubView('overall')}><LayoutGrid /></Button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" align="center"><p>Inventory Hub</p></TooltipContent>
                                 </Tooltip>
@@ -459,4 +528,3 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
-
