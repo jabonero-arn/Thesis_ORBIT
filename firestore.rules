@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Uses dedicated role collections as primary source
+    // Robust Supervisor check: Uses dedicated role collections
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
@@ -112,16 +112,17 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules: Direct verification for Teachers, Owners, and Supervisors
-      // Redeploy Trigger: Version 1.1.8 - Recursion Fix
+      // SECURITY FIX: Using .get() for defensive access to prevent rule errors on missing fields
+      // Redeploy Trigger: Version 1.1.9 - Defensive Access Pattern
       allow update: if isSignedIn() && (
         isSupervisor() || 
-        resource.data.borrowerUserId == request.auth.uid || 
-        resource.data.teacherId == request.auth.uid
+        resource.data.get('borrowerUserId', '') == request.auth.uid || 
+        resource.data.get('teacherId', '') == request.auth.uid
       );
       
       allow delete: if isSupervisor() 
-        || resource.data.borrowerUserId == request.auth.uid
-        || (resource.data.teacherId == request.auth.uid);
+        || resource.data.get('borrowerUserId', '') == request.auth.uid
+        || resource.data.get('teacherId', '') == request.auth.uid;
     }
   }
 }
