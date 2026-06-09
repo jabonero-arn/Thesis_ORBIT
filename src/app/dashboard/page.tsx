@@ -93,19 +93,36 @@ export default function StudentDashboardPage() {
   }, [allItems]);
 
   const teachersForDialog = React.useMemo(() => {
-      if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
+      if (!channelAccessRequests) return [];
       
-      const approvedTeacherIds = new Set(
-          channelAccessRequests
-              .filter(req => req.channelId === selectedChannelId && req.status === 'approved')
-              .map(req => req.teacherId)
+      // 1. Try finding teachers approved specifically for the currently selected lab/channel
+      let relevantRequests = channelAccessRequests.filter(req => 
+          req.status === 'approved' && req.channelId === selectedChannelId
       );
+
+      // 2. Fallback: If no channel-specific teachers, show teachers approved for the department
+      if (relevantRequests.length === 0 && selectedDepartmentId) {
+          relevantRequests = channelAccessRequests.filter(req => 
+              req.status === 'approved' && req.departmentId === selectedDepartmentId
+          );
+      }
+
+      // 3. Absolute Fallback: All approved teachers in the system (useful if assignments aren't finished)
+      if (relevantRequests.length === 0) {
+          relevantRequests = channelAccessRequests.filter(req => req.status === 'approved');
+      }
   
-      return allUsers
-          .filter(user => user.role === 'Teacher' && approvedTeacherIds.has(user.id))
-          .map(t => ({ id: t.id, name: t.displayName }));
+      // Deduplicate teachers by ID and return minimal structure needed for dropdown
+      const teacherMap = new Map<string, string>();
+      relevantRequests.forEach(req => {
+          if (req.teacherId && req.teacherName) {
+              teacherMap.set(req.teacherId, req.teacherName);
+          }
+      });
+
+      return Array.from(teacherMap.entries()).map(([id, name]) => ({ id, name }));
   
-  }, [selectedChannelId, channelAccessRequests, allUsers]);
+  }, [selectedChannelId, selectedDepartmentId, channelAccessRequests]);
 
   React.useEffect(() => {
     if (isUserLoading) return;

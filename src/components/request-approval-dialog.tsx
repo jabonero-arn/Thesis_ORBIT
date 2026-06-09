@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { InventoryItem } from "@/lib/types"
 import { Input } from "@/components/ui/input"
+import { AlertCircle, Loader2 } from "lucide-react"
 
 type Teacher = {
   id: string;
@@ -80,9 +81,13 @@ export function RequestApprovalDialog({ item, teachers, open, onOpenChange, onCo
         <div className="py-4 space-y-4">
              <div className="grid gap-2">
                 <Label htmlFor="teacher-select">Select Teacher</Label>
-                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                <Select 
+                    value={selectedTeacher} 
+                    onValueChange={setSelectedTeacher} 
+                    disabled={teachers.length === 0}
+                >
                     <SelectTrigger id="teacher-select">
-                        <SelectValue placeholder="Choose a teacher..." />
+                        <SelectValue placeholder={teachers.length > 0 ? "Choose a teacher..." : "No teachers available"} />
                     </SelectTrigger>
                     <SelectContent>
                         {teachers.map(teacher => (
@@ -92,6 +97,13 @@ export function RequestApprovalDialog({ item, teachers, open, onOpenChange, onCo
                         ))}
                     </SelectContent>
                 </Select>
+                
+                {teachers.length === 0 && (
+                    <div className="flex items-start gap-2 p-3 text-xs bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-500 mt-1">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span>No assigned teachers found for this lab. Please contact a supervisor to ensure teachers are assigned to this room.</span>
+                    </div>
+                )}
              </div>
              <div className="grid gap-2">
                 <Label htmlFor="quantity-select">Quantity (Max: {item.quantity})</Label>
@@ -107,7 +119,12 @@ export function RequestApprovalDialog({ item, teachers, open, onOpenChange, onCo
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleConfirm} disabled={!selectedTeacher || quantity < 1 || quantity > item.quantity}>Send Request</Button>
+          <Button 
+            onClick={handleConfirm} 
+            disabled={!selectedTeacher || quantity < 1 || quantity > item.quantity || teachers.length === 0}
+          >
+            Send Request
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
