@@ -20,6 +20,7 @@ export type ItemStatus = "Available" | "Locked" | "Borrowed" | "Pending Receipt"
 export type InventoryItem = {
   id: string;
   name: string;
+  category?: string;
   description?: string;
   departmentId?: string;
   channelId?: string;

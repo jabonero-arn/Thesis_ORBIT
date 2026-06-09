@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock, Filter, Tags
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -54,7 +54,18 @@ import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 
-type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'accessRequests' | 'users' | 'platformLogs';
+type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged' | 'accessRequests' | 'users' | 'platformLogs';
+
+const PREDEFINED_CATEGORIES = [
+    "Equipment",
+    "Consumable",
+    "Electronic Component",
+    "Tool",
+    "Device",
+    "Laboratory Material"
+];
+
+const LOW_STOCK_THRESHOLD = 5;
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
@@ -85,7 +96,7 @@ export default function SupervisorDashboardPage() {
     }, [user, isUserLoading, router]);
 
     React.useEffect(() => {
-        if (isUserLoading || isProfileLoading || !user) return;
+        if (isUserLoading || isProfileLoading || !user || !userProfile) return;
         if (userProfile?.passwordChangeRequired) {
             setShowPasswordChangeDialog(true);
         }
@@ -93,10 +104,13 @@ export default function SupervisorDashboardPage() {
 
     const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
+    const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
+    const [formCategoryMode, setFormCategoryMode] = React.useState<'select' | 'custom'>('select');
+    const [customCategoryInput, setCustomCategoryInput] = React.useState('');
 
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
@@ -113,15 +127,23 @@ export default function SupervisorDashboardPage() {
         return items.filter(item => item.departmentId === assignedDepartmentId);
     }, [items, assignedDepartmentId]);
 
+    const availableCategories = React.useMemo(() => {
+        const uniqueInDb = Array.from(new Set(items.map(i => i.category).filter(Boolean))) as string[];
+        const combined = Array.from(new Set([...PREDEFINED_CATEGORIES, ...uniqueInDb]));
+        return combined.sort();
+    }, [items]);
+
+    const filteredInventoryItems = React.useMemo(() => {
+        if (categoryFilter === 'all') return departmentItems;
+        if (categoryFilter === 'uncategorized') return departmentItems.filter(i => !i.category);
+        return departmentItems.filter(i => i.category === categoryFilter);
+    }, [departmentItems, categoryFilter]);
+
     const departmentHistory = React.useMemo(() => {
         if (!assignedDepartmentId) return borrowHistory;
         const itemNamesInDept = new Set(departmentItems.map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, departmentItems, assignedDepartmentId]);
-
-    const pendingAccessRequests = React.useMemo(() => {
-        return channelAccessRequests.filter(req => (!assignedDepartmentId || req.departmentId === assignedDepartmentId) && req.status === 'pending');
-    }, [channelAccessRequests, assignedDepartmentId]);
 
     const pendingStudentRequests = React.useMemo(() => {
         return studentDepartmentAccessRequests.filter(req => (!assignedDepartmentId || req.departmentId === assignedDepartmentId) && req.status === 'pending');
@@ -165,12 +187,24 @@ export default function SupervisorDashboardPage() {
         event.preventDefault();
         if (!firestore || !editingItem) return;
         const formData = new FormData(event.currentTarget);
+        
+        let finalCategory = formData.get("category") as string;
+        if (formCategoryMode === 'custom' && customCategoryInput.trim()) {
+            // Normalize custom category: Trim and Capitalize each word for consistency
+            finalCategory = customCategoryInput.trim()
+                .split(' ')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+                .join(' ');
+        }
+
         const itemData: Partial<InventoryItem> = {
             name: formData.get("name") as string,
             description: formData.get("description") as string,
             channelId: formData.get("channelId") as string,
             status: formData.get("status") as ItemStatus,
+            category: finalCategory || "",
         };
+
         try {
             await updateDoc(doc(firestore, "inventory_items", editingItem.id), { ...itemData, verifiedAt: new Date().toISOString() } as any);
             createActivityLog(firestore, user?.uid || 'sys', userProfile?.displayName || 'Supervisor', 'Updated Item', `Updated ${itemData.name}`, 'Inventory');
@@ -185,6 +219,8 @@ export default function SupervisorDashboardPage() {
     const closeForm = () => {
         setEditingItem(null);
         setIsFormOpen(false);
+        setFormCategoryMode('select');
+        setCustomCategoryInput('');
     }
 
     const handleDeleteItem = async (itemId: string) => {
@@ -207,16 +243,6 @@ export default function SupervisorDashboardPage() {
             toast({ title: "Item Flagged for Return" });
         } catch (error) {
             console.error(error);
-        }
-    };
-
-    const handleAccessRequest = async (requestId: string, newStatus: ChannelAccessRequestStatus) => {
-        if (!firestore) return;
-        try {
-            await updateDoc(doc(firestore, 'channel_access_requests', requestId), { status: newStatus });
-            toast({ title: `Teacher Request ${newStatus.toUpperCase()}` });
-        } catch (e) {
-            console.error(e);
         }
     };
 
@@ -252,10 +278,9 @@ export default function SupervisorDashboardPage() {
     const navItems = [
         { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid />, description: 'Overview of laboratory performance and status.' },
         { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode />, description: 'Process checkouts and returns instantly.' },
-        { id: 'verification' as SupervisorView, label: 'Verification', icon: <ClipboardCheck />, description: 'Confirm new items from Property Custodian.' },
-        { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound />, description: 'Manage teacher and student access permissions.' },
-        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package />, description: 'Audit and update laboratory equipment lists.' },
+        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package />, description: 'Manage and categorize laboratory equipment.' },
         { id: 'transactions' as SupervisorView, label: 'Active Transactions', icon: <PackageOpen />, description: 'Monitor items currently in use.' },
+        { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound />, description: 'Manage teacher and student access permissions.' },
         { id: 'history' as SupervisorView, label: 'History', icon: <HistoryIcon />, description: 'Review past borrowing activities.' },
         { id: 'damaged' as SupervisorView, label: 'Damaged Items', icon: <AlertTriangle />, description: 'Track malfunctioning or broken materials.' },
         { id: 'users' as SupervisorView, label: 'User Directory', icon: <Users />, description: 'Manage laboratory staff and teachers.' },
@@ -271,160 +296,116 @@ export default function SupervisorDashboardPage() {
         switch (activeView) {
             case 'scanner': return <div className="animate-in fade-in duration-500"><QrScannerView /></div>;
             case 'dashboard': {
-                 const totalItemTypes = departmentItems.length;
+                 const totalItems = departmentItems.length;
+                 const uncategorizedItems = departmentItems.filter(i => !i.category);
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
                  const activeHistory = departmentHistory.filter(h => h.status === 'Active');
                  const borrowedCount = activeHistory.length;
-                 const reservedCount = departmentHistory.filter(h => h.status === 'Reserved').length;
                  
-                 const pendingVerifications = departmentItems.filter(i => i.status === 'Pending Receipt').slice(0, 5);
+                 const categoryCounts = departmentItems.reduce((acc, item) => {
+                    const cat = item.category || 'Uncategorized';
+                    acc[cat] = (acc[cat] || 0) + 1;
+                    return acc;
+                 }, {} as Record<string, number>);
+
+                 const lowStockItems = departmentItems.filter(i => i.quantity > 0 && i.quantity < LOW_STOCK_THRESHOLD);
                  const recentActivity = activityLogs.slice(0, 5);
-                 const urgentAccess = [...pendingAccessRequests, ...pendingStudentRequests].slice(0, 5);
 
                 return (
                      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">Operational Overview</h2>
-                            <p className="text-muted-foreground">Welcome back, {userProfile?.displayName || 'Supervisor'}. Here is the status of {assignedDepartment?.name || 'All Labs'}.</p>
+                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">Inventory Oversight</h2>
+                            <p className="text-muted-foreground">Status summary for {assignedDepartment?.name || 'All Labs'}.</p>
                         </div>
 
                         {/* Summary Metrics */}
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Global Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItemTypes}</div></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Stock</CardTitle><PackageOpen className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItems}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Unique Categories</CardTitle><Tags className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{Object.keys(categoryCounts).length}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available Stock</CardTitle><PackageOpen className="h-4 w-4 text-blue-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reserved</CardTitle><Hourglass className="h-4 w-4 text-amber-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{reservedCount}</div></CardContent></Card>
                         </div>
 
                         <div className="grid gap-6 md:grid-cols-2">
-                            {/* Actionable Tasks: Verifications & Access */}
                             <div className="space-y-6">
+                                {/* Category Breakdown */}
                                 <Card className="bg-card/40 border-border/50">
-                                    <CardHeader className="flex flex-row items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <ClipboardCheck className="h-5 w-5 text-primary" />
-                                            <CardTitle className="text-lg font-headline">Action Required</CardTitle>
-                                        </div>
-                                        {pendingVerifications.length > 0 && <Badge variant="destructive">{pendingVerifications.length} New</Badge>}
-                                    </CardHeader>
-                                    <CardContent className="space-y-4">
-                                        {pendingVerifications.length > 0 || urgentAccess.length > 0 ? (
-                                            <div className="space-y-4">
-                                                {pendingVerifications.map(item => (
-                                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-border/30">
-                                                        <div>
-                                                            <p className="text-sm font-semibold">{item.name}</p>
-                                                            <p className="text-xs text-muted-foreground">Provisioned by Custodian</p>
-                                                        </div>
-                                                        <Button size="sm" variant="ghost" onClick={() => setActiveView('verification')}>Verify <ArrowRight className="ml-1 h-3 w-3" /></Button>
-                                                    </div>
-                                                ))}
-                                                {urgentAccess.map((req: any) => (
-                                                    <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-border/30">
-                                                        <div>
-                                                            <p className="text-sm font-semibold">{req.studentName || req.teacherName}</p>
-                                                            <p className="text-xs text-muted-foreground">Requesting {req.departmentName || req.channelName}</p>
-                                                        </div>
-                                                        <Button size="sm" variant="ghost" onClick={() => setActiveView('accessRequests')}>Review <ArrowRight className="ml-1 h-3 w-3" /></Button>
-                                                    </div>
-                                                ))}
+                                    <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><Tags className="h-5 w-5 text-primary" /> Category Breakdown</CardTitle></CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {Object.entries(categoryCounts).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
+                                            <div key={cat} className="flex items-center justify-between p-2 rounded bg-black/20">
+                                                <span className={cn("text-sm", cat === 'Uncategorized' ? "text-amber-500 font-bold" : "text-white")}>
+                                                    {cat === 'Uncategorized' && "⚠ "}{cat}
+                                                </span>
+                                                <Badge variant="secondary">{count} items</Badge>
                                             </div>
-                                        ) : (
-                                            <div className="text-center py-6 text-muted-foreground text-sm flex flex-col items-center gap-2">
-                                                <CheckCircle className="h-8 w-8 opacity-20" />
-                                                No pending approvals or verifications.
-                                            </div>
-                                        )}
+                                        ))}
                                     </CardContent>
                                 </Card>
 
-                                <Card className="bg-card/40 border-border/50">
-                                    <CardHeader>
-                                        <div className="flex items-center gap-2">
-                                            <Activity className="h-5 w-5 text-emerald-500" />
-                                            <CardTitle className="text-lg font-headline">Live Transactions</CardTitle>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {activeHistory.length > 0 ? (
-                                            <div className="space-y-3">
-                                                {activeHistory.slice(0, 4).map(h => (
-                                                    <div key={h.id} className="flex items-center gap-3 text-sm">
-                                                        <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{h.studentName.charAt(0)}</AvatarFallback></Avatar>
-                                                        <div className="flex-1 truncate">
-                                                            <span className="font-medium text-white">{h.studentName}</span>
-                                                            <span className="text-muted-foreground mx-1">borrowed</span>
-                                                            <span className="font-medium text-primary">{h.itemName}</span>
-                                                        </div>
-                                                        <span className="text-[10px] text-muted-foreground uppercase">{format(new Date(h.date), 'p')}</span>
-                                                    </div>
-                                                ))}
-                                                <Button variant="link" className="w-full text-xs text-muted-foreground h-auto p-0 pt-2" onClick={() => setActiveView('transactions')}>View all active sessions</Button>
+                                {/* Uncategorized Items Widget */}
+                                {uncategorizedItems.length > 0 && (
+                                    <Card className="bg-card/40 border-amber-500/20 bg-amber-500/5">
+                                        <CardHeader>
+                                            <div className="flex items-center gap-2">
+                                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                                <CardTitle className="text-lg font-headline">Pending Categorization</CardTitle>
                                             </div>
-                                        ) : (
-                                            <div className="text-center py-4 text-muted-foreground text-sm italic">No items currently out.</div>
-                                        )}
-                                    </CardContent>
-                                </Card>
+                                            <CardDescription>These items require a category assignment for better tracking.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2">
+                                            {uncategorizedItems.slice(0, 5).map(item => (
+                                                <div key={item.id} className="flex items-center justify-between p-2 rounded bg-black/20 border border-amber-500/10">
+                                                    <span className="text-sm">{item.name}</span>
+                                                    <Button size="sm" variant="ghost" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}>Classify</Button>
+                                                </div>
+                                            ))}
+                                            <Button variant="link" className="w-full text-xs text-amber-500 h-auto p-0 pt-2" onClick={() => { setCategoryFilter('uncategorized'); setActiveView('inventory'); }}>View all uncategorized items</Button>
+                                        </CardContent>
+                                    </Card>
+                                )}
                             </div>
 
-                            {/* System Status: Logs & Problems */}
                             <div className="space-y-6">
-                                <Card className="bg-card/40 border-border/50">
+                                {/* Low Stock Alerts */}
+                                <Card className="bg-card/40 border-destructive/20">
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
-                                            <HistoryIcon className="h-5 w-5 text-amber-500" />
-                                            <CardTitle className="text-lg font-headline">Recent System Activity</CardTitle>
+                                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                                            <CardTitle className="text-lg font-headline">Low Stock Alerts</CardTitle>
                                         </div>
                                     </CardHeader>
+                                    <CardContent className="space-y-3">
+                                        {lowStockItems.length > 0 ? lowStockItems.slice(0, 5).map(item => (
+                                            <div key={item.id} className="flex items-center justify-between p-2 rounded bg-destructive/5 border border-destructive/10">
+                                                <span className="text-sm text-foreground">{item.name}</span>
+                                                <Badge variant="destructive" className="font-mono">{item.quantity} left</Badge>
+                                            </div>
+                                        )) : (
+                                            <div className="text-center py-4 text-emerald-500 text-sm flex items-center justify-center gap-2">
+                                                <CheckCircle className="h-4 w-4" /> All stock levels healthy.
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Recent Activity */}
+                                <Card className="bg-card/40 border-border/50">
+                                    <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><HistoryIcon className="h-5 w-5 text-amber-500" /> Recent Activity</CardTitle></CardHeader>
                                     <CardContent>
                                         <div className="space-y-4">
                                             {recentActivity.length > 0 ? recentActivity.map(log => (
                                                 <div key={log.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
                                                     <div className="flex-1">
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-xs font-bold uppercase tracking-wider text-primary">{log.action}</p>
-                                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-3 w-3" /> {format(new Date(log.timestamp), 'MMM d, p')}</div>
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{log.action}</p>
+                                                            <span className="text-[10px] text-muted-foreground">{format(new Date(log.timestamp), 'MMM d, p')}</span>
                                                         </div>
-                                                        <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">{log.details}</p>
+                                                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{log.details}</p>
                                                     </div>
                                                 </div>
-                                            )) : (
-                                                <p className="text-center text-sm text-muted-foreground italic">No recent system events.</p>
-                                            )}
+                                            )) : <p className="text-center text-sm text-muted-foreground italic">No recent system events.</p>}
                                         </div>
-                                        {recentActivity.length > 0 && (
-                                            <Button variant="link" className="w-full text-xs text-muted-foreground mt-4 h-auto p-0" onClick={() => setActiveView('platformLogs')}>Open Audit Logs</Button>
-                                        )}
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="bg-card/40 border-border/50 border-destructive/20">
-                                    <CardHeader>
-                                        <div className="flex items-center gap-2">
-                                            <AlertTriangle className="h-5 w-5 text-destructive" />
-                                            <CardTitle className="text-lg font-headline">Maintenance Issues</CardTitle>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent>
-                                        {departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').length > 0 ? (
-                                            <div className="space-y-3">
-                                                {departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').slice(0, 3).map(item => (
-                                                    <div key={item.id} className="flex items-center justify-between p-2 rounded bg-destructive/5 border border-destructive/10">
-                                                        <span className="text-sm text-foreground truncate max-w-[150px]">{item.name}</span>
-                                                        <Badge variant="outline" className={item.status === 'Inaccurate' ? 'text-destructive border-destructive/30' : 'text-amber-500 border-amber-500/30'}>
-                                                            {item.status}
-                                                        </Badge>
-                                                    </div>
-                                                ))}
-                                                <Button variant="link" className="w-full text-xs text-muted-foreground h-auto p-0" onClick={() => setActiveView('damaged')}>Review damaged items</Button>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-4 text-emerald-500 text-sm flex items-center justify-center gap-2">
-                                                <Check className="h-4 w-4" />
-                                                All equipment verified.
-                                            </div>
-                                        )}
                                     </CardContent>
                                 </Card>
                             </div>
@@ -434,36 +415,148 @@ export default function SupervisorDashboardPage() {
             }
              case 'inventory':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit or remove items from all labs.</CardDescription></div>
-                                <Button onClick={() => setIsAddChannelOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
-                            </CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in fade-in duration-500">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-2xl font-bold font-headline text-white">Inventory Management</h2>
+                                <p className="text-muted-foreground">Categorize and manage your laboratory equipment.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-card/40 border border-border/50 px-3 py-1.5 rounded-md">
+                                    <Filter className="h-4 w-4 text-muted-foreground" />
+                                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                                        <SelectTrigger className="w-[180px] h-8 border-none bg-transparent focus:ring-0">
+                                            <SelectValue placeholder="Filter by Category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Categories</SelectItem>
+                                            <SelectItem value="uncategorized" className="text-amber-500 font-medium">⚠ Uncategorized</SelectItem>
+                                            <Separator className="my-1" />
+                                            {availableCategories.map(cat => (
+                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button onClick={() => setIsAddChannelOpen(true)} size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                            </div>
+                        </div>
+
+                        <Card className="bg-card/80 border-border/50">
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="whitespace-nowrap">Status</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentItems.map(item => (
-                                        <TableRow key={item.id}>
-                                            <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{channels.find(c=>c.id===item.channelId)?.name.replace('#','') || 'Unknown'}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
-                                            <TableCell className="whitespace-nowrap">{getStatusBadge(item.status)}</TableCell>
-                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                {item.status === 'Inaccurate' && (
-                                                    <TooltipProvider>
-                                                        <Tooltip>
-                                                            <TooltipTrigger asChild>
-                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
-                                                                    <RotateCcw className="h-4 w-4"/>
-                                                                </Button>
-                                                            </TooltipTrigger>
-                                                            <TooltipContent><p>Return to Custodian</p></TooltipContent>
-                                                        </Tooltip>
-                                                    </TooltipProvider>
-                                                )}
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10">
+                                        <TableRow>
+                                            <TableHead className="whitespace-nowrap">Name</TableHead>
+                                            <TableHead className="whitespace-nowrap">Category</TableHead>
+                                            <TableHead className="whitespace-nowrap">Lab / Room</TableHead>
+                                            <TableHead className="whitespace-nowrap">Qty</TableHead>
+                                            <TableHead className="whitespace-nowrap">Status</TableHead>
+                                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredInventoryItems.length > 0 ? filteredInventoryItems.map(item => (
+                                            <TableRow key={item.id} className="hover:bg-white/[0.02] transition-colors border-border/40">
+                                                <TableCell className="font-medium whitespace-nowrap text-white">{item.name}</TableCell>
+                                                <TableCell className="whitespace-nowrap">
+                                                    {item.category ? (
+                                                        <Badge variant="outline" className="font-normal border-primary/20 bg-primary/5 text-primary-foreground/90">
+                                                            {item.category}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
+                                                            <AlertTriangle className="h-3 w-3" /> Uncategorized
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap text-muted-foreground">
+                                                    {channels.find(c=>c.id===item.channelId)?.name.replace('#','') || <span className="italic opacity-50">Unassigned</span>}
+                                                </TableCell>
+                                                <TableCell className="whitespace-nowrap font-mono font-bold">{item.quantity}</TableCell>
+                                                <TableCell className="whitespace-nowrap">{getStatusBadge(item.status)}</TableCell>
+                                                <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                    {item.status === 'Inaccurate' && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
+                                                                        <RotateCcw className="h-4 w-4"/>
+                                                                    </Button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent><p>Return to Custodian</p></TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    )}
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. Permanent removal of {item.name}.</AlertDialogDescription></AlertDialogHeader>
+                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No items found matching the selected filter.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'transactions':
+                return (
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader><CardTitle className="text-white">Active Borrowing Sessions</CardTitle></CardHeader>
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead className="whitespace-nowrap">Student Representative</TableHead><TableHead className="whitespace-nowrap">Item Description</TableHead><TableHead className="whitespace-nowrap">Session Start</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id} className="border-border/40"><TableCell className="whitespace-nowrap text-white font-medium">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap text-muted-foreground font-mono">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'history':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader><CardTitle className="text-white">Complete Transaction History</CardTitle></CardHeader>
+                            <CardContent className="p-0 max-h-[75vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Final Status</TableHead><TableHead className="text-right">Transaction Date</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentHistory.map(h => (<TableRow key={h.id} className="border-border/40 hover:bg-white/[0.01]"><TableCell className="text-white font-medium">{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell><Badge variant="outline" className="border-primary/20 text-primary-foreground/70">{h.status}</Badge></TableCell><TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(h.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'users':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader className="flex flex-row items-center justify-between border-b border-border/40">
+                                <div><CardTitle className="text-white">User Directory</CardTitle><CardDescription>Manage laboratory staff and associated teachers.</CardDescription></div>
+                                <Button onClick={() => setIsCreateUserOpen(true)} size="sm"><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                            </CardHeader>
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Display Name</TableHead><TableHead>Role Assignment</TableHead><TableHead className="text-right">Account Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{usersToDisplay.map(u => (
+                                        <TableRow key={u.id} className="border-border/40">
+                                            <TableCell className="text-white font-medium">{u.displayName}</TableCell>
+                                            <TableCell><Badge variant="secondary" className="bg-primary/10 text-primary border-none">{u.role}</Badge></TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteUser(u)} disabled={u.id === user?.uid}><Trash className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     ))}</TableBody>
@@ -472,117 +565,43 @@ export default function SupervisorDashboardPage() {
                         </Card>
                     </div>
                 );
-            case 'transactions':
-                return (
-                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
-                        <Card className="bg-card/80"><CardHeader><CardTitle>Active Borrows</CardTitle></CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto">
-                                <Table>
-                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'history':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80"><CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto">
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentHistory.map(h => (<TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell><Badge variant="outline">{h.status}</Badge></TableCell><TableCell className="text-right text-xs">{format(new Date(h.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'users':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80">
-                            <CardHeader className="flex flex-row items-center justify-between">
-                                <div><CardTitle>User Directory</CardTitle></div>
-                                <Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
-                            </CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto">
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>{usersToDisplay.map(u => (
-                                        <TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(u)}><Trash className="h-4 w-4"/></Button>
-                                        </TableCell></TableRow>
-                                    ))}</TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
             case 'platformLogs':
                 return (
-                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Time</TableHead></TableRow></TableHeader>
-                                <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell>{log.userName}</TableCell><TableCell><Badge variant="outline">{log.action}</Badge></TableCell><TableCell className="max-w-md truncate">{log.details}</TableCell><TableCell className="text-right text-xs">{format(new Date(log.timestamp), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader><CardTitle className="text-white">System Audit Logs</CardTitle><CardDescription>Forensic trail of all significant platform activities.</CardDescription></CardHeader>
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Actor</TableHead><TableHead>Action Taken</TableHead><TableHead>Operational Details</TableHead><TableHead className="text-right">Execution Time</TableHead></TableRow></TableHeader>
+                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id} className="border-border/40">
+                                        <TableCell className="text-white font-medium">{log.userName}</TableCell>
+                                        <TableCell><Badge variant="outline" className="border-primary/30 text-primary">{log.action}</Badge></TableCell>
+                                        <TableCell className="max-w-md truncate text-muted-foreground">{log.details}</TableCell>
+                                        <TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(log.timestamp), 'MMM d, p')}</TableCell>
+                                    </TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
                 );
-             case 'verification': {
-                const pendingItems = departmentItems.filter(item => item.status === 'Pending Receipt');
-                return (
-                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader>
-                            <CardTitle>Provisioning Queue</CardTitle>
-                            <CardDescription>Confirm receipt of new materials from the Property Custodian.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Qty</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{pendingItems.map(i => (<TableRow key={i.id}><TableCell>{i.name}</TableCell><TableCell>{i.quantity}</TableCell><TableCell className="text-right space-x-2">
-                                    <Button size="sm" onClick={() => handleVerificationAction(i.id, 'Available')}><Check className="mr-1 h-4 w-4"/>Confirm</Button>
-                                    <Button size="sm" variant="destructive" onClick={() => setRejectItem(i)}><X className="mr-1 h-4 w-4"/>Reject</Button>
-                                </TableCell></TableRow>))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                );
-            }
             case 'accessRequests':
                 return (
                     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80">
-                            <CardHeader><CardTitle>Teacher Lab Access</CardTitle></CardHeader>
-                            <CardContent className="max-h-[50vh] overflow-auto">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader><CardTitle className="text-white">Laboratory Access Queue</CardTitle><CardDescription>Review and process pending student access permissions.</CardDescription></CardHeader>
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
-                                    <TableHeader><TableRow><TableHead>Teacher</TableHead><TableHead>Lab</TableHead><TableHead>Subject</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>{pendingAccessRequests.map(req => (
-                                        <TableRow key={req.id}><TableCell>{req.teacherName}</TableCell><TableCell>{req.channelName.replace('#','')}</TableCell><TableCell>{req.subject}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button size="sm" onClick={()=>handleAccessRequest(req.id, 'approved')}>Approve</Button>
-                                            <Button size="sm" variant="destructive" onClick={()=>handleAccessRequest(req.id, 'denied')}>Deny</Button>
-                                        </TableCell></TableRow>
-                                    ))}</TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                        <Card className="bg-card/80">
-                            <CardHeader><CardTitle>Student Dept Access</CardTitle></CardHeader>
-                            <CardContent className="max-h-[50vh] overflow-auto">
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Dept</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>{pendingStudentRequests.map(req => (
-                                        <TableRow key={req.id}><TableCell>{req.studentName}</TableCell><TableCell>{req.departmentName}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')}>Approve</Button>
-                                            <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')}>Deny</Button>
-                                        </TableCell></TableRow>
-                                    ))}</TableBody>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead><TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                                    <TableBody>{pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
+                                        <TableRow key={req.id} className="border-border/40">
+                                            <TableCell className="text-white font-medium">{req.studentName}</TableCell>
+                                            <TableCell className="text-muted-foreground">{req.departmentName}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')} className="h-8 bg-emerald-600 hover:bg-emerald-700">Approve</Button>
+                                                <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')} className="h-8">Deny</Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">No pending access requests.</TableCell></TableRow>}
                                 </Table>
                             </CardContent>
                         </Card>
@@ -590,37 +609,42 @@ export default function SupervisorDashboardPage() {
                 );
             case 'damaged':
                  return (
-                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader>
-                            <CardTitle>Damaged & Problem Equipment</CardTitle>
-                            <CardDescription>Track items reported as inaccurate or pending return to storage.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Last Check</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').map(item => (
-                                    <TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{getStatusBadge(item.status)}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d') : 'N/A'}</TableCell>
-                                    <TableCell className="text-right whitespace-nowrap">
-                                        <Button variant="ghost" size="icon" className="text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}><RotateCcw className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                    </TableCell></TableRow>
-                                ))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <div className="animate-in slide-in-from-bottom-4 duration-500">
+                        <Card className="bg-card/80 border-border/50">
+                            <CardHeader>
+                                <CardTitle className="text-white">Equipment Maintenance Registry</CardTitle>
+                                <CardDescription>Tracking hardware reported as inaccurate, damaged, or pending return to central storage.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Equipment Name</TableHead><TableHead>Operational Status</TableHead><TableHead>Last Inspection</TableHead><TableHead className="text-right">Registry Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').length > 0 ? departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').map(item => (
+                                        <TableRow key={item.id} className="border-border/40">
+                                            <TableCell className="text-white font-medium">{item.name}</TableCell>
+                                            <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                            <TableCell className="text-xs text-muted-foreground font-mono">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'Pending Initial Verification'}</TableCell>
+                                            <TableCell className="text-right whitespace-nowrap">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}><RotateCcw className="h-4 w-4"/></Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">All department equipment is currently verified and functioning.</TableCell></TableRow>}
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
                 );
-            default: return <div className="text-center py-20 text-muted-foreground">Select a category from the sidebar.</div>;
+            default: return <div className="text-center py-20 text-muted-foreground">Select an operational module from the sidebar.</div>;
         }
     };
 
-    if (isUserLoading || isProfileLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin" /></div>;
+    if (isUserLoading || isProfileLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>;
 
     return (
         <TooltipProvider delayDuration={500}>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                {/* UNIFIED COLLAPSIBLE SIDEBAR */}
+                {/* SINGLE COLLAPSIBLE SIDEBAR */}
                 <div className={cn(
                     "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full group/sidebar",
                     isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
@@ -633,7 +657,7 @@ export default function SupervisorDashboardPage() {
                         )}>
                             <Logo />
                             {!isSidebarCollapsed && (
-                                <span className="font-headline text-lg font-bold tracking-tighter animate-in fade-in duration-500">ORBIT</span>
+                                <span className="font-headline text-lg font-bold tracking-tighter text-white animate-in fade-in duration-500">ORBIT</span>
                             )}
                         </div>
 
@@ -641,7 +665,7 @@ export default function SupervisorDashboardPage() {
                         <div className="flex-1 py-4 space-y-1 overflow-y-auto scrollbar-none px-3">
                             {!isSidebarCollapsed && (
                                 <h2 className="px-3 mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-in fade-in duration-500">
-                                    Management
+                                    Laboratory Control
                                 </h2>
                             )}
                             <ul className="space-y-1">
@@ -668,7 +692,7 @@ export default function SupervisorDashboardPage() {
                                                 </Button>
                                             </TooltipTrigger>
                                             {isSidebarCollapsed && (
-                                                <TooltipContent side="right" sideOffset={10} className="font-medium">
+                                                <TooltipContent side="right" sideOffset={10} className="font-medium bg-popover border-border">
                                                     {item.label}
                                                 </TooltipContent>
                                             )}
@@ -717,16 +741,16 @@ export default function SupervisorDashboardPage() {
                         <div className="flex items-center gap-4 flex-1">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                                 <SheetTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
+                                    <Button variant="ghost" size="icon" className="md:hidden text-white"><Menu /></Button>
                                 </SheetTrigger>
                                 <SheetContent side="left" className="bg-[#141821] p-0 border-none">
-                                    <div className="p-4 font-bold border-b border-border/50 text-white">Menu</div>
+                                    <div className="p-4 font-bold border-b border-border/50 text-white flex items-center gap-2"><Logo className="h-6 w-6"/> Navigation</div>
                                     <div className="p-2 space-y-1">
                                         {navItems.map(i=>(
                                             <Button 
                                                 key={i.id} 
                                                 variant={activeView === i.id ? 'secondary' : 'ghost'} 
-                                                className="w-full justify-start gap-2" 
+                                                className="w-full justify-start gap-2 text-white" 
                                                 onClick={()=> {setActiveView(i.id); setIsMobileMenuOpen(false);}}
                                             >
                                                 {i.icon} <span>{i.label}</span>
@@ -736,8 +760,9 @@ export default function SupervisorDashboardPage() {
                                 </SheetContent>
                             </Sheet>
                             
-                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider text-white">
-                                {navItems.find(i=>i.id===activeView)?.label}
+                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                                {navItems.find(i=>i.id===activeView)?.icon}
+                                <span>{navItems.find(i=>i.id===activeView)?.label}</span>
                             </h1>
                         </div>
                         <div className="flex items-center gap-4">
@@ -759,46 +784,116 @@ export default function SupervisorDashboardPage() {
                 <EditUserRoleDialog open={isEditUserRoleOpen} onOpenChange={setIsEditUserRoleOpen} user={userToEdit} />
                 
                 <Dialog open={!!rejectItem} onOpenChange={(open) => !open && setRejectItem(null)}>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>Reject Item: {rejectItem?.name}</DialogTitle></DialogHeader>
+                    <DialogContent className="bg-card border-border">
+                        <DialogHeader><DialogTitle className="text-white">Inaccuracy Report: {rejectItem?.name}</DialogTitle></DialogHeader>
                         <div className="grid gap-4 py-4">
                             <div className="space-y-2">
-                                <Label>Issue Category</Label>
+                                <Label className="text-muted-foreground">Issue Category</Label>
                                 <RadioGroup value={rejectReasonType} onValueChange={(v) => setRejectReasonType(v as any)} className="flex gap-4">
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="damaged" id="rej-damaged" /><Label htmlFor="rej-damaged">Damaged</Label></div>
-                                    <div className="flex items-center space-x-2"><RadioGroupItem value="not-functioning" id="rej-func" /><Label htmlFor="rej-func">Not Functioning</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="damaged" id="rej-damaged" /><Label htmlFor="rej-damaged" className="text-white">Damaged</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="not-functioning" id="rej-func" /><Label htmlFor="rej-func" className="text-white">Not Functioning</Label></div>
                                 </RadioGroup>
                             </div>
                             <div className="grid gap-2">
-                                <Label htmlFor="reject-desc">Details</Label>
-                                <Textarea id="reject-desc" placeholder="Details..." value={rejectDescription} onChange={(e) => setRejectDescription(e.target.value)} />
+                                <Label htmlFor="reject-desc" className="text-muted-foreground">Detailed Description</Label>
+                                <Textarea id="reject-desc" placeholder="Please provide specifics about the item's condition..." value={rejectDescription} onChange={(e) => setRejectDescription(e.target.value)} className="bg-black/20 border-border" />
                             </div>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setRejectItem(null)}>Cancel</Button>
-                            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>Flag Inaccurate</Button>
+                            <Button variant="destructive" onClick={handleRejectSubmit} disabled={!rejectReasonType || !rejectDescription.trim()}>Report Inaccuracy</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
 
                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
-                    <DialogContent>
-                        <DialogHeader><DialogTitle>Edit Item</DialogTitle></DialogHeader>
+                    <DialogContent className="bg-card border-border max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className="text-white">Edit Inventory Item</DialogTitle>
+                            <DialogDescription>Modify details and classification for laboratory assets.</DialogDescription>
+                        </DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
-                            <div className="grid gap-2"><Label>Name</Label><Input name="name" defaultValue={editingItem?.name} required /></div>
-                            <div className="grid gap-2"><Label>Description</Label><Textarea name="description" defaultValue={editingItem?.description} /></div>
+                            <div className="grid gap-2"><Label className="text-muted-foreground">Item Name</Label><Input name="name" defaultValue={editingItem?.name} required className="bg-black/20 border-border text-white" /></div>
+                            
                             <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <Select name="status" defaultValue={editingItem?.status}>
-                                    <SelectTrigger><SelectValue/></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Available">Available</SelectItem>
-                                        <SelectItem value="Locked">Locked</SelectItem>
-                                        <SelectItem value="Inaccurate">Inaccurate</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label className="text-muted-foreground">Inventory Classification (Category)</Label>
+                                <div className="space-y-3">
+                                    <RadioGroup 
+                                        value={formCategoryMode} 
+                                        onValueChange={(v) => setFormCategoryMode(v as 'select' | 'custom')}
+                                        className="flex gap-4 mb-2"
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="select" id="mode-select" />
+                                            <Label htmlFor="mode-select" className="text-xs text-white">Choose Existing</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="custom" id="mode-custom" />
+                                            <Label htmlFor="mode-custom" className="text-xs text-white">Create New</Label>
+                                        </div>
+                                    </RadioGroup>
+
+                                    {formCategoryMode === 'select' ? (
+                                        <Select name="category" defaultValue={editingItem?.category || ""}>
+                                            <SelectTrigger className="bg-black/20 border-border text-white">
+                                                <SelectValue placeholder="Select a category..." />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-card border-border">
+                                                <SelectItem value="">(None / Uncategorized)</SelectItem>
+                                                {availableCategories.map(cat => (
+                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <div className="animate-in fade-in zoom-in-95 duration-200">
+                                            <Input 
+                                                value={customCategoryInput}
+                                                onChange={(e) => setCustomCategoryInput(e.target.value)}
+                                                placeholder="Enter new category name..."
+                                                className="bg-black/20 border-primary/30 text-white focus:border-primary"
+                                                autoFocus
+                                            />
+                                            <p className="text-[10px] text-muted-foreground mt-1">E.g., "Robotics Kit", "Networking Gear"</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                            <DialogFooter><Button type="submit">Save Changes</Button></DialogFooter>
+
+                            <div className="grid gap-2"><Label className="text-muted-foreground">Description</Label><Textarea name="description" defaultValue={editingItem?.description} className="bg-black/20 border-border text-white min-h-[100px]" /></div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label className="text-muted-foreground">Status</Label>
+                                    <Select name="status" defaultValue={editingItem?.status}>
+                                        <SelectTrigger className="bg-black/20 border-border text-white"><SelectValue/></SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value="Available">Available</SelectItem>
+                                            <SelectItem value="Locked">Locked</SelectItem>
+                                            <SelectItem value="Inaccurate">Inaccurate</SelectItem>
+                                            <SelectItem value="Borrowed">Borrowed</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label className="text-muted-foreground">Assign to Room</Label>
+                                    <Select name="channelId" defaultValue={editingItem?.channelId || ""}>
+                                        <SelectTrigger className="bg-black/20 border-border text-white">
+                                            <SelectValue placeholder="Unassigned" />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-card border-border">
+                                            <SelectItem value="">Unassigned</SelectItem>
+                                            {channels.filter(c => c.departmentId === assignedDepartmentId).map(c => (
+                                                <SelectItem key={c.id} value={c.id}>{c.name.replace('#', '')}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <DialogFooter className="mt-4 pt-4 border-t border-border/40">
+                                <Button type="button" variant="ghost" onClick={closeForm} className="text-white">Cancel</Button>
+                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white px-8">Save Inventory Record</Button>
+                            </DialogFooter>
                         </form>
                     </DialogContent>
                 </Dialog>
