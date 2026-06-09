@@ -198,7 +198,7 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      // Diagnostic Logging
+      // Diagnostic Logging for Permission Verification
       console.log('DEBUG: Teacher Approval Action Initiated');
       console.log('DEBUG: Auth Context - Current User UID:', user.uid);
       console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);

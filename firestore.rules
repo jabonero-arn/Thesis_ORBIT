@@ -123,11 +123,14 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules: Direct verification for Teachers and Supervisors
-      // Redeploy Trigger: Version 1.0.5 - Improved role helper resilience
+      // Redeploy Trigger: Version 1.1.5 - Explicit Teacher teacherId Permission
       allow update: if isSignedIn() && (
         isSupervisor() || 
         resource.data.borrowerUserId == request.auth.uid || 
-        (resource.data.teacherId == request.auth.uid && isTeacher())
+        (resource.data.teacherId == request.auth.uid && (
+            // Safety: Allow assigned teacher to only update the status field
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])
+        ))
       );
       
       allow delete: if isSupervisor() 
