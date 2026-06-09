@@ -54,15 +54,7 @@ import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 
-type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'assignment' | 'accessRequests' | 'users' | 'platformLogs';
-
-const userRoles = [
-    { id: 'all', name: 'All Users', icon: <Users /> },
-    { id: 'Property Custodian', name: 'Property Custodian', icon: <Building /> },
-    { id: 'Supervisor', name: 'Supervisor', icon: <Shield /> },
-    { id: 'Teacher', name: 'Teacher', icon: <Cog /> },
-    { id: 'Student', name: 'Student', icon: <Users /> },
-];
+type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'verification' | 'damaged' | 'accessRequests' | 'users' | 'platformLogs';
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
@@ -105,7 +97,6 @@ export default function SupervisorDashboardPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
-    const [isLabsOpen, setIsLabsOpen] = React.useState(true);
 
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
@@ -510,20 +501,24 @@ export default function SupervisorDashboardPage() {
             case 'users':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-                        <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>User Directory</CardTitle></div><Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button></CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{usersToDisplay.map(u => (
-                                    <TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(u)}><Trash className="h-4 w-4"/></Button>
-                                    </TableCell></TableRow>
-                                ))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                        <Card className="bg-card/80">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div><CardTitle>User Directory</CardTitle></div>
+                                <Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button>
+                            </CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{usersToDisplay.map(u => (
+                                        <TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
+                                        <TableCell className="text-right space-x-2">
+                                            <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(u)}><Trash className="h-4 w-4"/></Button>
+                                        </TableCell></TableRow>
+                                    ))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
                     </div>
                 );
             case 'platformLogs':
@@ -625,94 +620,86 @@ export default function SupervisorDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                {/* PERSISTENT SIDEBAR WRAPPER */}
+                {/* UNIFIED COLLAPSIBLE SIDEBAR */}
                 <div className={cn(
-                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full",
-                    isSidebarCollapsed ? "w-[72px]" : "w-[320px]"
+                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full group/sidebar",
+                    isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
                 )}>
-                    <div className="flex flex-1 overflow-hidden h-full">
-                        {/* RAIL - ALWAYS VISIBLE */}
-                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 shrink-0 z-20 w-[72px] border-r border-border/50">
-                            <div className="p-2 mb-2"><Logo /></div>
-                            <div className="flex-1 flex flex-col items-center gap-2 w-full">
-                                {navItems.map(item => (
-                                    <Tooltip key={item.id}>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                variant={activeView === item.id ? 'secondary' : 'ghost'} 
-                                                size="icon" 
-                                                className="h-12 w-12 rounded-lg" 
-                                                onClick={() => setActiveView(item.id as any)}
-                                            >
-                                                {item.icon}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
-                                    </Tooltip>
-                                ))}
-                            </div>
-                            {/* Avatar at bottom of rail when collapsed */}
-                            {isSidebarCollapsed && (
-                                <div className="pb-4 mt-auto">
-                                    <UserProfileModal role="Supervisor">
-                                         <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
-                                            <AvatarFallback>S</AvatarFallback>
-                                         </Avatar>
-                                    </UserProfileModal>
-                                </div>
+                    <div className="flex flex-col h-full overflow-hidden">
+                        {/* Header: Logo */}
+                        <div className={cn(
+                            "flex items-center gap-3 p-4 border-b border-border/50 transition-all duration-300",
+                            isSidebarCollapsed ? "justify-center" : "justify-start px-6"
+                        )}>
+                            <Logo />
+                            {!isSidebarCollapsed && (
+                                <span className="font-headline text-lg font-bold tracking-tighter animate-in fade-in duration-500">ORBIT</span>
                             )}
                         </div>
-                        
-                        {/* SIDEBAR - COLLAPSIBLE SECTION */}
-                        <div 
-                            className={cn(
-                                "flex flex-col bg-[#141821] transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full",
-                                isSidebarCollapsed ? "w-0 opacity-0" : "w-64 opacity-100"
+
+                        {/* Navigation Items */}
+                        <div className="flex-1 py-4 space-y-1 overflow-y-auto scrollbar-none px-3">
+                            {!isSidebarCollapsed && (
+                                <h2 className="px-3 mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-in fade-in duration-500">
+                                    Management
+                                </h2>
                             )}
-                        >
-                            <div className="w-64 flex flex-col h-full">
-                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter whitespace-nowrap">Lab Management</div>
-                                <div className="flex-1 py-4 space-y-4 overflow-y-auto scrollbar-none">
-                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-4 mb-2 group text-muted-foreground hover:text-foreground">
-                                        <h2 className="text-xs font-bold uppercase tracking-wider">Navigation</h2>
-                                        {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                    </button>
-                                    {isLabsOpen && (
-                                        <ul className="space-y-1 px-2">
-                                            {navItems.map(item => (
-                                                <li key={item.id}>
-                                                    <Button 
-                                                        variant={activeView === item.id ? 'secondary' : 'ghost'} 
-                                                        className="w-full justify-start h-9 text-sm" 
-                                                        onClick={()=>handleViewChange(item.id as SupervisorView)}
-                                                    >
-                                                        {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
-                                                        {item.label}
-                                                    </Button>
-                                                </li>
-                                            ))}
-                                        </ul>
+                            <ul className="space-y-1">
+                                {navItems.map(item => (
+                                    <li key={item.id}>
+                                        <Tooltip delayDuration={0}>
+                                            <TooltipTrigger asChild>
+                                                <Button 
+                                                    variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                    className={cn(
+                                                        "w-full justify-start h-10 transition-all duration-200",
+                                                        isSidebarCollapsed ? "px-0 justify-center" : "px-3"
+                                                    )} 
+                                                    onClick={() => handleViewChange(item.id as SupervisorView)}
+                                                >
+                                                    <div className={cn("shrink-0", isSidebarCollapsed ? "" : "mr-3")}>
+                                                        {React.cloneElement(item.icon as any, { className: "h-5 w-5" })}
+                                                    </div>
+                                                    {!isSidebarCollapsed && (
+                                                        <span className="truncate text-sm font-medium animate-in fade-in duration-300">
+                                                            {item.label}
+                                                        </span>
+                                                    )}
+                                                </Button>
+                                            </TooltipTrigger>
+                                            {isSidebarCollapsed && (
+                                                <TooltipContent side="right" sideOffset={10} className="font-medium">
+                                                    {item.label}
+                                                </TooltipContent>
+                                            )}
+                                        </Tooltip>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Footer: User Profile */}
+                        <div className="p-3 border-t border-border/50 bg-[#0e1015]">
+                             <UserProfileModal role="Supervisor">
+                                <div className={cn(
+                                    "flex items-center gap-3 cursor-pointer p-2 hover:bg-accent rounded-lg transition-colors",
+                                    isSidebarCollapsed ? "justify-center" : "justify-start"
+                                )}>
+                                    <Avatar className="h-8 w-8 shrink-0">
+                                        <AvatarFallback className="bg-primary/20 text-primary text-xs">S</AvatarFallback>
+                                    </Avatar>
+                                    {!isSidebarCollapsed && (
+                                        <div className="overflow-hidden animate-in fade-in duration-500">
+                                            <p className="text-sm font-semibold truncate text-white">{userProfile?.displayName}</p>
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Supervisor</p>
+                                        </div>
                                     )}
                                 </div>
-                                <div className="p-2 border-t border-border/50 bg-[#141821]">
-                                    <div className="flex items-center justify-between">
-                                        <UserProfileModal role="Supervisor">
-                                            <div className="flex flex-1 items-center gap-2 cursor-pointer p-1 hover:bg-accent rounded-md transition-colors">
-                                                <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
-                                                <div className="overflow-hidden">
-                                                    <p className="text-sm font-semibold truncate text-white">{userProfile?.displayName}</p>
-                                                    <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
-                                                </div>
-                                            </div>
-                                        </UserProfileModal>
-                                        <UserNav role="Supervisor" />
-                                    </div>
-                                </div>
-                            </div>
+                            </UserProfileModal>
                         </div>
                     </div>
 
-                    {/* TOGGLE BUTTON */}
+                    {/* Centered Toggle Button */}
                     <button 
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                         className={cn(
