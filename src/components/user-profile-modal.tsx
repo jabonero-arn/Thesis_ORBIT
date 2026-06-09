@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
+import { useUser, useFirestore, useDoc, useMemoFirebase, useAuth } from "@/firebase"
 import { doc, deleteDoc } from "firebase/firestore"
-import { Edit, KeyRound, Trash2 } from "lucide-react"
+import { Edit, KeyRound, Trash2, LogOut } from "lucide-react"
 import { EditProfileDialog } from "./edit-profile-dialog"
 import type { User as UserType, ChannelAccessRequest, StudentDepartmentAccessRequest } from "@/lib/types"
 import { useAppContext } from "@/context/app-context"
@@ -25,10 +25,14 @@ import { useToast } from "@/hooks/use-toast"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "./ui/dropdown-menu"
 import { EditLabAccessDialog } from "./teacher/edit-lab-access-dialog"
 import { StudentRequestDepartmentAccessDialog } from "./student/request-department-access-dialog"
+import { signOut } from "firebase/auth"
+import { useRouter } from "next/navigation"
 
 
 export function UserProfileModal({ children, role: displayRole }: { children: React.ReactNode, role: string }) {
   const { user } = useUser()
+  const auth = useAuth()
+  const router = useRouter()
   const firestore = useFirestore()
   const { toast } = useToast();
   const { departments, channels, channelAccessRequests, studentDepartmentAccessRequests } = useAppContext();
@@ -68,6 +72,11 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
   const handleEditClick = () => {
     setIsProfileOpen(false);
     setIsEditOpen(true);
+  }
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    router.push('/')
   }
 
   const handleDeleteRequest = async (requestId: string, type: 'teacher' | 'student') => {
@@ -127,6 +136,9 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
               )}
               <Button onClick={handleEditClick} variant="secondary" className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white">
                   <Edit className="mr-2 h-4 w-4" /> Edit Profile
+              </Button>
+              <Button onClick={handleLogout} className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white">
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
               </Button>
           </div>
         </DialogContent>
