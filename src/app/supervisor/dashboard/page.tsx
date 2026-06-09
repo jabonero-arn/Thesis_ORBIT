@@ -17,6 +17,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -190,7 +191,6 @@ export default function SupervisorDashboardPage() {
         
         let finalCategory = formData.get("category") as string;
         if (formCategoryMode === 'custom' && customCategoryInput.trim()) {
-            // Normalize custom category: Trim and Capitalize each word for consistency
             finalCategory = customCategoryInput.trim()
                 .split(' ')
                 .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
@@ -318,7 +318,6 @@ export default function SupervisorDashboardPage() {
                             <p className="text-muted-foreground">Status summary for {assignedDepartment?.name || 'All Labs'}.</p>
                         </div>
 
-                        {/* Summary Metrics */}
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItems}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Unique Categories</CardTitle><Tags className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{Object.keys(categoryCounts).length}</div></CardContent></Card>
@@ -328,7 +327,6 @@ export default function SupervisorDashboardPage() {
 
                         <div className="grid gap-6 md:grid-cols-2">
                             <div className="space-y-6">
-                                {/* Category Breakdown */}
                                 <Card className="bg-card/40 border-border/50">
                                     <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><Tags className="h-5 w-5 text-primary" /> Category Breakdown</CardTitle></CardHeader>
                                     <CardContent className="space-y-3">
@@ -343,7 +341,6 @@ export default function SupervisorDashboardPage() {
                                     </CardContent>
                                 </Card>
 
-                                {/* Uncategorized Items Widget */}
                                 {uncategorizedItems.length > 0 && (
                                     <Card className="bg-card/40 border-amber-500/20 bg-amber-500/5">
                                         <CardHeader>
@@ -367,7 +364,6 @@ export default function SupervisorDashboardPage() {
                             </div>
 
                             <div className="space-y-6">
-                                {/* Low Stock Alerts */}
                                 <Card className="bg-card/40 border-destructive/20">
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
@@ -389,7 +385,6 @@ export default function SupervisorDashboardPage() {
                                     </CardContent>
                                 </Card>
 
-                                {/* Recent Activity */}
                                 <Card className="bg-card/40 border-border/50">
                                     <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><HistoryIcon className="h-5 w-5 text-amber-500" /> Recent Activity</CardTitle></CardHeader>
                                     <CardContent>
@@ -549,7 +544,7 @@ export default function SupervisorDashboardPage() {
                             </CardHeader>
                             <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Display Name</TableHead><TableHead>Role Assignment</TableHead><TableHead className="text-right">Account Actions</TableHead></TableRow></TableHeader>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Display Name</TableHead> <TableHead>Role Assignment</TableHead><TableHead className="text-right">Account Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>{usersToDisplay.map(u => (
                                         <TableRow key={u.id} className="border-border/40">
                                             <TableCell className="text-white font-medium">{u.displayName}</TableCell>
@@ -591,7 +586,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle className="text-white">Laboratory Access Queue</CardTitle><CardDescription>Review and process pending student access permissions.</CardDescription></CardHeader>
                             <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead><TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead> <TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                                     <TableBody>{pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
                                         <TableRow key={req.id} className="border-border/40">
                                             <TableCell className="text-white font-medium">{req.studentName}</TableCell>
@@ -602,6 +597,7 @@ export default function SupervisorDashboardPage() {
                                             </TableCell>
                                         </TableRow>
                                     )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">No pending access requests.</TableCell></TableRow>}
+                                    </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
@@ -629,6 +625,7 @@ export default function SupervisorDashboardPage() {
                                             </TableCell>
                                         </TableRow>
                                     )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">All department equipment is currently verified and functioning.</TableCell></TableRow>}
+                                    </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
@@ -638,19 +635,17 @@ export default function SupervisorDashboardPage() {
         }
     };
 
-    if (isUserLoading || isProfileLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>;
+    if (isUserLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin text-primary h-12 w-12" /></div>;
 
     return (
         <TooltipProvider delayDuration={500}>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                {/* SINGLE COLLAPSIBLE SIDEBAR */}
                 <div className={cn(
                     "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full group/sidebar",
                     isSidebarCollapsed ? "w-[72px]" : "w-[280px]"
                 )}>
                     <div className="flex flex-col h-full overflow-hidden">
-                        {/* Header: Logo */}
                         <div className={cn(
                             "flex items-center gap-3 p-4 border-b border-border/50 transition-all duration-300",
                             isSidebarCollapsed ? "justify-center" : "justify-start px-6"
@@ -661,7 +656,6 @@ export default function SupervisorDashboardPage() {
                             )}
                         </div>
 
-                        {/* Navigation Items */}
                         <div className="flex-1 py-4 space-y-1 overflow-y-auto scrollbar-none px-3">
                             {!isSidebarCollapsed && (
                                 <h2 className="px-3 mb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest animate-in fade-in duration-500">
@@ -702,7 +696,6 @@ export default function SupervisorDashboardPage() {
                             </ul>
                         </div>
 
-                        {/* Footer: User Profile */}
                         <div className="p-3 border-t border-border/50 bg-[#0e1015]">
                              <UserProfileModal role="Supervisor">
                                 <div className={cn(
@@ -723,7 +716,6 @@ export default function SupervisorDashboardPage() {
                         </div>
                     </div>
 
-                    {/* Centered Toggle Button */}
                     <button 
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                         className={cn(
@@ -777,7 +769,6 @@ export default function SupervisorDashboardPage() {
                     </div>
                 </main>
 
-                {/* Dialogs */}
                 <CreateUserForm open={isCreateUserOpen} onOpenChange={setIsCreateUserOpen} roleToCreate="Supervisor" />
                 <AddDepartmentForm open={isAddDeptOpen} onOpenChange={setIsAddDeptOpen} />
                 <AddChannelForm open={isAddChannelOpen} onOpenChange={setIsAddChannelOpen} department={assignedDepartment || departments[0] || null} />
