@@ -279,7 +279,7 @@ export default function SupervisorDashboardPage() {
     const renderContent = () => {
         switch (activeView) {
             case 'scanner': return <div className="animate-in fade-in duration-500"><QrScannerView /></div>;
-            case 'dashboard':
+            case 'dashboard': {
                  const totalItemTypes = departmentItems.length;
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
                  const activeHistory = departmentHistory.filter(h => h.status === 'Active');
@@ -440,6 +440,7 @@ export default function SupervisorDashboardPage() {
                         </div>
                      </div>
                 );
+            }
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -523,6 +524,7 @@ export default function SupervisorDashboardPage() {
                             </Table>
                         </CardContent>
                     </Card>
+                    </div>
                 );
             case 'platformLogs':
                 return (
@@ -536,7 +538,7 @@ export default function SupervisorDashboardPage() {
                         </CardContent>
                     </Card>
                 );
-             case 'verification':
+             case 'verification': {
                 const pendingItems = departmentItems.filter(item => item.status === 'Pending Receipt');
                 return (
                     <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
@@ -555,6 +557,7 @@ export default function SupervisorDashboardPage() {
                         </CardContent>
                     </Card>
                 );
+            }
             case 'accessRequests':
                 return (
                     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
