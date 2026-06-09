@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ArrowRight, UserCircle
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -72,6 +72,8 @@ export default function SupervisorDashboardPage() {
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+
     const userProfileRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
@@ -276,7 +278,7 @@ export default function SupervisorDashboardPage() {
 
     const renderContent = () => {
         switch (activeView) {
-            case 'scanner': return <QrScannerView />;
+            case 'scanner': return <div className="animate-in fade-in duration-500"><QrScannerView /></div>;
             case 'dashboard':
                  const totalItemTypes = departmentItems.length;
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -339,7 +341,7 @@ export default function SupervisorDashboardPage() {
             case 'verification':
                 const pendingItems = departmentItems.filter(item => item.status === 'Pending Receipt');
                 return (
-                    <Card className="bg-card/80">
+                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
                         <CardHeader>
                             <CardTitle>Provisioning Queue</CardTitle>
                             <CardDescription>Confirm receipt of new materials from the Property Custodian.</CardDescription>
@@ -357,7 +359,7 @@ export default function SupervisorDashboardPage() {
                 );
             case 'accessRequests':
                 return (
-                    <div className="space-y-6">
+                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80">
                             <CardHeader><CardTitle>Teacher Lab Access</CardTitle></CardHeader>
                             <CardContent className="max-h-[50vh] overflow-auto">
@@ -392,7 +394,7 @@ export default function SupervisorDashboardPage() {
                 );
             case 'inventory':
                  return (
-                    <Card className="bg-card/80">
+                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <div><CardTitle>Inventory List</CardTitle><CardDescription>Edit lab equipment or return items to storage.</CardDescription></div>
                             <Button onClick={() => setIsAddChannelOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
@@ -416,7 +418,7 @@ export default function SupervisorDashboardPage() {
                 );
             case 'users':
                 return (
-                    <Card className="bg-card/80">
+                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
                         <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>User Directory</CardTitle></div><Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button></CardHeader>
                         <CardContent className="max-h-[60vh] overflow-auto">
                             <Table>
@@ -434,7 +436,7 @@ export default function SupervisorDashboardPage() {
                 );
             case 'platformLogs':
                 return (
-                    <Card className="bg-card/80">
+                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
                         <CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
                         <CardContent className="max-h-[60vh] overflow-auto">
                             <Table>
@@ -454,27 +456,65 @@ export default function SupervisorDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                {/* Conditionally hide sidebar on Dashboard Hub */}
-                {activeView !== 'dashboard' && (
-                    <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50 animate-in slide-in-from-left duration-500">
-                        <div className="flex flex-1">
-                            <div className="w-64 bg-[#141821] p-2 overflow-y-auto">
-                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4">
-                                    <Logo />
+                {/* PERSISTENT SIDEBAR WRAPPER */}
+                <div className={cn(
+                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full",
+                    isSidebarCollapsed ? "w-[72px]" : "w-[320px]"
+                )}>
+                    <div className="flex flex-1 overflow-hidden h-full">
+                        {/* RAIL - ALWAYS VISIBLE */}
+                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 shrink-0 z-20 w-[72px] border-r border-border/50">
+                            <div className="p-2 mb-2"><Logo /></div>
+                            <div className="flex-1 flex flex-col items-center gap-2 w-full">
+                                {navItems.map(item => (
+                                    <Tooltip key={item.id}>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                size="icon" 
+                                                className="h-12 w-12 rounded-lg" 
+                                                onClick={() => setActiveView(item.id as any)}
+                                            >
+                                                {item.icon}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
+                                    </Tooltip>
+                                ))}
+                            </div>
+                            {/* Avatar at bottom of rail when collapsed */}
+                            {isSidebarCollapsed && (
+                                <div className="pb-4 mt-auto">
+                                    <UserProfileModal role="Supervisor">
+                                         <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
+                                            <AvatarFallback>S</AvatarFallback>
+                                         </Avatar>
+                                    </UserProfileModal>
                                 </div>
-                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">Lab Management</div>
-                                <div className="py-4 space-y-4">
-                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group text-muted-foreground hover:text-foreground">
+                            )}
+                        </div>
+                        
+                        {/* SIDEBAR - COLLAPSIBLE SECTION */}
+                        <div 
+                            className={cn(
+                                "flex flex-col bg-[#141821] transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full",
+                                isSidebarCollapsed ? "w-0 opacity-0" : "w-64 opacity-100"
+                            )}
+                        >
+                            <div className="w-64 flex flex-col h-full">
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter whitespace-nowrap">Lab Management</div>
+                                <div className="flex-1 py-4 space-y-4 overflow-y-auto scrollbar-none">
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-4 mb-2 group text-muted-foreground hover:text-foreground">
                                         <h2 className="text-xs font-bold uppercase tracking-wider">Navigation</h2>
                                         {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </button>
                                     {isLabsOpen && (
-                                        <ul className="space-y-1">
+                                        <ul className="space-y-1 px-2">
                                             {navItems.map(item => (
                                                 <li key={item.id}>
                                                     <Button 
                                                         variant={activeView === item.id ? 'secondary' : 'ghost'} 
-                                                        className="w-full justify-start" 
+                                                        className="w-full justify-start h-9 text-sm" 
                                                         onClick={()=>handleViewChange(item.id as SupervisorView)}
                                                     >
                                                         {React.cloneElement(item.icon as any, { className: "mr-2 h-4 w-4"})}
@@ -485,27 +525,38 @@ export default function SupervisorDashboardPage() {
                                         </ul>
                                     )}
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div className="p-2 border-t border-border/50 bg-[#141821]">
-                            <div className="flex items-center justify-between">
-                                <UserProfileModal role="Supervisor">
-                                    <div className="flex flex-1 items-center gap-2 cursor-pointer p-1">
-                                        <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
-                                        <div className="overflow-hidden">
-                                            <p className="text-sm font-semibold truncate">{userProfile?.displayName}</p>
-                                            <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
-                                        </div>
+                                <div className="p-2 border-t border-border/50 bg-[#141821]">
+                                    <div className="flex items-center justify-between">
+                                        <UserProfileModal role="Supervisor">
+                                            <div className="flex flex-1 items-center gap-2 cursor-pointer p-1 hover:bg-accent rounded-md transition-colors">
+                                                <Avatar className="h-8 w-8"><AvatarFallback>S</AvatarFallback></Avatar>
+                                                <div className="overflow-hidden">
+                                                    <p className="text-sm font-semibold truncate text-white">{userProfile?.displayName}</p>
+                                                    <p className="text-[10px] text-muted-foreground">Lab Supervisor</p>
+                                                </div>
+                                            </div>
+                                        </UserProfileModal>
+                                        <UserNav role="Supervisor" />
                                     </div>
-                                </UserProfileModal>
-                                <UserNav role="Supervisor" />
+                                </div>
                             </div>
                         </div>
                     </div>
-                )}
 
-                <main className="flex-1 flex flex-col h-dvh">
+                    {/* TOGGLE BUTTON */}
+                    <button 
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className={cn(
+                            "absolute -right-3 top-12 z-50 h-6 w-6 rounded-full bg-[#141821] border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
+                            isSidebarCollapsed && "bg-[#0e1015]"
+                        )}
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isSidebarCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                    </button>
+                </div>
+
+                <main className="flex-1 flex flex-col h-dvh overflow-hidden">
                     <header className="flex h-16 items-center p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4 flex-1">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -513,26 +564,23 @@ export default function SupervisorDashboardPage() {
                                     <Button variant="ghost" size="icon" className="md:hidden"><Menu /></Button>
                                 </SheetTrigger>
                                 <SheetContent side="left" className="bg-[#141821] p-0 border-none">
-                                    <div className="p-4 font-bold border-b border-border/50">Menu</div>
+                                    <div className="p-4 font-bold border-b border-border/50 text-white">Menu</div>
                                     <div className="p-2 space-y-1">
                                         {navItems.map(i=>(
                                             <Button 
                                                 key={i.id} 
                                                 variant={activeView === i.id ? 'secondary' : 'ghost'} 
-                                                className="w-full justify-start" 
+                                                className="w-full justify-start gap-2" 
                                                 onClick={()=> {setActiveView(i.id); setIsMobileMenuOpen(false);}}
                                             >
-                                                {i.icon} <span className="ml-2">{i.label}</span>
+                                                {i.icon} <span>{i.label}</span>
                                             </Button>
                                         ))}
                                     </div>
                                 </SheetContent>
                             </Sheet>
                             
-                            {/* Logo shown in header only when sidebar is hidden */}
-                            {activeView === 'dashboard' && <Logo />}
-                            
-                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider">
+                            <h1 className="font-headline text-xl font-bold uppercase tracking-wider text-white">
                                 {navItems.find(i=>i.id===activeView)?.label}
                             </h1>
                         </div>
@@ -602,3 +650,4 @@ export default function SupervisorDashboardPage() {
         </TooltipProvider>
     )
 }
+

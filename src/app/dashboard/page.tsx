@@ -5,7 +5,7 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useCollection, useMemoFirebase, useDoc } from "@/firebase"
 import { collection, query, where, addDoc, doc, updateDoc, writeBatch } from "firebase/firestore"
-import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch, ChevronDown, ChevronRight } from "lucide-react"
+import { User, Cpu, FlaskConical, Cog, Hash, Menu, CornerDownLeft, Settings, QrCode, Inbox, PackageCheck, Hourglass, Loader2, History, CalendarDays, XCircle, PackageSearch, ChevronDown, ChevronRight, ChevronLeft } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
 import { isToday } from "date-fns"
@@ -27,6 +27,7 @@ import { StudentActivity } from "@/components/student-activity"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 export default function Home() {
   const router = useRouter()
@@ -41,6 +42,7 @@ export default function Home() {
   const [selectedDepartmentId, setSelectedDepartmentId] = React.useState<string | null>(null);
   const [selectedChannelId, setSelectedChannelId] = React.useState<string| null>(null);
   const [isLabsOpen, setIsLabsOpen] = React.useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -59,14 +61,12 @@ export default function Home() {
   const teachersForDialog = React.useMemo(() => {
       if (!selectedChannelId || !channelAccessRequests || !allUsers) return [];
       
-      // Find approved teacher IDs for the selected lab
       const approvedTeacherIds = new Set(
           channelAccessRequests
               .filter(req => req.channelId === selectedChannelId && req.status === 'approved')
               .map(req => req.teacherId)
       );
   
-      // Filter all users to get the teacher objects
       return allUsers
           .filter(user => user.role === 'Teacher' && approvedTeacherIds.has(user.id))
           .map(t => ({ id: t.id, name: t.displayName }));
@@ -112,7 +112,6 @@ export default function Home() {
   }, [borrowHistory, user]);
 
   React.useEffect(() => {
-    // This effect handles auto-closing the return QR dialog
     if (itemsToReturn.length > 0 && borrowHistory.length > 0) {
       const allItemsInDialogReturned = itemsToReturn.every(itemInDialog => {
         const correspondingItemInHistory = borrowHistory.find(h => h.id === itemInDialog.id);
@@ -124,7 +123,7 @@ export default function Home() {
           title: "Return Complete!",
           description: "Your items have been successfully returned.",
         });
-        setItemsToReturn([]); // This will close the dialog
+        setItemsToReturn([]);
       }
     }
   }, [borrowHistory, itemsToReturn, toast]);
@@ -175,7 +174,8 @@ export default function Home() {
     if (item.quantity === 0) return;
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
-        return; // Already in cart, do nothing
+        setSelectedItems(prev => prev.filter(ci => ci.item.id !== item.id));
+        return;
     }
 
     if (pendingRequestedItemNames.has(item.name)) {
@@ -189,10 +189,8 @@ export default function Home() {
     const studentApprovedRecords = studentBorrowHistory.filter(h => h.status === 'Approved' && !h.checkoutSessionId && h.itemName === item.name);
     const isApproved = studentApprovedRecords.length > 0;
 
-    // Primary conditions for adding an item to the cart
     const isAvailable = item.status === "Available" && item.quantity > 0;
     const isApprovedAndLocked = item.status === "Locked" && isApproved && item.quantity > 0;
-    // This case handles data inconsistencies where an item is borrowed but still has stock.
     const isBorrowableInconsistency = item.status === "Borrowed" && item.quantity > 0;
     
     if (isAvailable || isBorrowableInconsistency) {
@@ -215,14 +213,12 @@ export default function Home() {
         return;
     }
 
-    // Condition to request approval for a locked item
     if (item.status === "Locked" && !isApproved) {
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
         return;
     }
     
-    // All other cases are unavailable. Show a more descriptive toast.
     toast({
         variant: "destructive",
         title: "Item Unavailable",
@@ -300,7 +296,7 @@ export default function Home() {
   const handleChannelSelect = (id: string) => {
     setSelectedChannelId(id)
     setSelectedItems([])
-    setIsMobileMenuOpen(false) // Close mobile menu on selection
+    setIsMobileMenuOpen(false)
   }
 
   const handleItemQuantityChange = (itemId: string, newQuantity: number) => {
@@ -313,10 +309,8 @@ export default function Home() {
     }
 
     if (newQuantity <= 0) {
-        // Remove from cart
         setSelectedItems(prev => prev.filter(ci => ci.item.id !== itemId));
     } else {
-        // Update quantity
         setSelectedItems(prev => prev.map(ci => 
             ci.item.id === itemId ? { ...ci, quantity: newQuantity } : ci
         ));
@@ -343,8 +337,8 @@ export default function Home() {
       <TooltipProvider>
        <div className="flex h-dvh bg-[#1e2430]">
         <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
-            <div className="flex flex-1">
-                 <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+            <div className="flex flex-1 overflow-hidden h-full">
+                 <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 w-[72px] border-r border-border/50">
                   <div className="p-2 mb-2"><Logo /></div>
                   <div className="flex flex-col items-center gap-2 w-full">
                      <Tooltip>
@@ -357,8 +351,8 @@ export default function Home() {
                     </Tooltip>
                   </div>
                  </div>
-                 <div className="w-64 flex-col bg-[#141821] p-2">
-                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                 <div className="w-64 flex flex-col bg-[#141821] p-2">
+                    <div className="p-4 font-headline text-lg font-bold border-b border-border/50 text-white">
                         No Departments
                     </div>
                  </div>
@@ -372,7 +366,7 @@ export default function Home() {
                             <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                         </Avatar>
                         <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                          <p className="truncate text-sm font-semibold leading-none text-white">{userProfile?.displayName || user?.displayName || "Student"}</p>
                           <p className="text-xs text-muted-foreground">Student</p>
                         </div>
                     </div>
@@ -382,7 +376,7 @@ export default function Home() {
             </div>
         </div>
          <main className="flex-1 flex flex-col h-dvh">
-          <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+          <header className="flex h-16 items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
              <div className="flex items-center gap-2">
                 <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
@@ -391,7 +385,7 @@ export default function Home() {
                   <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
                      <div className="flex flex-col h-full">
                         <div className="flex-1 overflow-y-auto">
-                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50 text-white">
                                 Menu
                             </div>
                             <div className="p-4 text-center text-muted-foreground text-sm">
@@ -407,7 +401,7 @@ export default function Home() {
                                             <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                         </Avatar>
                                         <div className="overflow-hidden">
-                                            <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                                            <p className="truncate text-sm font-semibold leading-none text-white">{userProfile?.displayName || user?.displayName || "Student"}</p>
                                             <p className="text-xs text-muted-foreground">Student</p>
                                         </div>
                                     </div>
@@ -418,7 +412,7 @@ export default function Home() {
                       </div>
                   </SheetContent>
                 </Sheet>
-                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">No Labs Available</h1>
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate text-white">No Labs Available</h1>
             </div>
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 flex items-center justify-center">
@@ -446,15 +440,18 @@ export default function Home() {
   return (
     <TooltipProvider>
       <div className="flex h-dvh bg-[#1e2430]">
-        {/* Combined Sidebar */}
-        <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
-            <div className="flex flex-1">
-                 {/* Department Rail */}
-                <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3">
+        {/* PERSISTENT SIDEBAR WRAPPER */}
+        <div className={cn(
+            "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full",
+            isSidebarCollapsed ? "w-[72px]" : "w-[320px]"
+        )}>
+            <div className="flex flex-1 overflow-hidden h-full">
+                {/* RAIL - ALWAYS VISIBLE */}
+                <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 shrink-0 z-20 w-[72px] border-r border-border/50">
                   <div className="p-2 mb-2">
                     <Logo />
                   </div>
-                  <div className="flex flex-col items-center gap-2 w-full">
+                  <div className="flex-1 flex flex-col items-center gap-2 w-full">
                     {studentDepartments.map(dept => (
                       <Tooltip key={dept.id}>
                           <TooltipTrigger asChild>
@@ -486,77 +483,111 @@ export default function Home() {
                         </TooltipContent>
                     </Tooltip>
                   </div>
+                  {isSidebarCollapsed && (
+                      <div className="pb-4 mt-auto">
+                        <UserProfileModal role="Student">
+                             <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
+                                <AvatarImage src={user?.photoURL || undefined} />
+                                <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                             </Avatar>
+                        </UserProfileModal>
+                      </div>
+                  )}
                 </div>
 
-                {/* Channel List */}
-                {activeView === 'borrow' ? (
-                    <div className="w-64 flex-col bg-[#141821] p-2">
-                        <button 
-                            onClick={() => setIsLabsOpen(!isLabsOpen)}
-                            className="flex w-full items-center justify-between p-4 font-headline text-lg font-bold border-b border-border/50 group"
-                        >
-                            <span>{selectedDepartment?.name}</span>
-                            {isLabsOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />}
-                        </button>
-                        {isLabsOpen && (
-                            <AppSidebar
-                                department={selectedDepartment}
-                                channelsInDept={channelsForSidebar}
-                                selectedChannelId={selectedChannelId}
-                                onChannelSelect={handleChannelSelect}
-                            />
+                {/* SIDEBAR CONTENT - COLLAPSIBLE */}
+                <div 
+                    className={cn(
+                        "flex flex-col bg-[#141821] transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full",
+                        isSidebarCollapsed ? "w-0 opacity-0" : "w-64 opacity-100"
+                    )}
+                >
+                    <div className="w-64 flex flex-col h-full">
+                        {activeView === 'borrow' ? (
+                            <div className="flex flex-col h-full">
+                                <button 
+                                    onClick={() => setIsLabsOpen(!isLabsOpen)}
+                                    className="flex w-full items-center justify-between p-4 font-headline text-lg font-bold border-b border-border/50 group text-white"
+                                >
+                                    <span className="truncate">{selectedDepartment?.name}</span>
+                                    {isLabsOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />}
+                                </button>
+                                {isLabsOpen && (
+                                    <div className="flex-1 overflow-y-auto">
+                                        <AppSidebar
+                                            department={selectedDepartment}
+                                            channelsInDept={channelsForSidebar}
+                                            selectedChannelId={selectedChannelId}
+                                            onChannelSelect={handleChannelSelect}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex flex-col h-full">
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 text-white">
+                                    My Activity
+                                </div>
+                                 <div className="flex-1 py-4 overflow-y-auto">
+                                    <h2 className="mb-2 px-4 text-xs font-bold tracking-widest text-muted-foreground uppercase">
+                                        CATEGORIES
+                                    </h2>
+                                    <ul className="flex flex-col gap-1 px-2">
+                                        {activityNavItems.map(navItem => (
+                                            <li key={navItem.id}>
+                                                <button
+                                                    onClick={() => setActivitySubView(navItem.id)}
+                                                    className={cn(
+                                                        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                                                        activitySubView === navItem.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                                    )}
+                                                >
+                                                    {React.cloneElement(navItem.icon, { className: 'h-4 w-4' })}
+                                                    <span className="truncate">{navItem.label}</span>
+                                                </button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
                         )}
-                    </div>
-                ) : (
-                    <div className="w-64 flex-col bg-[#141821] p-2">
-                        <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
-                            My Activity
-                        </div>
-                         <div className="flex-1 py-4">
-                            <h2 className="mb-2 px-2 text-sm font-semibold tracking-wider text-muted-foreground uppercase">
-                                CATEGORIES
-                            </h2>
-                            <ul className="flex flex-col gap-1">
-                                {activityNavItems.map(navItem => (
-                                    <li key={navItem.id}>
-                                        <button
-                                            onClick={() => setActivitySubView(navItem.id)}
-                                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${
-                                                activitySubView === navItem.id ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
-                                            }`}
-                                        >
-                                            {React.cloneElement(navItem.icon, { className: 'h-5 w-5' })}
-                                            <span className="truncate">{navItem.label}</span>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="mt-auto border-t border-border/50 bg-[#0e1015]">
+                            <div className="flex items-center justify-between p-2">
+                                <UserProfileModal role="Student">
+                                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                        <Avatar className="h-8 w-8 flex-shrink-0">
+                                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="overflow-hidden">
+                                        <p className="truncate text-sm font-semibold leading-none text-white">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                                        <p className="text-xs text-muted-foreground">Student</p>
+                                        </div>
+                                    </div>
+                                </UserProfileModal>
+                                <UserNav role="Student" />
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* TOGGLE BUTTON */}
+            <button 
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className={cn(
+                    "absolute -right-3 top-12 z-50 h-6 w-6 rounded-full bg-[#141821] border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
+                    isSidebarCollapsed && "bg-[#0e1015]"
                 )}
-            </div>
-            <div className="border-t border-border/50 bg-[#0e1015]">
-              <div className="flex items-center justify-between p-2">
-                  <UserProfileModal role="Student">
-                    <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
-                        <Avatar className="h-8 w-8 flex-shrink-0">
-                            <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
-                        </Avatar>
-                        <div className="overflow-hidden">
-                          <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
-                          <p className="text-xs text-muted-foreground">Student</p>
-                        </div>
-                    </div>
-                  </UserProfileModal>
-                  <UserNav role="Student" />
-              </div>
-            </div>
+                title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+                {isSidebarCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+            </button>
         </div>
         
         {/* Main Content */}
-        <main className="flex-1 flex flex-col">
-          <header className="flex items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm">
+        <main className="flex-1 flex flex-col h-dvh overflow-hidden">
+          <header className="flex h-16 items-center justify-between gap-2 p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
             <div className="flex items-center gap-2">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                   <SheetTrigger asChild>
@@ -568,7 +599,7 @@ export default function Home() {
                   <SheetContent side="left" className="w-[80vw] bg-[#141821] p-0 border-r-0 flex flex-col">
                       <div className="flex flex-col h-full">
                         <div className="flex-1 overflow-y-auto">
-                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">
+                            <div className="p-4 font-headline text-lg font-bold border-b border-border/50 text-white">
                                 Departments
                             </div>
                             <div className="p-2 space-y-1">
@@ -606,7 +637,7 @@ export default function Home() {
                                         <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'S'}</AvatarFallback>
                                     </Avatar>
                                     <div className="overflow-hidden">
-                                      <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Student"}</p>
+                                      <p className="truncate text-sm font-semibold leading-none text-white">{userProfile?.displayName || user?.displayName || "Student"}</p>
                                       <p className="text-xs text-muted-foreground">Student</p>
                                     </div>
                                 </div>
@@ -620,12 +651,12 @@ export default function Home() {
               {activeView === 'borrow' ? (
                 <div className="flex items-center gap-2">
                     <Hash className="text-muted-foreground" />
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{selectedChannel?.name?.replace('#', '') || 'Select a Lab'}</h1>
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate text-white">{selectedChannel?.name?.replace('#', '') || 'Select a Lab'}</h1>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
                     {React.cloneElement(activityNavItems.find(i => i.id === activitySubView)?.icon || <Inbox/>, { className: "text-muted-foreground" })}
-                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">
+                    <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate text-white">
                        {activityNavItems.find(i => i.id === activitySubView)?.label}
                     </h1>
                 </div>
@@ -640,32 +671,36 @@ export default function Home() {
           </header>
           <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
             {activeView === 'borrow' ? (
-                <InventoryGrid 
-                items={items} 
-                onItemSelect={handleItemSelect}
-                selectedItems={selectedItems.map(ci => ci.item)}
-                pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
-                approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
-                />
+                <div className="animate-in fade-in duration-500">
+                    <InventoryGrid 
+                    items={items} 
+                    onItemSelect={handleItemSelect}
+                    selectedItems={selectedItems.map(ci => ci.item)}
+                    pendingRequestedItemNames={Array.from(pendingRequestedItemNames)} 
+                    approvedForBorrowItemNames={Array.from(approvedForBorrowItemNames)}
+                    />
+                </div>
             ) : (
-                <StudentActivity 
-                    borrowHistory={studentBorrowHistory} 
-                    onReturn={handleInitiateReturn} 
-                    view={activitySubView}
-                    onCancelReservation={handleCancelReservation}
-                    onClaimReservation={(reservationId) => {
-                        const payload = {
-                            t: 'res-claim',
-                            rId: reservationId
-                        };
-                        setClaimQrPayload(JSON.stringify(payload));
-                    }}
-                />
+                <div className="animate-in slide-in-from-bottom-4 duration-500">
+                    <StudentActivity 
+                        borrowHistory={studentBorrowHistory} 
+                        onReturn={handleInitiateReturn} 
+                        view={activitySubView}
+                        onCancelReservation={handleCancelReservation}
+                        onClaimReservation={(reservationId) => {
+                            const payload = {
+                                t: 'res-claim',
+                                rId: reservationId
+                            };
+                            setClaimQrPayload(JSON.stringify(payload));
+                        }}
+                    />
+                </div>
             )}
           </div>
         </main>
         
-        {/* Cart - now responsive */}
+        {/* Cart - responsive */}
         {activeView === 'borrow' && (
             <CheckoutFlow
             key={selectedChannelId}
@@ -689,7 +724,7 @@ export default function Home() {
         <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
+                    <DialogTitle className="font-headline flex items-center gap-2 text-white"><QrCode/> Return QR Code for {itemsToReturn.length} item(s)</DialogTitle>
                     <DialogDescription>Present this QR code to lab staff to process your return. This dialog will close automatically after scanning.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
@@ -713,7 +748,7 @@ export default function Home() {
         <Dialog open={!!claimQrPayload} onOpenChange={(open) => !open && setClaimQrPayload(null)}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="font-headline flex items-center gap-2"><QrCode/> Reservation Claim QR Code</DialogTitle>
+                    <DialogTitle className="font-headline flex items-center gap-2 text-white"><QrCode/> Reservation Claim QR Code</DialogTitle>
                     <DialogDescription>Present this QR code to lab staff to claim your reserved items.</DialogDescription>
                 </DialogHeader>
                 <div className="flex justify-center py-4">
@@ -736,3 +771,4 @@ export default function Home() {
     </TooltipProvider>
   )
 }
+

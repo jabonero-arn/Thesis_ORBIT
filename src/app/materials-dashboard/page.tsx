@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight, MapPin, AlertCircle, Clock
+    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight, ChevronLeft, MapPin, AlertCircle, Clock
 } from "lucide-react"
 import {
   Card,
@@ -48,6 +48,8 @@ export default function PropertyCustodianDashboardPage() {
     const { toast } = useToast();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+    
     const userProfileRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [firestore, user]);
     const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
     
@@ -152,7 +154,7 @@ export default function PropertyCustodianDashboardPage() {
                 const borrowedItemsCount = dashboardHistory.filter(h => h.status === 'Active').length;
                 const reservedItemsCount = dashboardHistory.filter(h => h.status === 'Reserved').length;
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Item Types</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemTypes}</div></CardContent></Card>
                             <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Stock Quantity</CardTitle><PackageOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalStock}</div></CardContent></Card>
@@ -163,13 +165,13 @@ export default function PropertyCustodianDashboardPage() {
                 );
             case 'add-materials':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
                         <AddMaterialsForm onSubmissionSuccess={() => setActiveView('outgoing-items')} />
                     </div>
                 );
             case 'outgoing-items':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader>
                                 <div className="flex items-center gap-3">
@@ -226,7 +228,7 @@ export default function PropertyCustodianDashboardPage() {
                 ];
 
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80 backdrop-blur-sm border-border/50">
                             <CardHeader>
                                 <div className="flex items-center gap-3">
@@ -326,22 +328,20 @@ export default function PropertyCustodianDashboardPage() {
                   <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView(item.id as any); setIsMobileMenuOpen(false); }}>{item.icon} {item.label}</Button>
                 ))}
             </div>
-            {activeView === 'dashboard' && (
-                <div className="p-2">
-                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
-                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
-                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
-                    </button>
-                    {isLabsOpen && (
-                        <ul className="flex flex-col gap-1">
-                            <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                            {departments?.map(dept => (
-                                <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            )}
+            <div className="p-2">
+                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
+                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
+                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                </button>
+                {isLabsOpen && (
+                    <ul className="flex flex-col gap-1">
+                        <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
+                        {departments?.map(dept => (
+                            <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
+                        ))}
+                    </ul>
+                )}
+            </div>
           </div>
           <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
       </div>
@@ -355,70 +355,118 @@ export default function PropertyCustodianDashboardPage() {
         <TooltipProvider>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
-                <div className="hidden md:flex flex-col bg-[#141821] border-r border-border/50">
-                    <div className="flex flex-1">
-                        {/* Only show the icon rail on the main dashboard view */}
-                        {activeView === 'dashboard' && (
-                            <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 animate-in slide-in-from-left duration-300">
-                                <div className="p-2 mb-2"><Logo /></div>
-                                <div className="flex flex-col items-center gap-2 w-full">
-                                    {navItems.map(item => (
-                                        <Tooltip key={item.id}><TooltipTrigger asChild>
-                                            <Button variant={activeView === item.id ? 'secondary' : 'ghost'} size="icon" className="h-12 w-12 rounded-lg" onClick={() => setActiveView(item.id as any)}>{item.icon}</Button>
-                                        </TooltipTrigger><TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent></Tooltip>
-                                    ))}
-                                </div>
+                {/* PERSISTENT SIDEBAR WRAPPER */}
+                <div className={cn(
+                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0",
+                    isSidebarCollapsed ? "w-[72px]" : "w-[320px]"
+                )}>
+                    <div className="flex flex-1 overflow-hidden h-full">
+                        {/* RAIL - ALWAYS VISIBLE */}
+                        <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 shrink-0 z-20 w-[72px] border-r border-border/50">
+                            <div className="p-2 mb-2"><Logo /></div>
+                            <div className="flex-1 flex flex-col items-center gap-2 w-full">
+                                {navItems.map(item => (
+                                    <Tooltip key={item.id}>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant={activeView === item.id ? 'secondary' : 'ghost'} 
+                                                size="icon" 
+                                                className="h-12 w-12 rounded-lg" 
+                                                onClick={() => setActiveView(item.id as any)}
+                                            >
+                                                {item.icon}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
+                                    </Tooltip>
+                                ))}
                             </div>
-                        )}
-                        
-                        <div className="w-64 flex-col bg-[#141821] p-2">
-                            {/* Brand header for sub-views */}
-                            {activeView !== 'dashboard' && (
-                                <div className="p-4 flex items-center justify-center border-b border-border/50 mb-4 animate-in fade-in duration-500">
-                                    <Logo />
+                            {/* Avatar at bottom of rail when collapsed */}
+                            {isSidebarCollapsed && (
+                                <div className="pb-4 mt-auto">
+                                    <UserProfileModal role="Property Custodian">
+                                         <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
+                                            <AvatarImage src={user?.photoURL || undefined} />
+                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                         </Avatar>
+                                    </UserProfileModal>
                                 </div>
                             )}
-
-                             <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter">System Console</div>
-                            <div className="py-4 space-y-4">
-                                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
-                                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
-                                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
-                                </button>
-                                {isLabsOpen && (
-                                    <ul className="flex flex-col gap-1">
-                                        <li><button onClick={() => setDashboardSubView('overall')} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                                        {departments?.map(dept => (
-                                            <li key={dept.id}><button onClick={() => setDashboardSubView(dept.prefix)} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                                        ))}
-                                    </ul>
-                                )}
+                        </div>
+                        
+                        {/* SIDEBAR - COLLAPSIBLE SECTION */}
+                        <div 
+                            className={cn(
+                                "flex flex-col bg-[#141821] transition-all duration-300 ease-in-out overflow-hidden shrink-0 h-full",
+                                isSidebarCollapsed ? "w-0 opacity-0" : "w-64 opacity-100"
+                            )}
+                        >
+                            <div className="w-64 flex flex-col h-full">
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter whitespace-nowrap">System Console</div>
+                                <div className="flex-1 py-4 space-y-4 overflow-y-auto scrollbar-none">
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-4 mb-2 group">
+                                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
+                                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                    </button>
+                                    {isLabsOpen && (
+                                        <ul className="flex flex-col gap-1 px-2">
+                                            <li>
+                                                <button onClick={() => setDashboardSubView('overall')} className={cn(
+                                                    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                                                    dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                                )}>
+                                                    <LayoutGrid className="h-4 w-4" />Overall
+                                                </button>
+                                            </li>
+                                            {departments?.map(dept => (
+                                                <li key={dept.id}>
+                                                    <button onClick={() => setDashboardSubView(dept.prefix)} className={cn(
+                                                        "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium transition-colors",
+                                                        dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'
+                                                    )}>
+                                                        {React.cloneElement(getDeptIcon(dept.prefix) as React.ReactElement, { className: "h-4 w-4" })}
+                                                        {dept.name}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div className="p-2 border-t border-border/50 bg-[#0e1015]">
+                                    <div className="flex items-center justify-between">
+                                        <UserProfileModal role="Property Custodian">
+                                            <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
+                                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                                    <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
+                                                    <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="overflow-hidden">
+                                                    <p className="truncate text-xs font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Custodian"}</p>
+                                                    <p className="text-[10px] text-muted-foreground truncate">Property Custodian</p>
+                                                </div>
+                                            </div>
+                                        </UserProfileModal>
+                                        <UserNav role="Property Custodian" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                     <div className={cn(
-                        "p-2 border-t border-border/50",
-                        activeView === 'dashboard' ? "bg-[#0e1015]" : "bg-[#141821]"
-                    )}>
-                        <div className="flex items-center justify-between">
-                            <UserProfileModal role="Property Custodian">
-                                <div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent">
-                                    <Avatar className="h-8 w-8 flex-shrink-0">
-                                        <AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} />
-                                        <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="overflow-hidden">
-                                        <p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p>
-                                        <p className="text-xs text-muted-foreground">Property Custodian</p>
-                                    </div>
-                                </div>
-                            </UserProfileModal>
-                            <UserNav role="Property Custodian" />
-                        </div>
-                    </div>
+
+                    {/* TOGGLE BUTTON */}
+                    <button 
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className={cn(
+                            "absolute -right-3 top-12 z-50 h-6 w-6 rounded-full bg-[#141821] border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
+                            isSidebarCollapsed && "bg-[#0e1015]"
+                        )}
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isSidebarCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                    </button>
                 </div>
 
-                <main className="flex-1 flex flex-col h-dvh">
+                <main className="flex-1 flex flex-col h-dvh overflow-hidden">
                     <header className="flex h-16 items-center justify-between p-4 border-b border-border/50 shadow-sm bg-[#1e2430]/80 backdrop-blur-sm sticky top-0 z-30">
                         <div className="flex items-center gap-4">
                             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
@@ -442,3 +490,4 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
+
