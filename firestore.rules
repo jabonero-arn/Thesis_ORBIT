@@ -12,16 +12,32 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    // Robust Supervisor check: Checks both role flag and user profile
     function isSupervisor() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid))
+        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Supervisor' || 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Head Supervisor'))
       );
     }
+
+    // Robust Teacher check: Checks both role flag and user profile
     function isTeacher() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Teacher')
+      );
     }
+
     function isPropertyCustodian() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Property Custodian')
+      );
     }
 
     // --------------------------------------------------------------------------------
@@ -105,10 +121,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules for Borrowing Transactions:
-      // 1. Supervisors can update any transaction.
-      // 2. Students can update their own transactions (e.g., for cancellations).
-      // 3. Teachers can approve/deny transactions specifically assigned to them (teacherId matches UID).
-      // Redploy Trigger: Verification of field name 'teacherId'.
+      // Redploy Trigger: Robust role check integration.
       allow update, delete: if isSupervisor() 
         || resource.data.borrowerUserId == request.auth.uid
         || (isTeacher() && resource.data.teacherId == request.auth.uid);

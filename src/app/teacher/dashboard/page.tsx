@@ -101,6 +101,13 @@ export default function TeacherDashboardPage() {
     }
   }, [user, userProfile, isUserLoading, isProfileLoading]);
 
+  React.useEffect(() => {
+    if (userProfile) {
+      console.log('DEBUG: Teacher Profile Loaded:', userProfile);
+      console.log('DEBUG: Teacher Role from Profile:', userProfile.role);
+    }
+  }, [userProfile]);
+
   const teacherData = React.useMemo(() => {
       if (!user) return null;
       return {
@@ -204,7 +211,8 @@ export default function TeacherDashboardPage() {
       console.log('DEBUG: Document ID:', id);
       console.log('DEBUG: Current User (Teacher) UID:', user.uid);
       console.log('DEBUG: Record data before update:', record);
-      console.log('DEBUG: Field name check - teacherId in record:', record.teacherId);
+      console.log('DEBUG: Teacher ID in Record:', record.teacherId);
+      console.log('DEBUG: UID Match:', record.teacherId === user.uid);
       
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const updatePayload = { status: newStatus };
