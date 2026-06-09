@@ -41,6 +41,12 @@ export function StudentItemDetailsDialog({
 }: StudentItemDetailsDialogProps) {
   if (!item) return null
 
+  const categories = React.useMemo(() => {
+    if (Array.isArray(item.categories)) return item.categories;
+    if (item.category) return [item.category];
+    return [];
+  }, [item]);
+
   const canAction = item.quantity > 0 && !isPending;
 
   return (
@@ -65,9 +71,15 @@ export function StudentItemDetailsDialog({
           <div className="absolute bottom-4 left-6 right-6">
             <div className="flex flex-col gap-2">
                <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="bg-primary/20 text-primary border-primary/30 uppercase tracking-widest text-[10px] font-bold">
-                        {item.category || "General Equipment"}
-                    </Badge>
+                    {categories.length > 0 ? categories.map(cat => (
+                        <Badge key={cat} variant="secondary" className="bg-primary/20 text-primary border-primary/30 uppercase tracking-widest text-[10px] font-bold">
+                            {cat}
+                        </Badge>
+                    )) : (
+                        <Badge variant="secondary" className="bg-zinc-800 text-zinc-400 uppercase tracking-widest text-[10px] font-bold">
+                            General Equipment
+                        </Badge>
+                    )}
                     {item.status === 'Locked' && (
                          <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-500 uppercase tracking-widest text-[10px] font-bold">
                             <Lock className="h-3 w-3 mr-1" /> restricted
@@ -85,7 +97,7 @@ export function StudentItemDetailsDialog({
             <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-4">
                     <div className="space-y-1">
-                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Specifications</Label>
+                        <LabelText className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Specifications</LabelText>
                         <p className="text-sm text-muted-foreground leading-relaxed">
                             {item.description || "No detailed description provided for this item."}
                         </p>
@@ -106,8 +118,8 @@ export function StudentItemDetailsDialog({
                                 <Tags className="h-4 w-4" />
                             </div>
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Category</span>
-                                <span className="font-semibold">{item.category || "Unassigned"}</span>
+                                <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tight">Primary Type</span>
+                                <span className="font-semibold">{categories[0] || "Unassigned"}</span>
                             </div>
                         </div>
                     </div>
@@ -130,7 +142,7 @@ export function StudentItemDetailsDialog({
                         <Separator className="bg-border/30" />
 
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Current Status</Label>
+                            <LabelText className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Current Status</LabelText>
                             <div className="flex items-center gap-2">
                                 {isPending ? (
                                     <Badge variant="outline" className="w-full justify-center py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-500">
@@ -182,6 +194,6 @@ export function StudentItemDetailsDialog({
   )
 }
 
-function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+function LabelText({ children, className }: { children: React.ReactNode, className?: string }) {
     return <span className={cn("block text-sm font-medium text-white/90", className)}>{children}</span>
 }

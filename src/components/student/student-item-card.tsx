@@ -42,6 +42,12 @@ export function StudentItemCard({
     }
   };
 
+  const categories = React.useMemo(() => {
+    if (Array.isArray(item.categories)) return item.categories;
+    if (item.category) return [item.category];
+    return [];
+  }, [item]);
+
   const showPending = isPending && !isApproved;
 
   return (
@@ -114,8 +120,8 @@ export function StudentItemCard({
             <h3 className="font-bold text-base leading-tight text-white group-hover:text-primary transition-colors line-clamp-1" title={item.name}>
                 {item.name}
             </h3>
-            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                <Tags className="h-3 w-3" /> {item.category || "Uncategorized"}
+            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider line-clamp-1">
+                <Tags className="h-3 w-3 shrink-0" /> {categories.length > 0 ? categories.join(', ') : "Uncategorized"}
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                 <MapPin className="h-3 w-3" /> {locationName || "General Storage"}

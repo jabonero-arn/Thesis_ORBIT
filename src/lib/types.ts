@@ -20,7 +20,8 @@ export type ItemStatus = "Available" | "Locked" | "Borrowed" | "Pending Receipt"
 export type InventoryItem = {
   id: string;
   name: string;
-  category?: string;
+  category?: string; // Legacy support
+  categories?: string[]; // Multi-category support
   description?: string;
   departmentId?: string;
   channelId?: string;

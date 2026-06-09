@@ -38,6 +38,8 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { StudentItemDetailsDialog } from "@/components/student/student-item-details-dialog"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { QrCode } from "lucide-react"
 
 type StudentView = 'overview' | 'borrow' | 'activity';
 
@@ -81,7 +83,11 @@ export default function StudentDashboardPage() {
   const availableCategories = React.useMemo(() => {
     const categories = new Set<string>();
     allItems.forEach(item => {
-        if (item.category) categories.add(item.category);
+        if (Array.isArray(item.categories)) {
+            item.categories.forEach(c => categories.add(c));
+        } else if (item.category) {
+            categories.add(item.category);
+        }
     });
     return Array.from(categories).sort();
   }, [allItems]);
@@ -138,7 +144,7 @@ export default function StudentDashboardPage() {
 
   const filteredItems = React.useMemo(() => {
     let list = allItems.filter(item => 
-        (selectedView === 'borrow' ? item.channelId === selectedChannelId : true) &&
+        (activeView === 'borrow' ? item.channelId === selectedChannelId : true) &&
         item.isVisibleToStudents !== false
     );
 
@@ -152,7 +158,10 @@ export default function StudentDashboardPage() {
     }
 
     if (categoryFilter !== 'all') {
-        list = list.filter(item => item.category === categoryFilter);
+        list = list.filter(item => {
+            const cats = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
+            return cats.includes(categoryFilter);
+        });
     }
 
     if (showAvailableOnly) {
@@ -379,17 +388,6 @@ export default function StudentDashboardPage() {
     if (!selectedDepartmentId) return [];
     return channels.filter(c => c.departmentId === selectedDepartmentId);
   }, [selectedDepartmentId, channels]);
-
-  const navItems = [
-    { id: 'overview' as StudentView, label: 'Dashboard Home', icon: <Logo className="h-5 w-5" /> },
-    ...studentDepartments.map(dept => ({ 
-        id: 'borrow' as StudentView, 
-        deptId: dept.id, 
-        label: dept.name, 
-        icon: getDeptIcon(dept.prefix) 
-    })),
-    { id: 'activity' as StudentView, label: 'My Activity', icon: <Inbox /> },
-  ];
 
   if (isUserLoading || isProfileLoading || !user) {
     return (

@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock, Filter, Tags
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock, Filter, Tags, Plus
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -54,6 +54,7 @@ import { EditUserRoleDialog } from "@/components/primary-custodian/edit-user-rol
 import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
+import { Checkbox } from "@/components/ui/checkbox"
 
 type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged' | 'accessRequests' | 'users' | 'platformLogs';
 
@@ -67,6 +68,13 @@ const PREDEFINED_CATEGORIES = [
 ];
 
 const LOW_STOCK_THRESHOLD = 5;
+
+// Helper to safely get categories from an item
+const getItemCategories = (item: InventoryItem): string[] => {
+    if (Array.isArray(item.categories)) return item.categories;
+    if (item.category) return [item.category];
+    return [];
+}
 
 export default function SupervisorDashboardPage() {
     const router = useRouter()
@@ -110,7 +118,7 @@ export default function SupervisorDashboardPage() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
-    const [formCategoryMode, setFormCategoryMode] = React.useState<'select' | 'custom'>('select');
+    const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
     const [customCategoryInput, setCustomCategoryInput] = React.useState('');
 
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
@@ -129,15 +137,15 @@ export default function SupervisorDashboardPage() {
     }, [items, assignedDepartmentId]);
 
     const availableCategories = React.useMemo(() => {
-        const uniqueInDb = Array.from(new Set(items.map(i => i.category).filter(Boolean))) as string[];
+        const uniqueInDb = Array.from(new Set(items.flatMap(i => getItemCategories(i)))) as string[];
         const combined = Array.from(new Set([...PREDEFINED_CATEGORIES, ...uniqueInDb]));
         return combined.sort();
     }, [items]);
 
     const filteredInventoryItems = React.useMemo(() => {
         if (categoryFilter === 'all') return departmentItems;
-        if (categoryFilter === 'uncategorized') return departmentItems.filter(i => !i.category);
-        return departmentItems.filter(i => i.category === categoryFilter);
+        if (categoryFilter === 'uncategorized') return departmentItems.filter(i => getItemCategories(i).length === 0);
+        return departmentItems.filter(i => getItemCategories(i).includes(categoryFilter));
     }, [departmentItems, categoryFilter]);
 
     const departmentHistory = React.useMemo(() => {
@@ -189,16 +197,6 @@ export default function SupervisorDashboardPage() {
         if (!firestore || !editingItem) return;
         const formData = new FormData(event.currentTarget);
         
-        let finalCategory = formData.get("category") as string;
-        if (finalCategory === 'none') finalCategory = "";
-
-        if (formCategoryMode === 'custom' && customCategoryInput.trim()) {
-            finalCategory = customCategoryInput.trim()
-                .split(' ')
-                .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-                .join(' ');
-        }
-
         let finalChannelId = formData.get("channelId") as string;
         if (finalChannelId === 'unassigned') finalChannelId = "";
 
@@ -207,7 +205,7 @@ export default function SupervisorDashboardPage() {
             description: formData.get("description") as string,
             channelId: finalChannelId,
             status: formData.get("status") as ItemStatus,
-            category: finalCategory,
+            categories: selectedCategories,
         };
 
         try {
@@ -221,10 +219,28 @@ export default function SupervisorDashboardPage() {
         }
     }
 
+    const toggleCategory = (cat: string) => {
+        setSelectedCategories(prev => 
+            prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+        );
+    }
+
+    const addCustomCategory = () => {
+        const cat = customCategoryInput.trim()
+            .split(' ')
+            .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+            .join(' ');
+        
+        if (cat && !selectedCategories.includes(cat)) {
+            setSelectedCategories(prev => [...prev, cat]);
+            setCustomCategoryInput('');
+        }
+    }
+
     const closeForm = () => {
         setEditingItem(null);
         setIsFormOpen(false);
-        setFormCategoryMode('select');
+        setSelectedCategories([]);
         setCustomCategoryInput('');
     }
 
@@ -302,14 +318,20 @@ export default function SupervisorDashboardPage() {
             case 'scanner': return <div className="animate-in fade-in duration-500"><QrScannerView /></div>;
             case 'dashboard': {
                  const totalItems = departmentItems.length;
-                 const uncategorizedItems = departmentItems.filter(i => !i.category);
+                 const uncategorizedItems = departmentItems.filter(i => getItemCategories(i).length === 0);
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
                  const activeHistory = departmentHistory.filter(h => h.status === 'Active');
                  const borrowedCount = activeHistory.length;
                  
                  const categoryCounts = departmentItems.reduce((acc, item) => {
-                    const cat = item.category || 'Uncategorized';
-                    acc[cat] = (acc[cat] || 0) + 1;
+                    const cats = getItemCategories(item);
+                    if (cats.length === 0) {
+                        acc['Uncategorized'] = (acc['Uncategorized'] || 0) + 1;
+                    } else {
+                        cats.forEach(cat => {
+                            acc[cat] = (acc[cat] || 0) + 1;
+                        });
+                    }
                     return acc;
                  }, {} as Record<string, number>);
 
@@ -325,7 +347,7 @@ export default function SupervisorDashboardPage() {
 
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItems}</div></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Unique Categories</CardTitle><Tags className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{Object.keys(categoryCounts).length}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Categories</CardTitle><Tags className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{Object.keys(categoryCounts).length}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available Stock</CardTitle><PackageOpen className="h-4 w-4 text-blue-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
                         </div>
@@ -353,13 +375,13 @@ export default function SupervisorDashboardPage() {
                                                 <AlertTriangle className="h-5 w-5 text-amber-500" />
                                                 <CardTitle className="text-lg font-headline">Pending Categorization</CardTitle>
                                             </div>
-                                            <CardDescription>These items require a category assignment for better tracking.</CardDescription>
+                                            <CardDescription>These items require classification for better tracking.</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-2">
                                             {uncategorizedItems.slice(0, 5).map(item => (
                                                 <div key={item.id} className="flex items-center justify-between p-2 rounded bg-black/20 border border-amber-500/10">
                                                     <span className="text-sm">{item.name}</span>
-                                                    <Button size="sm" variant="ghost" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}>Classify</Button>
+                                                    <Button size="sm" variant="ghost" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}>Classify</Button>
                                                 </div>
                                             ))}
                                             <Button variant="link" className="w-full text-xs text-amber-500 h-auto p-0 pt-2" onClick={() => { setCategoryFilter('uncategorized'); setActiveView('inventory'); }}>View all uncategorized items</Button>
@@ -419,7 +441,7 @@ export default function SupervisorDashboardPage() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div>
                                 <h2 className="text-2xl font-bold font-headline text-white">Inventory Management</h2>
-                                <p className="text-muted-foreground">Categorize and manage your laboratory equipment.</p>
+                                <p className="text-muted-foreground">Manage and classify your laboratory assets.</p>
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2 bg-card/40 border border-border/50 px-3 py-1.5 rounded-md">
@@ -448,7 +470,7 @@ export default function SupervisorDashboardPage() {
                                     <TableHeader className="bg-black/20 sticky top-0 z-10">
                                         <TableRow>
                                             <TableHead className="whitespace-nowrap">Name</TableHead>
-                                            <TableHead className="whitespace-nowrap">Category</TableHead>
+                                            <TableHead className="whitespace-nowrap">Categories</TableHead>
                                             <TableHead className="whitespace-nowrap">Lab / Room</TableHead>
                                             <TableHead className="whitespace-nowrap">Qty</TableHead>
                                             <TableHead className="whitespace-nowrap">Status</TableHead>
@@ -460,15 +482,17 @@ export default function SupervisorDashboardPage() {
                                             <TableRow key={item.id} className="hover:bg-white/[0.02] transition-colors border-border/40">
                                                 <TableCell className="font-medium whitespace-nowrap text-white">{item.name}</TableCell>
                                                 <TableCell className="whitespace-nowrap">
-                                                    {item.category ? (
-                                                        <Badge variant="outline" className="font-normal border-primary/20 bg-primary/5 text-primary-foreground/90">
-                                                            {item.category}
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
-                                                            <AlertTriangle className="h-3 w-3" /> Uncategorized
-                                                        </span>
-                                                    )}
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {getItemCategories(item).length > 0 ? getItemCategories(item).map(cat => (
+                                                            <Badge key={cat} variant="outline" className="font-normal border-primary/20 bg-primary/5 text-primary-foreground/90 py-0 h-5">
+                                                                {cat}
+                                                            </Badge>
+                                                        )) : (
+                                                            <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
+                                                                <AlertTriangle className="h-3 w-3" /> Uncategorized
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell className="whitespace-nowrap text-muted-foreground">
                                                     {channels.find(c=>c.id===item.channelId)?.name.replace('#','') || <span className="italic opacity-50">Unassigned</span>}
@@ -488,7 +512,7 @@ export default function SupervisorDashboardPage() {
                                                             </Tooltip>
                                                         </TooltipProvider>
                                                     )}
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                                     <AlertDialog>
                                                         <AlertDialogTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button>
@@ -532,7 +556,7 @@ export default function SupervisorDashboardPage() {
                             <CardHeader><CardTitle className="text-white">Complete Transaction History</CardTitle></CardHeader>
                             <CardContent className="p-0 max-h-[75vh] overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Final Status</TableHead><TableHead className="text-right">Transaction Date</TableHead></TableRow></TableHeader>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student</TableHead> <TableHead>Item</TableHead><TableHead>Final Status</TableHead><TableHead className="text-right">Transaction Date</TableHead></TableRow></TableHeader>
                                     <TableBody>{departmentHistory.map(h => (<TableRow key={h.id} className="border-border/40 hover:bg-white/[0.01]"><TableCell className="text-white font-medium">{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell><Badge variant="outline" className="border-primary/20 text-primary-foreground/70">{h.status}</Badge></TableCell><TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(h.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
                                 </Table>
                             </CardContent>
@@ -592,16 +616,17 @@ export default function SupervisorDashboardPage() {
                             <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
                                     <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead> <TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                                    <TableBody>{pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
-                                        <TableRow key={req.id} className="border-border/40">
-                                            <TableCell className="text-white font-medium">{req.studentName}</TableCell>
-                                            <TableCell className="text-muted-foreground">{req.departmentName}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')} className="h-8 bg-emerald-600 hover:bg-emerald-700">Approve</Button>
-                                                <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')} className="h-8">Deny</Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">No pending access requests.</TableCell></TableRow>}
+                                    <TableBody>
+                                        {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
+                                            <TableRow key={req.id} className="border-border/40">
+                                                <TableCell className="text-white font-medium">{req.studentName}</TableCell>
+                                                <TableCell className="text-muted-foreground">{req.departmentName}</TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')} className="h-8 bg-emerald-600 hover:bg-emerald-700">Approve</Button>
+                                                    <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')} className="h-8">Deny</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">No pending access requests.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -626,7 +651,7 @@ export default function SupervisorDashboardPage() {
                                             <TableCell className="text-xs text-muted-foreground font-mono">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'Pending Initial Verification'}</TableCell>
                                             <TableCell className="text-right whitespace-nowrap">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}><RotateCcw className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
                                             </TableCell>
                                         </TableRow>
                                     )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">All department equipment is currently verified and functioning.</TableCell></TableRow>}
@@ -803,60 +828,44 @@ export default function SupervisorDashboardPage() {
                 </Dialog>
 
                 <Dialog open={isFormOpen} onOpenChange={closeForm}>
-                    <DialogContent className="bg-card border-border max-w-md">
+                    <DialogContent className="bg-card border-border max-w-lg">
                         <DialogHeader>
                             <DialogTitle className="text-white">Edit Inventory Item</DialogTitle>
-                            <DialogDescription>Modify details and classification for laboratory assets.</DialogDescription>
+                            <DialogDescription>Modify details and multi-category classification for laboratory assets.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label className="text-muted-foreground">Item Name</Label><Input name="name" defaultValue={editingItem?.name} required className="bg-black/20 border-border text-white" /></div>
                             
-                            <div className="grid gap-2">
-                                <Label className="text-muted-foreground">Inventory Classification (Category)</Label>
-                                <div className="space-y-3">
-                                    <RadioGroup 
-                                        value={formCategoryMode} 
-                                        onValueChange={(v) => setFormCategoryMode(v as 'select' | 'custom')}
-                                        className="flex gap-4 mb-2"
-                                    >
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="select" id="mode-select" />
-                                            <Label htmlFor="mode-select" className="text-xs text-white">Choose Existing</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="custom" id="mode-custom" />
-                                            <Label htmlFor="mode-custom" className="text-xs text-white">Create New</Label>
-                                        </div>
-                                    </RadioGroup>
-
-                                    {formCategoryMode === 'select' ? (
-                                        <Select name="category" defaultValue={editingItem?.category || "none"}>
-                                            <SelectTrigger className="bg-black/20 border-border text-white">
-                                                <SelectValue placeholder="Select a category..." />
-                                            </SelectTrigger>
-                                            <SelectContent className="bg-card border-border">
-                                                <SelectItem value="none">(None / Uncategorized)</SelectItem>
-                                                {availableCategories.map(cat => (
-                                                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <div className="animate-in fade-in zoom-in-95 duration-200">
-                                            <Input 
-                                                value={customCategoryInput}
-                                                onChange={(e) => setCustomCategoryInput(e.target.value)}
-                                                placeholder="Enter new category name..."
-                                                className="bg-black/20 border-primary/30 text-white focus:border-primary"
-                                                autoFocus
+                            <div className="grid gap-3">
+                                <Label className="text-muted-foreground">Inventory Classifications (Categories)</Label>
+                                <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-black/20 border border-border/50">
+                                    {availableCategories.map(cat => (
+                                        <div key={cat} className="flex items-center space-x-2">
+                                            <Checkbox 
+                                                id={`cat-${cat}`} 
+                                                checked={selectedCategories.includes(cat)} 
+                                                onCheckedChange={() => toggleCategory(cat)}
                                             />
-                                            <p className="text-[10px] text-muted-foreground mt-1">E.g., "Robotics Kit", "Networking Gear"</p>
+                                            <Label htmlFor={`cat-${cat}`} className="text-xs cursor-pointer text-white/90">{cat}</Label>
                                         </div>
-                                    )}
+                                    ))}
                                 </div>
+                                <div className="flex gap-2 mt-2">
+                                    <Input 
+                                        value={customCategoryInput}
+                                        onChange={(e) => setCustomCategoryInput(e.target.value)}
+                                        placeholder="New custom category..."
+                                        className="bg-black/20 border-border h-8 text-xs"
+                                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomCategory())}
+                                    />
+                                    <Button type="button" variant="secondary" size="sm" className="h-8 px-3" onClick={addCustomCategory}>
+                                        <Plus className="h-3 w-3 mr-1" /> Add
+                                    </Button>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">Items can belong to multiple categories simultaneously.</p>
                             </div>
 
-                            <div className="grid gap-2"><Label className="text-muted-foreground">Description</Label><Textarea name="description" defaultValue={editingItem?.description} className="bg-black/20 border-border text-white min-h-[100px]" /></div>
+                            <div className="grid gap-2"><Label className="text-muted-foreground">Description</Label><Textarea name="description" defaultValue={editingItem?.description} className="bg-black/20 border-border text-white min-h-[80px]" /></div>
                             
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
@@ -888,7 +897,7 @@ export default function SupervisorDashboardPage() {
                             </div>
                             <DialogFooter className="mt-4 pt-4 border-t border-border/40">
                                 <Button type="button" variant="ghost" onClick={closeForm} className="text-white">Cancel</Button>
-                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white px-8">Save Inventory Record</Button>
+                                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white px-8">Save Record</Button>
                             </DialogFooter>
                         </form>
                     </DialogContent>
