@@ -198,21 +198,16 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      // High-Verbosity Diagnostic Logging for debugging Update Failed issue
+      // Diagnostic Logging
       console.log('DEBUG: Teacher Approval Action Initiated');
-      console.log('DEBUG: Target Collection: borrowing_transactions');
-      console.log('DEBUG: Document ID:', id);
       console.log('DEBUG: Auth Context - Current User UID:', user.uid);
-      console.log('DEBUG: Auth Context - User Role (State):', userProfile?.role);
       console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);
       console.log('DEBUG: UID Comparison Match:', record.teacherId === user.uid);
       
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const updatePayload = { status: newStatus };
       
-      console.log('DEBUG: Attempting non-blocking update with payload:', updatePayload);
-
-      // Perform update without awaiting to follow performance guidelines
+      // Perform non-blocking update
       updateDoc(docRef, updatePayload)
         .then(() => {
           console.log(`DEBUG: Success! Document ${id} status updated to ${newStatus}`);

@@ -9,11 +9,12 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
+    
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Prioritizes role flag collection
+    // Robust Supervisor check: Prioritizes role flag collections
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
@@ -53,7 +54,7 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Facility & Inventory Rules (Public for Authenticated Users)
+    // Facility & Inventory Rules
     // --------------------------------------------------------------------------------
     match /departments/{departmentId} {
       allow get, list: if isSignedIn();
@@ -102,7 +103,7 @@ service cloud.firestore {
     // --------------------------------------------------------------------------------
     match /channel_access_requests/{requestId} {
         allow create: if isTeacher();
-        allow get, list: if isSignedIn(); // Gated by logic in dashboard
+        allow get, list: if isSignedIn();
         allow update: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
         allow delete: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
@@ -121,9 +122,15 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules for Borrowing Transactions:
-      // Redploy Trigger: Breaking circular dependencies by prioritizing exists() on roles.
-      allow update, delete: if isSupervisor() 
+      // Update rules: Direct verification for Teachers and Supervisors
+      // Redeploy Trigger: Version 1.0.5 - Improved role helper resilience
+      allow update: if isSignedIn() && (
+        isSupervisor() || 
+        resource.data.borrowerUserId == request.auth.uid || 
+        (resource.data.teacherId == request.auth.uid && isTeacher())
+      );
+      
+      allow delete: if isSupervisor() 
         || resource.data.borrowerUserId == request.auth.uid
         || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
