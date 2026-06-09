@@ -8,7 +8,7 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -282,63 +282,261 @@ export default function SupervisorDashboardPage() {
             case 'dashboard':
                  const totalItemTypes = departmentItems.length;
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
-                 const borrowedCount = departmentHistory.filter(h => h.status === 'Active').length;
+                 const activeHistory = departmentHistory.filter(h => h.status === 'Active');
+                 const borrowedCount = activeHistory.length;
                  const reservedCount = departmentHistory.filter(h => h.status === 'Reserved').length;
+                 
+                 const pendingVerifications = departmentItems.filter(i => i.status === 'Pending Receipt').slice(0, 5);
+                 const recentActivity = activityLogs.slice(0, 5);
+                 const urgentAccess = [...pendingAccessRequests, ...pendingStudentRequests].slice(0, 5);
+
                 return (
                      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
                         <div className="flex flex-col gap-1">
-                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">Welcome back, {userProfile?.displayName || 'Supervisor'}</h2>
-                            <p className="text-muted-foreground">System status for {assignedDepartment?.name || 'All Labs'} is operational.</p>
+                            <h2 className="text-3xl font-bold font-headline tracking-tight text-white">Operational Overview</h2>
+                            <p className="text-muted-foreground">Welcome back, {userProfile?.displayName || 'Supervisor'}. Here is the status of {assignedDepartment?.name || 'All Labs'}.</p>
                         </div>
 
+                        {/* Summary Metrics */}
                         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Unique Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItemTypes}</div><p className="text-xs text-muted-foreground mt-1">Cataloged in inventory</p></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Stock</CardTitle><PackageOpen className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div><p className="text-xs text-muted-foreground mt-1">Available physical units</p></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div><p className="text-xs text-muted-foreground mt-1">Currently checked out</p></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Reserved</CardTitle><Hourglass className="h-4 w-4 text-amber-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{reservedCount}</div><p className="text-xs text-muted-foreground mt-1">Pending pick-up today</p></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Global Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItemTypes}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Stock</CardTitle><PackageOpen className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reserved</CardTitle><Hourglass className="h-4 w-4 text-amber-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{reservedCount}</div></CardContent></Card>
                         </div>
 
-                        <div className="space-y-4">
-                            <h3 className="text-lg font-bold font-headline text-muted-foreground uppercase tracking-widest px-1">Management Hub</h3>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {navItems.filter(i => i.id !== 'dashboard').map(item => (
-                                    <Card 
-                                        key={item.id} 
-                                        className="group hover:border-primary/50 transition-all cursor-pointer bg-card/40 backdrop-blur-sm hover:shadow-lg hover:shadow-primary/5"
-                                        onClick={() => setActiveView(item.id)}
-                                    >
-                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                                            <div className="p-3 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                                {React.cloneElement(item.icon as React.ReactElement, { className: "h-6 w-6" })}
+                        <div className="grid gap-6 md:grid-cols-2">
+                            {/* Actionable Tasks: Verifications & Access */}
+                            <div className="space-y-6">
+                                <Card className="bg-card/40 border-border/50">
+                                    <CardHeader className="flex flex-row items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <ClipboardCheck className="h-5 w-5 text-primary" />
+                                            <CardTitle className="text-lg font-headline">Action Required</CardTitle>
+                                        </div>
+                                        {pendingVerifications.length > 0 && <Badge variant="destructive">{pendingVerifications.length} New</Badge>}
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        {pendingVerifications.length > 0 || urgentAccess.length > 0 ? (
+                                            <div className="space-y-4">
+                                                {pendingVerifications.map(item => (
+                                                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-border/30">
+                                                        <div>
+                                                            <p className="text-sm font-semibold">{item.name}</p>
+                                                            <p className="text-xs text-muted-foreground">Provisioned by Custodian</p>
+                                                        </div>
+                                                        <Button size="sm" variant="ghost" onClick={() => setActiveView('verification')}>Verify <ArrowRight className="ml-1 h-3 w-3" /></Button>
+                                                    </div>
+                                                ))}
+                                                {urgentAccess.map((req: any) => (
+                                                    <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-black/20 border border-border/30">
+                                                        <div>
+                                                            <p className="text-sm font-semibold">{req.studentName || req.teacherName}</p>
+                                                            <p className="text-xs text-muted-foreground">Requesting {req.departmentName || req.channelName}</p>
+                                                        </div>
+                                                        <Button size="sm" variant="ghost" onClick={() => setActiveView('accessRequests')}>Review <ArrowRight className="ml-1 h-3 w-3" /></Button>
+                                                    </div>
+                                                ))}
                                             </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between">
-                                                    <CardTitle className="text-lg font-headline">{item.label}</CardTitle>
-                                                    <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                        ) : (
+                                            <div className="text-center py-6 text-muted-foreground text-sm flex flex-col items-center gap-2">
+                                                <CheckCircle className="h-8 w-8 opacity-20" />
+                                                No pending approvals or verifications.
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="bg-card/40 border-border/50">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <Activity className="h-5 w-5 text-emerald-500" />
+                                            <CardTitle className="text-lg font-headline">Live Transactions</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {activeHistory.length > 0 ? (
+                                            <div className="space-y-3">
+                                                {activeHistory.slice(0, 4).map(h => (
+                                                    <div key={h.id} className="flex items-center gap-3 text-sm">
+                                                        <Avatar className="h-7 w-7"><AvatarFallback className="text-[10px]">{h.studentName.charAt(0)}</AvatarFallback></Avatar>
+                                                        <div className="flex-1 truncate">
+                                                            <span className="font-medium text-white">{h.studentName}</span>
+                                                            <span className="text-muted-foreground mx-1">borrowed</span>
+                                                            <span className="font-medium text-primary">{h.itemName}</span>
+                                                        </div>
+                                                        <span className="text-[10px] text-muted-foreground uppercase">{format(new Date(h.date), 'p')}</span>
+                                                    </div>
+                                                ))}
+                                                <Button variant="link" className="w-full text-xs text-muted-foreground h-auto p-0 pt-2" onClick={() => setActiveView('transactions')}>View all active sessions</Button>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-muted-foreground text-sm italic">No items currently out.</div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            {/* System Status: Logs & Problems */}
+                            <div className="space-y-6">
+                                <Card className="bg-card/40 border-border/50">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <HistoryIcon className="h-5 w-5 text-amber-500" />
+                                            <CardTitle className="text-lg font-headline">Recent System Activity</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-4">
+                                            {recentActivity.length > 0 ? recentActivity.map(log => (
+                                                <div key={log.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-xs font-bold uppercase tracking-wider text-primary">{log.action}</p>
+                                                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock className="h-3 w-3" /> {format(new Date(log.timestamp), 'MMM d, p')}</div>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">{log.details}</p>
+                                                    </div>
                                                 </div>
-                                                <CardDescription className="line-clamp-1">{item.description}</CardDescription>
+                                            )) : (
+                                                <p className="text-center text-sm text-muted-foreground italic">No recent system events.</p>
+                                            )}
+                                        </div>
+                                        {recentActivity.length > 0 && (
+                                            <Button variant="link" className="w-full text-xs text-muted-foreground mt-4 h-auto p-0" onClick={() => setActiveView('platformLogs')}>Open Audit Logs</Button>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="bg-card/40 border-border/50 border-destructive/20">
+                                    <CardHeader>
+                                        <div className="flex items-center gap-2">
+                                            <AlertTriangle className="h-5 w-5 text-destructive" />
+                                            <CardTitle className="text-lg font-headline">Maintenance Issues</CardTitle>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').length > 0 ? (
+                                            <div className="space-y-3">
+                                                {departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').slice(0, 3).map(item => (
+                                                    <div key={item.id} className="flex items-center justify-between p-2 rounded bg-destructive/5 border border-destructive/10">
+                                                        <span className="text-sm text-foreground truncate max-w-[150px]">{item.name}</span>
+                                                        <Badge variant="outline" className={item.status === 'Inaccurate' ? 'text-destructive border-destructive/30' : 'text-amber-500 border-amber-500/30'}>
+                                                            {item.status}
+                                                        </Badge>
+                                                    </div>
+                                                ))}
+                                                <Button variant="link" className="w-full text-xs text-muted-foreground h-auto p-0" onClick={() => setActiveView('damaged')}>Review damaged items</Button>
                                             </div>
-                                        </CardHeader>
-                                    </Card>
-                                ))}
-                                <UserProfileModal role="Supervisor">
-                                    <Card className="group hover:border-primary/50 transition-all cursor-pointer bg-card/40 backdrop-blur-sm border-dashed border-primary/20">
-                                        <CardHeader className="flex flex-row items-center gap-4 space-y-0">
-                                            <div className="p-3 rounded-xl bg-primary/5 text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-all duration-300">
-                                                <UserCircle className="h-6 w-6" />
+                                        ) : (
+                                            <div className="text-center py-4 text-emerald-500 text-sm flex items-center justify-center gap-2">
+                                                <Check className="h-4 w-4" />
+                                                All equipment verified.
                                             </div>
-                                            <div className="flex-1">
-                                                <CardTitle className="text-lg font-headline">My Profile</CardTitle>
-                                                <CardDescription>View settings and access history.</CardDescription>
-                                            </div>
-                                        </CardHeader>
-                                    </Card>
-                                </UserProfileModal>
+                                        )}
+                                    </CardContent>
+                                </Card>
                             </div>
                         </div>
                      </div>
                 );
-            case 'verification':
+             case 'inventory':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80">
+                            <CardHeader className="flex flex-row items-center justify-between">
+                                <div><CardTitle>Manage Inventory</CardTitle><CardDescription>Edit or remove items from all labs.</CardDescription></div>
+                                <Button onClick={() => setIsAddChannelOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                            </CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Name</TableHead><TableHead className="whitespace-nowrap">Lab</TableHead><TableHead className="whitespace-nowrap">Qty</TableHead><TableHead className="whitespace-nowrap">Status</TableHead><TableHead className="text-right whitespace-nowrap">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentItems.map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium whitespace-nowrap">{item.name}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{channels.find(c=>c.id===item.channelId)?.name.replace('#','') || 'Unknown'}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{item.quantity}</TableCell>
+                                            <TableCell className="whitespace-nowrap">{getStatusBadge(item.status)}</TableCell>
+                                            <TableCell className="text-right space-x-2 whitespace-nowrap">
+                                                {item.status === 'Inaccurate' && (
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
+                                                                    <RotateCcw className="h-4 w-4"/>
+                                                                </Button>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent><p>Return to Custodian</p></TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
+                                                )}
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'transactions':
+                return (
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6">
+                        <Card className="bg-card/80"><CardHeader><CardTitle>Active Borrows</CardTitle></CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead className="whitespace-nowrap">Student</TableHead><TableHead className="whitespace-nowrap">Item</TableHead><TableHead className="whitespace-nowrap">Date</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id}><TableCell className="whitespace-nowrap">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'history':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80"><CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
+                            <CardContent className="max-h-[60vh] overflow-auto">
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Date</TableHead></TableRow></TableHeader>
+                                    <TableBody>{departmentHistory.map(h => (<TableRow key={h.id}><TableCell>{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell><Badge variant="outline">{h.status}</Badge></TableCell><TableCell className="text-right text-xs">{format(new Date(h.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'users':
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                        <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>User Directory</CardTitle></div><Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button></CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>{usersToDisplay.map(u => (
+                                    <TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
+                                    <TableCell className="text-right space-x-2">
+                                        <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(u)}><Trash className="h-4 w-4"/></Button>
+                                    </TableCell></TableRow>
+                                ))}</TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                );
+            case 'platformLogs':
+                return (
+                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
+                        <CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
+                        <CardContent className="max-h-[60vh] overflow-auto">
+                            <Table>
+                                <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Time</TableHead></TableRow></TableHeader>
+                                <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell>{log.userName}</TableCell><TableCell><Badge variant="outline">{log.action}</Badge></TableCell><TableCell className="max-w-md truncate">{log.details}</TableCell><TableCell className="text-right text-xs">{format(new Date(log.timestamp), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                );
+             case 'verification':
                 const pendingItems = departmentItems.filter(item => item.status === 'Pending Receipt');
                 return (
                     <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
@@ -392,56 +590,24 @@ export default function SupervisorDashboardPage() {
                         </Card>
                     </div>
                 );
-            case 'inventory':
+            case 'damaged':
                  return (
                     <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div><CardTitle>Inventory List</CardTitle><CardDescription>Edit lab equipment or return items to storage.</CardDescription></div>
-                            <Button onClick={() => setIsAddChannelOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                        <CardHeader>
+                            <CardTitle>Damaged & Problem Equipment</CardTitle>
+                            <CardDescription>Track items reported as inaccurate or pending return to storage.</CardDescription>
                         </CardHeader>
                         <CardContent className="max-h-[60vh] overflow-auto">
                             <Table>
-                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Room</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{departmentItems.map(item => (
-                                    <TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{channels.find(c=>c.id===item.channelId)?.name.replace('#','') || 'None'}</TableCell><TableCell>{item.quantity}</TableCell><TableCell>{getStatusBadge(item.status)}</TableCell>
-                                    <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                        {item.status === 'Inaccurate' && (
-                                            <Button variant="ghost" size="icon" className="text-amber-500" onClick={() => handleReturnToCustodian(item)}><RotateCcw className="h-4 w-4"/></Button>
-                                        )}
+                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Status</TableHead><TableHead>Last Check</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                <TableBody>{departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').map(item => (
+                                    <TableRow key={item.id}><TableCell>{item.name}</TableCell><TableCell>{getStatusBadge(item.status)}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d') : 'N/A'}</TableCell>
+                                    <TableCell className="text-right whitespace-nowrap">
+                                        <Button variant="ghost" size="icon" className="text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}><RotateCcw className="h-4 w-4"/></Button>
                                         <Button variant="ghost" size="icon" onClick={() => { setEditingItem(item); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteItem(item.id)}><Trash className="h-4 w-4"/></Button>
                                     </TableCell></TableRow>
                                 ))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                );
-            case 'users':
-                return (
-                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle>User Directory</CardTitle></div><Button onClick={() => setIsCreateUserOpen(true)}><UserPlus className="mr-2 h-4 w-4" /> New User</Button></CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Role</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{usersToDisplay.map(u => (
-                                    <TableRow key={u.id}><TableCell>{u.displayName}</TableCell><TableCell><Badge variant="secondary">{u.role}</Badge></TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Button variant="ghost" size="icon" onClick={() => { setUserToEdit(u); setIsEditUserRoleOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDeleteUser(u)}><Trash className="h-4 w-4"/></Button>
-                                    </TableCell></TableRow>
-                                ))}</TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                );
-            case 'platformLogs':
-                return (
-                    <Card className="bg-card/80 animate-in slide-in-from-bottom-4 duration-500">
-                        <CardHeader><CardTitle>Platform Audit Logs</CardTitle></CardHeader>
-                        <CardContent className="max-h-[60vh] overflow-auto">
-                            <Table>
-                                <TableHeader><TableRow><TableHead>User</TableHead><TableHead>Action</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Time</TableHead></TableRow></TableHeader>
-                                <TableBody>{activityLogs.map(log => (<TableRow key={log.id}><TableCell>{log.userName}</TableCell><TableCell><Badge variant="outline">{log.action}</Badge></TableCell><TableCell className="max-w-md truncate">{log.details}</TableCell><TableCell className="text-right text-xs">{format(new Date(log.timestamp), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
                             </Table>
                         </CardContent>
                     </Card>
