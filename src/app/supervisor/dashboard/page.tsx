@@ -190,6 +190,8 @@ export default function SupervisorDashboardPage() {
         const formData = new FormData(event.currentTarget);
         
         let finalCategory = formData.get("category") as string;
+        if (finalCategory === 'none') finalCategory = "";
+
         if (formCategoryMode === 'custom' && customCategoryInput.trim()) {
             finalCategory = customCategoryInput.trim()
                 .split(' ')
@@ -197,12 +199,15 @@ export default function SupervisorDashboardPage() {
                 .join(' ');
         }
 
+        let finalChannelId = formData.get("channelId") as string;
+        if (finalChannelId === 'unassigned') finalChannelId = "";
+
         const itemData: Partial<InventoryItem> = {
             name: formData.get("name") as string,
             description: formData.get("description") as string,
-            channelId: formData.get("channelId") as string,
+            channelId: finalChannelId,
             status: formData.get("status") as ItemStatus,
-            category: finalCategory || "",
+            category: finalCategory,
         };
 
         try {
@@ -825,12 +830,12 @@ export default function SupervisorDashboardPage() {
                                     </RadioGroup>
 
                                     {formCategoryMode === 'select' ? (
-                                        <Select name="category" defaultValue={editingItem?.category || ""}>
+                                        <Select name="category" defaultValue={editingItem?.category || "none"}>
                                             <SelectTrigger className="bg-black/20 border-border text-white">
                                                 <SelectValue placeholder="Select a category..." />
                                             </SelectTrigger>
                                             <SelectContent className="bg-card border-border">
-                                                <SelectItem value="">(None / Uncategorized)</SelectItem>
+                                                <SelectItem value="none">(None / Uncategorized)</SelectItem>
                                                 {availableCategories.map(cat => (
                                                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                                                 ))}
@@ -868,12 +873,12 @@ export default function SupervisorDashboardPage() {
                                 </div>
                                 <div className="grid gap-2">
                                     <Label className="text-muted-foreground">Assign to Room</Label>
-                                    <Select name="channelId" defaultValue={editingItem?.channelId || ""}>
+                                    <Select name="channelId" defaultValue={editingItem?.channelId || "unassigned"}>
                                         <SelectTrigger className="bg-black/20 border-border text-white">
                                             <SelectValue placeholder="Unassigned" />
                                         </SelectTrigger>
                                         <SelectContent className="bg-card border-border">
-                                            <SelectItem value="">Unassigned</SelectItem>
+                                            <SelectItem value="unassigned">Unassigned</SelectItem>
                                             {channels.filter(c => c.departmentId === assignedDepartmentId).map(c => (
                                                 <SelectItem key={c.id} value={c.id}>{c.name.replace('#', '')}</SelectItem>
                                             ))}
