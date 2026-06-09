@@ -95,34 +95,70 @@ export default function StudentDashboardPage() {
   const teachersForDialog = React.useMemo(() => {
       if (!channelAccessRequests) return [];
       
-      // 1. Try finding teachers approved specifically for the currently selected lab/channel
-      let relevantRequests = channelAccessRequests.filter(req => 
-          req.status === 'approved' && req.channelId === selectedChannelId
-      );
+      // 1. Build a map of ALL unique teachers and their best available names
+      // Priority: Profile displayName -> Profile Name -> Profile Email -> Request Name -> "Unknown"
+      const bestNamesMap = new Map<string, string>();
 
-      // 2. Fallback: If no channel-specific teachers, show teachers approved for the department
-      if (relevantRequests.length === 0 && selectedDepartmentId) {
-          relevantRequests = channelAccessRequests.filter(req => 
-              req.status === 'approved' && req.departmentId === selectedDepartmentId
-          );
+      // Use allUsers as primary source if student can see them (or if they are in context)
+      if (allUsers && allUsers.length > 0) {
+          allUsers.forEach(u => {
+              if (u.role === 'Teacher') {
+                  const name = u.displayName || (u as any).name || (u as any).fullName || u.email;
+                  if (name) bestNamesMap.set(u.id, name);
+              }
+          });
       }
 
-      // 3. Absolute Fallback: All approved teachers in the system (useful if assignments aren't finished)
-      if (relevantRequests.length === 0) {
-          relevantRequests = channelAccessRequests.filter(req => req.status === 'approved');
-      }
-  
-      // Deduplicate teachers by ID and return minimal structure needed for dropdown
-      const teacherMap = new Map<string, string>();
-      relevantRequests.forEach(req => {
+      // Supplement/Fallback with names stored in access requests
+      channelAccessRequests.forEach(req => {
           if (req.teacherId && req.teacherName) {
-              teacherMap.set(req.teacherId, req.teacherName);
+              const currentBest = bestNamesMap.get(req.teacherId);
+              const isCurrentGeneric = !currentBest || currentBest === 'Unknown Teacher' || currentBest === 'Teacher';
+              const isNewBetter = req.teacherName && req.teacherName !== 'Unknown Teacher' && req.teacherName !== 'Teacher';
+              
+              if (isCurrentGeneric && (isNewBetter || !currentBest)) {
+                  bestNamesMap.set(req.teacherId, req.teacherName);
+              }
           }
       });
 
-      return Array.from(teacherMap.entries()).map(([id, name]) => ({ id, name }));
+      // 2. Identify relevant teachers for current context (Lab -> Dept -> Fallback)
+      let relevantTeacherIds = new Set<string>();
+
+      // Lab-specific approved teachers
+      const channelRequests = channelAccessRequests.filter(req => 
+          req.status === 'approved' && req.channelId === selectedChannelId
+      );
+      channelRequests.forEach(req => relevantTeacherIds.add(req.teacherId));
+
+      // Fallback: Department-wide approved teachers
+      if (relevantTeacherIds.size === 0 && selectedDepartmentId) {
+          const deptRequests = channelAccessRequests.filter(req => 
+              req.status === 'approved' && req.departmentId === selectedDepartmentId
+          );
+          deptRequests.forEach(req => relevantTeacherIds.add(req.teacherId));
+      }
+
+      // Fallback: System-wide approved teachers
+      if (relevantTeacherIds.size === 0) {
+          const allApproved = channelAccessRequests.filter(req => req.status === 'approved');
+          allApproved.forEach(req => relevantTeacherIds.add(req.teacherId));
+      }
+
+      // 3. Construct final deduplicated list with priority display names and warnings
+      return Array.from(relevantTeacherIds).map(id => {
+          let name = bestNamesMap.get(id);
+
+          if (!name || name === 'Unknown Teacher' || name === 'Teacher') {
+              console.warn(`Teacher profile mapping issue: No descriptive name found for UID ${id} in requests or users collection.`, { teacherId: id });
+              // Use special flag for UI as requested
+              name = "Teacher Profile Missing";
+          }
+
+          return { id, name };
+      });
   
-  }, [selectedChannelId, selectedDepartmentId, channelAccessRequests]);
+  }, [selectedChannelId, selectedDepartmentId, channelAccessRequests, allUsers]);
 
   React.useEffect(() => {
     if (isUserLoading) return;
