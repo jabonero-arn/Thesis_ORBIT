@@ -14,32 +14,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Prioritizes role flag collections
+    // Robust Supervisor check: Uses dedicated role collections as primary source
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
-        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Supervisor' || 
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Head Supervisor'))
+        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid))
       );
     }
 
-    // Robust Teacher check: Prioritizes role flag collection
+    // Robust Teacher check: Uses dedicated role collection
     function isTeacher() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Teacher')
-      );
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
     }
 
     function isPropertyCustodian() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Property Custodian')
-      );
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
 
     // --------------------------------------------------------------------------------
@@ -122,8 +111,8 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: Direct verification for Teachers and Supervisors
-      // Redeploy Trigger: Version 1.1.7 - Simplified Teacher Permission
+      // Update rules: Direct verification for Teachers, Owners, and Supervisors
+      // Redeploy Trigger: Version 1.1.8 - Recursion Fix
       allow update: if isSignedIn() && (
         isSupervisor() || 
         resource.data.borrowerUserId == request.auth.uid || 
@@ -132,7 +121,7 @@ service cloud.firestore {
       
       allow delete: if isSupervisor() 
         || resource.data.borrowerUserId == request.auth.uid
-        || (isTeacher() && resource.data.teacherId == request.auth.uid);
+        || (resource.data.teacherId == request.auth.uid);
     }
   }
 }

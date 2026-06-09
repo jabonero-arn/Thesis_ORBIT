@@ -203,6 +203,7 @@ export default function TeacherDashboardPage() {
       console.log('DEBUG: Auth Context - Current User UID:', user.uid);
       console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);
       console.log('DEBUG: UID Comparison Match:', record.teacherId === user.uid);
+      console.table(record);
       
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const updatePayload = { status: newStatus };
