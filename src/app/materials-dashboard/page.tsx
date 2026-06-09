@@ -4,9 +4,9 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { doc } from "firebase/firestore"
 import { 
-    User, Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, PlusCircle, ListRestart, CheckCircle, ChevronDown, ChevronRight, ChevronLeft, MapPin, AlertCircle, Clock
+    Package, Warehouse, Menu, Loader2, LayoutGrid, Building, Cpu, FlaskConical, Cog, PackageOpen, Activity, Hourglass, ChevronDown, ChevronRight, MapPin, AlertTriangle, Clock, ListFilter, ArrowRight
 } from "lucide-react"
 import {
   Card,
@@ -35,15 +35,15 @@ import { useAppContext } from "@/context/app-context"
 import { UserProfileModal } from "@/components/user-profile-modal"
 import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 import { format } from "date-fns"
-import { AddMaterialsForm } from "@/components/materials-custodian/add-materials-form"
-import { createActivityLog } from "@/lib/logging"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+
+const LOW_STOCK_THRESHOLD = 5;
 
 export default function PropertyCustodianDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
-    const { items, departments, channels, borrowHistory } = useAppContext();
+    const { items, departments, channels, borrowHistory, activityLogs } = useAppContext();
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -69,12 +69,11 @@ export default function PropertyCustodianDashboardPage() {
         }
     }, [user, userProfile, isUserLoading, isProfileLoading]);
 
-    const [activeView, setActiveView] = React.useState<'dashboard' | 'add-materials' | 'outgoing-items' | 'returned-items'>('dashboard');
     const [dashboardSubView, setDashboardSubView] = React.useState<string>('overall'); 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isLabsOpen, setIsLabsOpen] = React.useState(true);
     
-    const dashboardItems = React.useMemo(() => {
+    const labItems = React.useMemo(() => {
         if (dashboardSubView === 'overall') return items;
         const deptId = departments?.find(d => d.prefix === dashboardSubView)?.id;
         if (!deptId) return [];
@@ -82,11 +81,44 @@ export default function PropertyCustodianDashboardPage() {
         return items.filter(item => item.channelId && channelIds.includes(item.channelId));
     }, [items, dashboardSubView, departments, channels]);
 
-    const dashboardHistory = React.useMemo(() => {
+    const labHistory = React.useMemo(() => {
         if (dashboardSubView === 'overall') return borrowHistory;
-        const itemNamesInDept = new Set(dashboardItems.map(i => i.name));
+        const itemNamesInDept = new Set(labItems.map(i => i.name));
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
-    }, [borrowHistory, dashboardItems]);
+    }, [borrowHistory, labItems, dashboardSubView]);
+
+    const lowStockItems = React.useMemo(() => {
+        return labItems.filter(i => i.quantity > 0 && i.quantity < LOW_STOCK_THRESHOLD);
+    }, [labItems]);
+
+    const relevantActivity = React.useMemo(() => {
+        const itemNames = new Set(labItems.map(i => i.name));
+        
+        const filteredLogs = activityLogs.filter(log => 
+            itemNames.has(log.details) || 
+            Array.from(itemNames).some(name => log.details.includes(name))
+        ).map(log => ({
+            id: log.id,
+            action: log.action,
+            details: log.details,
+            timestamp: log.timestamp,
+            userName: log.userName,
+            category: log.category
+        }));
+
+        const historyActivity = labHistory.slice(0, 10).map(h => ({
+            id: h.id,
+            action: h.status === 'Active' ? 'Item Borrowed' : h.status === 'Returned' ? 'Item Returned' : 'Status Update',
+            details: `${h.itemName} - ${h.studentName}`,
+            timestamp: h.date,
+            userName: h.studentName,
+            category: 'Transaction'
+        }));
+
+        return [...filteredLogs, ...historyActivity]
+            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+            .slice(0, 10);
+    }, [activityLogs, labHistory, labItems]);
 
     const getDeptIcon = (prefix: string) => {
         if (prefix.startsWith('comp')) return <Cpu />;
@@ -95,226 +127,184 @@ export default function PropertyCustodianDashboardPage() {
         return <Building />;
     }
 
-    const renderLabCell = (item: InventoryItem) => {
-        const channel = channels.find(c => c.id === item.channelId);
-        if (!channel) return <span className="text-muted-foreground/60 italic text-sm">Unassigned</span>;
-        
-        const dept = departments.find(d => d.id === channel.departmentId);
-        const icon = dept ? getDeptIcon(dept.prefix) : <MapPin className="h-3 w-3" />;
-        
+    const getItemChannelName = (channelId?: string) => {
+        if (!channelId) return "Unassigned";
+        return channels.find(c => c.id === channelId)?.name.replace('#', '') || "Unknown"
+    };
+
+    const getStatusBadge = (item: InventoryItem) => {
+        const variants = { 
+            "Available": "secondary", 
+            "Borrowed": "destructive", 
+            "Locked": "outline", 
+            "Pending Receipt": "outline", 
+            "Inaccurate": "destructive", 
+            "Returning": "outline" 
+        } as const;
+        return <Badge variant={variants[item.status] || "default"}>{item.status}</Badge>;
+    }
+
+    const renderContent = () => {
+        const totalItemTypes = labItems.length;
+        const totalStock = labItems.reduce((sum, item) => sum + item.quantity, 0);
+        const borrowedItemsCount = labHistory.filter(h => h.status === 'Active').length;
+        const reservedItemsCount = labHistory.filter(h => h.status === 'Reserved').length;
+
         return (
-            <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="flex items-center gap-1.5 py-0.5 px-2 bg-accent/30 hover:bg-accent/50 border-border/50 text-foreground font-medium">
-                    {React.cloneElement(icon as React.ReactElement, { className: "h-3 w-3 text-primary" })}
-                    {channel.name.replace('#', '')}
-                </Badge>
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Card className="bg-card/80 border-border/50 shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Item Types</CardTitle>
+                            <Package className="h-4 w-4 text-primary" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold">{totalItemTypes}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card/80 border-border/50 shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Stock</CardTitle>
+                            <PackageOpen className="h-4 w-4 text-emerald-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold">{totalStock}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card/80 border-border/50 shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Items Borrowed</CardTitle>
+                            <Activity className="h-4 w-4 text-destructive" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold">{borrowedItemsCount}</div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card/80 border-border/50 shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Items Reserved</CardTitle>
+                            <Hourglass className="h-4 w-4 text-amber-500" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-3xl font-bold">{reservedItemsCount}</div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="grid gap-6 lg:grid-cols-3">
+                    <div className="lg:col-span-2 space-y-6">
+                        <Card className="bg-card/80 border-border/50 shadow-sm overflow-hidden">
+                            <CardHeader className="border-b border-border/50 bg-white/[0.02]">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <ListFilter className="h-5 w-5 text-primary" />
+                                        <CardTitle className="text-lg font-headline">Inventory Overview</CardTitle>
+                                    </div>
+                                    <Badge variant="outline" className="font-mono">{labItems.length} items</Badge>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0">
+                                <div className="max-h-[500px] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="bg-white/[0.01]">
+                                            <TableRow className="hover:bg-transparent">
+                                                <TableHead>Item Name</TableHead>
+                                                <TableHead>Laboratory</TableHead>
+                                                <TableHead>Quantity</TableHead>
+                                                <TableHead className="text-right">Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {labItems.length > 0 ? labItems.map((item) => (
+                                                <TableRow key={item.id} className="border-border/40 hover:bg-white/[0.02] transition-colors">
+                                                    <TableCell className="font-medium text-foreground">{item.name}</TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs">{getItemChannelName(item.channelId)}</TableCell>
+                                                    <TableCell className="font-mono font-bold text-primary">{item.quantity}</TableCell>
+                                                    <TableCell className="text-right">{getStatusBadge(item)}</TableCell>
+                                                </TableRow>
+                                            )) : (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">No items found for this selection.</TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-6">
+                        <Card className="bg-card/80 border-border/50 shadow-sm">
+                            <CardHeader className="pb-3 border-b border-border/50 bg-white/[0.02]">
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                                    <CardTitle className="text-lg font-headline">Low Stock Alerts</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4">
+                                {lowStockItems.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {lowStockItems.map(item => (
+                                            <div key={item.id} className="flex items-center justify-between p-2 rounded-lg bg-destructive/5 border border-destructive/10">
+                                                <span className="text-sm font-medium truncate pr-2">{item.name}</span>
+                                                <Badge variant="destructive" className="font-mono text-[10px] shrink-0">
+                                                    {item.quantity} left
+                                                </Badge>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 text-center text-muted-foreground/60">
+                                        <Clock className="h-8 w-8 mb-2 opacity-20" />
+                                        <p className="text-xs">All stock levels healthy.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-card/80 border-border/50 shadow-sm">
+                            <CardHeader className="pb-3 border-b border-border/50 bg-white/[0.02]">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-5 w-5 text-amber-500" />
+                                    <CardTitle className="text-lg font-headline">Recent Activity</CardTitle>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 p-0">
+                                <div className="max-h-[300px] overflow-auto px-4">
+                                    {relevantActivity.length > 0 ? (
+                                        <div className="space-y-4 pb-4">
+                                            {relevantActivity.map((act) => (
+                                                <div key={act.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-primary truncate">{act.action}</p>
+                                                            <span className="text-[9px] text-muted-foreground shrink-0">{format(new Date(act.timestamp), 'MMM d, p')}</span>
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{act.details}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="py-10 text-center text-muted-foreground/60">
+                                            <p className="text-xs italic">No recent activity detected.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
             </div>
         );
-    }
-    
-    const getStatusBadge = (item: InventoryItem) => {
-        const tooltipContent = item.inaccuracyReason ? <TooltipContent><p>{item.inaccuracyReason}</p></TooltipContent> : null;
-        let badge: JSX.Element;
-
-        if (item.status === 'Pending Receipt') {
-            badge = <Badge variant="outline" className="border-primary/30 text-primary/80">Pending Verification</Badge>;
-        } else if (item.status === 'Inaccurate') {
-            badge = <Badge variant="destructive">Inaccurate</Badge>;
-        } else if (item.status === 'Returning') {
-            badge = <Badge variant="outline" className="border-amber-500 text-amber-500">Returning</Badge>;
-        } else {
-            badge = <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Received</Badge>;
-        }
-
-        if (tooltipContent) {
-            return (
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        {badge}
-                    </TooltipTrigger>
-                    {tooltipContent}
-                </Tooltip>
-            );
-        }
-        return badge;
-    }
-
-    const navItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: <LayoutGrid /> },
-        { id: 'add-materials', label: 'Add Materials', icon: <PlusCircle /> },
-        { id: 'outgoing-items', label: 'Outgoing Items', icon: <Warehouse /> },
-        { id: 'returned-items', label: 'Head Supervisor Returns', icon: <ListRestart /> },
-    ];
-    
-    const renderContent = () => {
-        switch(activeView) {
-            case 'dashboard':
-                const totalItemTypes = dashboardItems.length;
-                const totalStock = dashboardItems.reduce((sum, item) => sum + item.quantity, 0);
-                const borrowedItemsCount = dashboardHistory.filter(h => h.status === 'Active').length;
-                const reservedItemsCount = dashboardHistory.filter(h => h.status === 'Reserved').length;
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Item Types</CardTitle><Package className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalItemTypes}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Total Stock Quantity</CardTitle><PackageOpen className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{totalStock}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Borrowed</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{borrowedItemsCount}</div></CardContent></Card>
-                            <Card className="bg-card/80"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Items Reserved</CardTitle><Hourglass className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{reservedItemsCount}</div></CardContent></Card>
-                        </div>
-                    </div>
-                );
-            case 'add-materials':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
-                        <AddMaterialsForm onSubmissionSuccess={() => setActiveView('outgoing-items')} />
-                    </div>
-                );
-            case 'outgoing-items':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader>
-                                <div className="flex items-center gap-3">
-                                    <Warehouse className="h-6 w-6 text-primary" />
-                                    <div>
-                                        <CardTitle className="text-xl font-bold">Outgoing Provisioned Materials</CardTitle>
-                                        <CardDescription>Track items sent to laboratories and their verification status.</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent border-border/50">
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Name</TableHead>
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Requesting Lab</TableHead>
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Quantity</TableHead>
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Date Added</TableHead>
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Date Verified</TableHead>
-                                            <TableHead className="whitespace-nowrap font-bold text-foreground">Status</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {items.length > 0 ? items.map(item => (
-                                            <TableRow key={item.id} className="border-border/40 hover:bg-white/5 transition-colors">
-                                                <TableCell className="font-semibold whitespace-nowrap text-foreground">{item.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{renderLabCell(item)}</TableCell>
-                                                <TableCell className="font-mono text-primary font-medium">{item.quantity}</TableCell>
-                                                <TableCell className="whitespace-nowrap text-muted-foreground text-sm">{item.createdAt ? format(new Date(item.createdAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell className="whitespace-nowrap text-muted-foreground text-sm">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'N/A'}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{getStatusBadge(item)}</TableCell>
-                                            </TableRow>
-                                        )) : (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                                                    <div className="flex flex-col items-center gap-2">
-                                                        <Package className="h-8 w-8 opacity-20" />
-                                                        <p>No provisioned materials currently in transit.</p>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'returned-items':
-                const sampleReturns = [
-                    { id: '1', supervisor: 'John Doe', lab: 'Computer Lab 1', item: 'Arduino Uno Kit', quantity: 2, status: 'Reviewed', date: '2024-03-20', issue: 'Burnt microcontroller chip' },
-                    { id: '2', supervisor: 'Jane Smith', lab: 'Electronics Lab', item: 'Digital Oscilloscope', quantity: 1, status: 'Pending', date: '2024-03-21', issue: 'Display flickering intermittently' },
-                    { id: '3', supervisor: 'Mark Wilson', lab: 'Robotics Lab', item: 'Servo Motor (SG90)', quantity: 5, status: 'Confirmed', date: '2024-03-19', issue: 'Stripped internal gears' }
-                ];
-
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 backdrop-blur-sm border-border/50">
-                            <CardHeader>
-                                <div className="flex items-center gap-3">
-                                    <ListRestart className="h-6 w-6 text-primary" />
-                                    <div>
-                                        <CardTitle className="text-xl font-bold">Returned Damage Item</CardTitle>
-                                        <CardDescription>Review and track damaged materials returned by laboratory supervisors.</CardDescription>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="max-h-[60vh] overflow-auto p-0">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-border/50 hover:bg-transparent">
-                                            <TableHead className="font-bold text-foreground py-4">Lab Supervisor Name</TableHead>
-                                            <TableHead className="font-bold text-foreground">Laboratory</TableHead>
-                                            <TableHead className="font-bold text-foreground">Item Name</TableHead>
-                                            <TableHead className="font-bold text-foreground">Quantity</TableHead>
-                                            <TableHead className="font-bold text-foreground">Status</TableHead>
-                                            <TableHead className="font-bold text-foreground">Date</TableHead>
-                                            <TableHead className="font-bold text-foreground">Issue</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {sampleReturns.map(row => (
-                                            <TableRow key={row.id} className="border-border/40 hover:bg-white/5 transition-colors">
-                                                <TableCell className="font-medium">
-                                                    <div className="flex items-center gap-2">
-                                                        <Avatar className="h-7 w-7">
-                                                            <AvatarFallback className="text-[10px] bg-primary/20 text-primary">{row.supervisor.charAt(0)}</AvatarFallback>
-                                                        </Avatar>
-                                                        {row.supervisor}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="bg-accent/30 border-border/50">
-                                                        {row.lab}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="font-semibold text-foreground">{row.item}</TableCell>
-                                                <TableCell className="font-mono text-primary">{row.quantity}</TableCell>
-                                                <TableCell>
-                                                    <Badge variant={
-                                                        row.status === 'Pending' ? 'outline' : 
-                                                        row.status === 'Reviewed' ? 'secondary' : 'default'
-                                                    } className={cn(
-                                                        row.status === 'Pending' && "border-amber-500/50 text-amber-500",
-                                                        row.status === 'Reviewed' && "bg-blue-500/10 text-blue-400 border-blue-500/20",
-                                                        row.status === 'Confirmed' && "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                                                    )}>
-                                                        {row.status}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Clock className="h-3 w-3" />
-                                                        {row.date}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="max-w-[200px]">
-                                                    <div className="flex items-start gap-2">
-                                                        <AlertCircle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
-                                                        <span className="text-sm italic text-muted-foreground truncate" title={row.issue}>
-                                                            {row.issue}
-                                                        </span>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            default:
-                return null;
-        }
     };
     
     const getHeaderContent = () => {
-        const currentNavItem = navItems.find(item => item.id === activeView);
         return (
             <div className="flex items-center gap-2">
-                {currentNavItem?.icon && <div className="text-muted-foreground">{currentNavItem.icon}</div>}
-                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">{currentNavItem?.label}</h1>
+                <LayoutGrid className="text-muted-foreground" />
+                <h1 className="font-headline text-xl font-bold uppercase tracking-wider truncate">Custodian Dashboard</h1>
             </div>
         );
     };
@@ -322,28 +312,17 @@ export default function PropertyCustodianDashboardPage() {
     const mobileSidebarContent = (
       <div className="flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
-            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Menu</div>
-            <div className="p-2 space-y-1">
-                {navItems.map(item => (
-                  <Button key={item.id} variant={activeView === item.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView(item.id as any); setIsMobileMenuOpen(false); }}>{item.icon} {item.label}</Button>
-                ))}
-            </div>
+            <div className="p-4 font-headline text-lg font-bold border-b border-border/50">Laboratories</div>
             <div className="p-2">
-                <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-2 mb-2 group">
-                    <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
-                    {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
-                </button>
-                {isLabsOpen && (
-                    <ul className="flex flex-col gap-1">
-                        <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
-                        {departments?.map(dept => (
-                            <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
-                        ))}
-                    </ul>
-                )}
+                <ul className="flex flex-col gap-1">
+                    <li><button onClick={() => {setDashboardSubView('overall'); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === 'overall' ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}><LayoutGrid className="h-5 w-5" />Overall</button></li>
+                    {departments?.map(dept => (
+                        <li key={dept.id}><button onClick={() => {setDashboardSubView(dept.prefix); setIsMobileMenuOpen(false);}} className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-base font-medium transition-colors ${dashboardSubView === dept.prefix ? 'bg-accent text-white' : 'text-muted-foreground hover:bg-accent/50 hover:text-white'}`}>{getDeptIcon(dept.prefix)}{dept.name}</button></li>
+                    ))}
+                </ul>
             </div>
           </div>
-          <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Property Custodian"}</p><p className="text-xs text-muted-foreground">Property Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
+          <div className="mt-auto border-t border-border/50 bg-[#0e1015]"><div className="flex items-center justify-between p-2"><UserProfileModal role="Property Custodian"><div className="flex flex-1 min-w-0 items-center gap-3 cursor-pointer rounded-md p-1 transition-colors hover:bg-accent"><Avatar className="h-8 w-8 flex-shrink-0"><AvatarImage src={user?.photoURL || undefined} alt={userProfile?.displayName || user?.displayName || ""} /><AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback></Avatar><div className="overflow-hidden"><p className="truncate text-sm font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Custodian"}</p><p className="text-xs text-muted-foreground">Custodian</p></div></div></UserProfileModal><UserNav role="Property Custodian" /></div></div>
       </div>
     );
     
@@ -357,7 +336,7 @@ export default function PropertyCustodianDashboardPage() {
             <div className="flex h-dvh bg-[#1e2430]">
                 {/* PERSISTENT SIDEBAR WRAPPER */}
                 <div className={cn(
-                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0",
+                    "hidden md:flex flex-col bg-[#141821] border-r border-border/50 relative transition-all duration-300 ease-in-out shrink-0 h-full",
                     isSidebarCollapsed ? "w-[72px]" : "w-[320px]"
                 )}>
                     <div className="flex flex-1 overflow-hidden h-full">
@@ -365,29 +344,19 @@ export default function PropertyCustodianDashboardPage() {
                         <div className="flex flex-col items-center gap-2 bg-[#0e1015] p-3 shrink-0 z-20 w-[72px] border-r border-border/50">
                             <div className="p-2 mb-2"><Logo /></div>
                             <div className="flex-1 flex flex-col items-center gap-2 w-full">
-                                {navItems.map(item => (
-                                    <Tooltip key={item.id}>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                variant={activeView === item.id ? 'secondary' : 'ghost'} 
-                                                size="icon" 
-                                                className="h-12 w-12 rounded-lg" 
-                                                onClick={() => setActiveView(item.id as any)}
-                                            >
-                                                {item.icon}
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="right" align="center"><p>{item.label}</p></TooltipContent>
-                                    </Tooltip>
-                                ))}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-12 w-12 rounded-lg"><LayoutGrid /></Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="center"><p>Inventory Hub</p></TooltipContent>
+                                </Tooltip>
                             </div>
-                            {/* Avatar at bottom of rail when collapsed */}
                             {isSidebarCollapsed && (
                                 <div className="pb-4 mt-auto">
                                     <UserProfileModal role="Property Custodian">
                                          <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
                                             <AvatarImage src={user?.photoURL || undefined} />
-                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'P'}</AvatarFallback>
                                          </Avatar>
                                     </UserProfileModal>
                                 </div>
@@ -402,11 +371,11 @@ export default function PropertyCustodianDashboardPage() {
                             )}
                         >
                             <div className="w-64 flex flex-col h-full">
-                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter whitespace-nowrap">System Console</div>
+                                <div className="p-4 font-headline text-lg font-bold border-b border-border/50 uppercase tracking-tighter whitespace-nowrap">Asset Manager</div>
                                 <div className="flex-1 py-4 space-y-4 overflow-y-auto scrollbar-none">
-                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-4 mb-2 group">
-                                        <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">LABORATORIES</h2>
-                                        {isLabsOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground group-hover:text-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />}
+                                    <button onClick={() => setIsLabsOpen(!isLabsOpen)} className="flex w-full items-center justify-between px-4 mb-2 group text-muted-foreground hover:text-foreground transition-colors">
+                                        <h2 className="text-xs font-bold uppercase tracking-wider">LABORATORIES</h2>
+                                        {isLabsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </button>
                                     {isLabsOpen && (
                                         <ul className="flex flex-col gap-1 px-2">
@@ -442,7 +411,7 @@ export default function PropertyCustodianDashboardPage() {
                                                 </Avatar>
                                                 <div className="overflow-hidden">
                                                     <p className="truncate text-xs font-semibold leading-none">{userProfile?.displayName || user?.displayName || "Custodian"}</p>
-                                                    <p className="text-[10px] text-muted-foreground truncate">Property Custodian</p>
+                                                    <p className="text-[10px] text-muted-foreground truncate">Custodian</p>
                                                 </div>
                                             </div>
                                         </UserProfileModal>
@@ -490,3 +459,4 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
+
