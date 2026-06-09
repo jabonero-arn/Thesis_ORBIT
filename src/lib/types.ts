@@ -143,6 +143,11 @@ export type BorrowHistory = {
     returnCondition?: 'Good' | 'Defected' | 'Broken' | 'Lost';
     returnNotes?: string;
     resolutionStatus?: 'Pending' | 'Resolved';
+    approvedBy?: string;
+    approvedAt?: string;
+    deniedBy?: string;
+    deniedAt?: string;
+    updatedAt?: string;
 };
 
 export type CartItem = {

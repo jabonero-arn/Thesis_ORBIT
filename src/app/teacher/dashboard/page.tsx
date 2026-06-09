@@ -203,11 +203,17 @@ export default function TeacherDashboardPage() {
       console.log('DEBUG: Auth Context - Current User UID:', user.uid);
       console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);
       console.log('DEBUG: UID Comparison Match:', record.teacherId === user.uid);
-      console.log('DEBUG: Requested Status Change:', newStatus);
-      console.table(record);
       
       const docRef = doc(firestore, 'borrowing_transactions', id);
-      const updatePayload = { status: newStatus };
+      
+      // Enhanced payload with audit fields to match rules
+      const now = new Date().toISOString();
+      const updatePayload: any = { 
+        status: newStatus,
+        [newStatus === 'Approved' ? 'approvedBy' : 'deniedBy']: user.uid,
+        [newStatus === 'Approved' ? 'approvedAt' : 'deniedAt']: now,
+        updatedAt: now
+      };
       
       // Perform non-blocking update
       updateDoc(docRef, updatePayload)
@@ -351,7 +357,7 @@ export default function TeacherDashboardPage() {
                         {recentEvents.length > 0 ? (
                             <div className="space-y-4">
                                 {recentEvents.map(event => (
-                                    <div key={event.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
+                                    <div className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{event.status}</p>
