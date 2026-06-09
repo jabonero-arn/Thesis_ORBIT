@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { useUser, useDoc, useFirestore, useMemoFirebase } from "@/firebase"
+import { useUser, useDoc, useFirestore, useMemoFirebase, FirestorePermissionError, errorEmitter } from "@/firebase"
 import { doc, updateDoc, writeBatch } from "firebase/firestore"
 import { 
     User as UserIcon, Cpu, FlaskConical, Cog, Hash, Menu, Check, X, 
@@ -194,24 +194,52 @@ export default function TeacherDashboardPage() {
     return Array.from(categories).sort();
   }, [allItems]);
 
-  const handleRequest = async (id: string, newStatus: 'Approved' | 'Denied') => {
+  const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
+      // Diagnostic Logging
+      console.log('DEBUG: Teacher Approval Action Initiated');
+      console.log('DEBUG: Target Collection: borrowing_transactions');
+      console.log('DEBUG: Document ID:', id);
+      console.log('DEBUG: Current User (Teacher) UID:', user.uid);
+      console.log('DEBUG: Record data before update:', record);
+      console.log('DEBUG: Field name check - teacherId in record:', record.teacherId);
+      
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const updatePayload = { status: newStatus };
+      
+      console.log('DEBUG: Attempting update with payload:', updatePayload);
 
-      try {
-        await updateDoc(docRef, updatePayload);
-        toast({ title: `Request ${newStatus}`, description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` });
-      } catch (e: any) {
-        console.error(`Failed to update request at ${docRef.path}. Payload:`, updatePayload, e);
-        toast({ 
-          variant: "destructive", 
-          title: "Update Failed", 
-          description: "Unable to update request. Please check teacher permissions." 
+      // Guideline: Avoid awaiting mutation calls. Chain .then/.catch instead.
+      updateDoc(docRef, updatePayload)
+        .then(() => {
+          console.log(`DEBUG: Success! Request ${id} updated to ${newStatus}`);
+          toast({ 
+            title: `Request ${newStatus}`, 
+            description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
+          });
+        })
+        .catch(async (serverError: any) => {
+          console.error(`DEBUG: Update Failed at path: ${docRef.path}`);
+          console.error('DEBUG: Payload was:', updatePayload);
+          console.error('DEBUG: Firebase Error Code:', serverError.code);
+          console.error('DEBUG: Firebase Error Message:', serverError.message);
+          
+          // Emit contextual error for developer overlay
+          const permissionError = new FirestorePermissionError({
+            path: docRef.path,
+            operation: 'update',
+            requestResourceData: updatePayload,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+
+          toast({ 
+            variant: "destructive", 
+            title: "Update Failed", 
+            description: "Unable to update request. Please check teacher permissions and console logs for details." 
+          });
         });
-      }
     }
   }
 

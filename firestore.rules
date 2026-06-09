@@ -103,6 +103,12 @@ service cloud.firestore {
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
+      
+      // Update rules for Borrowing Transactions:
+      // 1. Supervisors can update any transaction.
+      // 2. Students can update their own transactions (e.g., for cancellations).
+      // 3. Teachers can approve/deny transactions specifically assigned to them (teacherId matches UID).
+      // Redploy Trigger: Verification of field name 'teacherId'.
       allow update, delete: if isSupervisor() 
         || resource.data.borrowerUserId == request.auth.uid
         || (isTeacher() && resource.data.teacherId == request.auth.uid);
