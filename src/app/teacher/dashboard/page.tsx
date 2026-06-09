@@ -101,13 +101,6 @@ export default function TeacherDashboardPage() {
     }
   }, [user, userProfile, isUserLoading, isProfileLoading]);
 
-  React.useEffect(() => {
-    if (userProfile) {
-      console.log('DEBUG: Teacher Profile Loaded:', userProfile);
-      console.log('DEBUG: Teacher Role from Profile:', userProfile.role);
-    }
-  }, [userProfile]);
-
   const teacherData = React.useMemo(() => {
       if (!user) return null;
       return {
@@ -205,36 +198,35 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      // Diagnostic Logging
+      // High-Verbosity Diagnostic Logging for debugging Update Failed issue
       console.log('DEBUG: Teacher Approval Action Initiated');
       console.log('DEBUG: Target Collection: borrowing_transactions');
       console.log('DEBUG: Document ID:', id);
-      console.log('DEBUG: Current User (Teacher) UID:', user.uid);
-      console.log('DEBUG: Record data before update:', record);
-      console.log('DEBUG: Teacher ID in Record:', record.teacherId);
-      console.log('DEBUG: UID Match:', record.teacherId === user.uid);
+      console.log('DEBUG: Auth Context - Current User UID:', user.uid);
+      console.log('DEBUG: Auth Context - User Role (State):', userProfile?.role);
+      console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);
+      console.log('DEBUG: UID Comparison Match:', record.teacherId === user.uid);
       
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const updatePayload = { status: newStatus };
       
-      console.log('DEBUG: Attempting update with payload:', updatePayload);
+      console.log('DEBUG: Attempting non-blocking update with payload:', updatePayload);
 
-      // Guideline: Avoid awaiting mutation calls. Chain .then/.catch instead.
+      // Perform update without awaiting to follow performance guidelines
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log(`DEBUG: Success! Request ${id} updated to ${newStatus}`);
+          console.log(`DEBUG: Success! Document ${id} status updated to ${newStatus}`);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`DEBUG: Update Failed at path: ${docRef.path}`);
-          console.error('DEBUG: Payload was:', updatePayload);
-          console.error('DEBUG: Firebase Error Code:', serverError.code);
-          console.error('DEBUG: Firebase Error Message:', serverError.message);
+          console.error(`DEBUG: Permission Denied or Update Failed at: ${docRef.path}`);
+          console.error('DEBUG: Server Error Code:', serverError.code);
+          console.error('DEBUG: Server Error Message:', serverError.message);
           
-          // Emit contextual error for developer overlay
+          // Emit contextual error for rapid rule debugging in dev overlay
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',
@@ -245,7 +237,7 @@ export default function TeacherDashboardPage() {
           toast({ 
             variant: "destructive", 
             title: "Update Failed", 
-            description: "Unable to update request. Please check teacher permissions and console logs for details." 
+            description: "Unable to update request. Please check teacher permissions and document ownership." 
           });
         });
     }

@@ -13,17 +13,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Checks both role flag and user profile
+    // Robust Supervisor check: Prioritizes role flag collection
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Supervisor' || 
           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Head Supervisor'))
       );
     }
 
-    // Robust Teacher check: Checks both role flag and user profile
+    // Robust Teacher check: Prioritizes role flag collection
     function isTeacher() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
@@ -121,7 +122,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules for Borrowing Transactions:
-      // Redploy Trigger: Robust role check integration.
+      // Redploy Trigger: Breaking circular dependencies by prioritizing exists() on roles.
       allow update, delete: if isSupervisor() 
         || resource.data.borrowerUserId == request.auth.uid
         || (isTeacher() && resource.data.teacherId == request.auth.uid);
