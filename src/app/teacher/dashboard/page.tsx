@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -194,14 +195,22 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   const handleRequest = async (id: string, newStatus: 'Approved' | 'Denied') => {
-    if (!firestore) return;
+    if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
+      const docRef = doc(firestore, 'borrowing_transactions', id);
+      const updatePayload = { status: newStatus };
+
       try {
-        await updateDoc(doc(firestore, 'borrowing_transactions', id), { status: newStatus });
+        await updateDoc(docRef, updatePayload);
         toast({ title: `Request ${newStatus}`, description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` });
-      } catch (e) {
-        toast({ variant: "destructive", title: "Update Failed" });
+      } catch (e: any) {
+        console.error(`Failed to update request at ${docRef.path}. Payload:`, updatePayload, e);
+        toast({ 
+          variant: "destructive", 
+          title: "Update Failed", 
+          description: "Unable to update request. Please check teacher permissions." 
+        });
       }
     }
   }
