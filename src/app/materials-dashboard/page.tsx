@@ -387,7 +387,7 @@ export default function PropertyCustodianDashboardPage() {
                                     <UserProfileModal role="Property Custodian">
                                          <Avatar className="h-10 w-10 cursor-pointer border border-border/50 hover:border-primary transition-all">
                                             <AvatarImage src={user?.photoURL || undefined} />
-                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || 'P'}</AvatarFallback>
+                                            <AvatarFallback>{userProfile?.displayName?.charAt(0) || user?.displayName?.charAt(0) || 'P'}</AvatarFallback>
                                          </Avatar>
                                     </UserProfileModal>
                                 </div>
@@ -457,12 +457,12 @@ export default function PropertyCustodianDashboardPage() {
                     <button 
                         onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                         className={cn(
-                            "absolute -right-3 top-12 z-50 h-6 w-6 rounded-full bg-[#141821] border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
+                            "absolute -right-4 top-1/2 -translate-y-1/2 z-50 h-8 w-8 rounded-full bg-[#141821] border border-border/50 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-all shadow-md group",
                             isSidebarCollapsed && "bg-[#0e1015]"
                         )}
                         title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                     >
-                        {isSidebarCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
+                        {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
                     </button>
                 </div>
 
@@ -490,4 +490,3 @@ export default function PropertyCustodianDashboardPage() {
         </TooltipProvider>
     )
 }
-
