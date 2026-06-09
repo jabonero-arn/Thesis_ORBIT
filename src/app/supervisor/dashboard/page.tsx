@@ -617,7 +617,7 @@ export default function SupervisorDashboardPage() {
     if (isUserLoading || isProfileLoading || !user) return <div className="flex h-dvh items-center justify-center bg-[#1e2430]"><Loader2 className="animate-spin" /></div>;
 
     return (
-        <TooltipProvider>
+        <TooltipProvider delayDuration={500}>
             <ForcePasswordChangeDialog open={showPasswordChangeDialog} onSuccess={() => setShowPasswordChangeDialog(false)} />
             <div className="flex h-dvh bg-[#1e2430]">
                 {/* UNIFIED COLLAPSIBLE SIDEBAR */}
@@ -647,7 +647,7 @@ export default function SupervisorDashboardPage() {
                             <ul className="space-y-1">
                                 {navItems.map(item => (
                                     <li key={item.id}>
-                                        <Tooltip delayDuration={0}>
+                                        <Tooltip>
                                             <TooltipTrigger asChild>
                                                 <Button 
                                                     variant={activeView === item.id ? 'secondary' : 'ghost'} 
