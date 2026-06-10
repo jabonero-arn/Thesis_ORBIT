@@ -14,27 +14,36 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Uses dedicated role collections
+    // Robust Supervisor check: Uses flag collections and profile role fallback
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
-        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid))
+        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Supervisor' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Head Supervisor'
       );
     }
 
-    // robust Teacher check: Uses dedicated role collection
+    // Robust Teacher check: Uses flag collection and profile role fallback
     function isTeacher() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Teacher'
+      );
     }
 
     function isPropertyCustodian() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Property Custodian'
+      );
     }
 
     function isStaff() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid)) ||
-        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid))
+        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Staff'
       );
     }
 
@@ -122,24 +131,28 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: RESILIENT TEACHER AUTHORIZATION - v1.8.0
+      // Update rules: ULTIMATE RESILIENT AUTHORIZATION - v1.9.0
       // Allows update if:
-      // 1. User is a Supervisor or Staff
-      // 2. User is a verified Teacher and record is Pending (Role-based safety net)
-      // 3. User matches any assigned teacher IDs in the document
-      // 4. User is the borrower (only allowed if currently Pending)
+      // 1. User is a Supervisor or Staff (Full Authority)
+      // 2. User matches any assigned teacher IDs in the document (Direct Authority)
+      // 3. User is a verified Teacher and record is Pending (Role-based Fallback)
+      // 4. User is the borrower (Only if record is currently Pending)
       allow update: if isSignedIn() && (
         isSupervisor() || 
         isStaff() ||
+        resource.data.get('teacherId', '') == request.auth.uid ||
+        resource.data.get('assignedTeacherId', '') == request.auth.uid ||
+        resource.data.get('requestedTeacherId', '') == request.auth.uid ||
+        resource.data.get('approvingTeacherId', '') == request.auth.uid ||
+        resource.data.get('teacherUid', '') == request.auth.uid ||
         (isTeacher() && (
             resource.data.get('status', 'N/A') == 'Pending' ||
-            resource.data.get('teacherId', 'N/A') == request.auth.uid ||
-            resource.data.get('assignedTeacherId', 'N/A') == request.auth.uid ||
-            resource.data.get('requestedTeacherId', 'N/A') == request.auth.uid ||
-            resource.data.get('approvingTeacherId', 'N/A') == request.auth.uid ||
-            resource.data.get('teacherUid', 'N/A') == request.auth.uid
+            resource.data.get('status', 'N/A') == 'pending'
         )) ||
-        (resource.data.get('borrowerUserId', 'N/A') == request.auth.uid && resource.data.get('status', 'N/A') == 'Pending')
+        (resource.data.get('borrowerUserId', 'N/A') == request.auth.uid && (
+            resource.data.get('status', 'N/A') == 'Pending' ||
+            resource.data.get('status', 'N/A') == 'pending'
+        ))
       );
       
       allow delete: if isSupervisor() 

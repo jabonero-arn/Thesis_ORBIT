@@ -154,7 +154,7 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v1.8.0 (Super-Resilient)
+  // Standardized Teacher Assignment Checker - v1.9.0 (Ultimate Resiliency)
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -214,17 +214,17 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // RESILIENT DIAGNOSTICS - VERSION 1.8.0
-    console.group(`Teacher Action v1.8.0: ${newStatus}`);
-    console.log('Document ID:', id);
-    console.log('Authenticated User UID:', user.uid);
-    console.log('Record Teacher Field [teacherId]:', record?.teacherId);
-    console.log('Record Status:', record?.status);
+    // ULTIMATE DIAGNOSTICS - VERSION 1.9.0
+    console.group(`Teacher Action v1.9.0: ${newStatus}`);
+    console.log('Record Document ID:', id);
+    console.log('Authenticated UID:', user.uid);
+    console.log('Record Status State:', record?.status);
+    console.log('Assignment Parity:', record ? isAssignedToTeacher(record, user.uid) : 'Record Not Found');
     console.groupEnd();
 
     if (record) {
       if (record.status !== 'Pending') {
-          toast({ title: "Already Processed", description: "This request has already been updated." });
+          toast({ title: "Action Forbidden", description: "This request has already been processed or is no longer pending." });
           return;
       }
 
@@ -233,26 +233,20 @@ export default function TeacherDashboardPage() {
       
       const updatePayload: any = { 
         status: newStatus,
-        updatedAt: now
+        updatedAt: now,
+        approvedBy: newStatus === 'Approved' ? user.uid : null,
+        approvedAt: newStatus === 'Approved' ? now : null,
       };
 
-      if (newStatus === 'Approved') {
-          updatePayload.approvedBy = user.uid;
-          updatePayload.approvedAt = now;
-      } else {
-          updatePayload.deniedBy = user.uid;
-          updatePayload.deniedAt = now;
-      }
-      
       updateDoc(docRef, updatePayload)
         .then(() => {
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `Request from ${record.studentName} has been processed.` 
+            description: `Submission from ${record.studentName} updated to ${newStatus}.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v1.8.0 Permission Denied at: ${docRef.path}`);
+          console.error(`ERROR: v1.9.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
@@ -264,7 +258,7 @@ export default function TeacherDashboardPage() {
           toast({ 
             variant: "destructive", 
             title: "Authorization Failure", 
-            description: "Permission denied by server. Please contact a Lab Supervisor." 
+            description: "Server rejected the update. Please contact System Oversight." 
           });
         });
     }
@@ -421,7 +415,7 @@ export default function TeacherDashboardPage() {
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
     
-    // BACKWARD COMPATIBLE FILTERING - v1.8.0
+    // BACKWARD COMPATIBLE FILTERING - v1.9.0
     const pendingRequests = borrowHistory
         .filter((r) => r.status === 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -714,7 +708,7 @@ export default function TeacherDashboardPage() {
             <CheckoutFlow key={selectedChannelId} items={selectedItems} onItemQuantityChange={handleItemQuantityChange} onClear={() => setSelectedItems([])} onSuccess={() => setSelectedItems([])} isTeacherView={true} />
         )}
 
-        <TeacherItemDetailsDialog item={itemInDetail} open={!!itemInDetail} onOpenChange={(open) => !open && setItemInDetail(null)} onBorrow={handleItemSelect} isSelected={selectedItems.some(ci => i.item.id === itemInDetail?.id)} locationName={channels.find(c => c.id === itemInDetail?.channelId)?.name.replace('#', '') || 'General Storage'} />
+        <TeacherItemDetailsDialog item={itemInDetail} open={!!itemInDetail} onOpenChange={(open) => !open && setItemInDetail(null)} onBorrow={handleItemSelect} isSelected={selectedItems.some(ci => ci.item.id === itemInDetail?.id)} locationName={channels.find(c => c.id === itemInDetail?.channelId)?.name.replace('#', '') || 'General Storage'} />
         
         <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>
             <DialogContent>
