@@ -198,15 +198,7 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     if (record) {
-      // Diagnostic Logging for Permission Verification
-      console.log('DEBUG: Teacher Approval Action Initiated');
-      console.log('DEBUG: Auth Context - Current User UID:', user.uid);
-      console.log('DEBUG: Document Context - Assigned teacherId:', record.teacherId);
-      console.log('DEBUG: UID Comparison Match:', record.teacherId === user.uid);
-      
       const docRef = doc(firestore, 'borrowing_transactions', id);
-      
-      // Enhanced payload with audit fields to match rules
       const now = new Date().toISOString();
       const updatePayload: any = { 
         status: newStatus,
@@ -215,21 +207,14 @@ export default function TeacherDashboardPage() {
         updatedAt: now
       };
       
-      // Perform non-blocking update
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log(`DEBUG: Success! Document ${id} status updated to ${newStatus}`);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`DEBUG: Permission Denied or Update Failed at: ${docRef.path}`);
-          console.error('DEBUG: Server Error Code:', serverError.code);
-          console.error('DEBUG: Server Error Message:', serverError.message);
-          
-          // Emit contextual error for rapid rule debugging in dev overlay
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',
@@ -240,7 +225,7 @@ export default function TeacherDashboardPage() {
           toast({ 
             variant: "destructive", 
             title: "Update Failed", 
-            description: "Unable to update request. Please check teacher permissions and document ownership." 
+            description: "Unable to update request. Please check teacher permissions." 
           });
         });
     }
@@ -309,7 +294,6 @@ export default function TeacherDashboardPage() {
   const renderOverview = () => {
     const currentlyBorrowedCount = personalActiveBorrows.length;
     const personalResCount = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Reserved').length;
-    const personalReqCount = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Pending').length;
     const recentEvents = borrowHistory.filter(h => h.teacherId === user?.uid || h.borrowerUserId === user?.uid).slice(0, 5);
 
     return (
@@ -393,8 +377,9 @@ export default function TeacherDashboardPage() {
   };
 
   const ApprovalRequests = () => {
-    const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherData?.id).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const teacherId = teacherData?.id;
+    const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (requestSubView === 'pending') {
       return (

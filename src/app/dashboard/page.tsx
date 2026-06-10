@@ -95,11 +95,8 @@ export default function StudentDashboardPage() {
   const teachersForDialog = React.useMemo(() => {
       if (!channelAccessRequests) return [];
       
-      // 1. Build a map of ALL unique teachers and their best available names
-      // Priority: Profile displayName -> Profile Name -> Profile Email -> Request Name -> "Unknown"
       const bestNamesMap = new Map<string, string>();
 
-      // Use allUsers as primary source if student can see them (or if they are in context)
       if (allUsers && allUsers.length > 0) {
           allUsers.forEach(u => {
               if (u.role === 'Teacher') {
@@ -109,7 +106,6 @@ export default function StudentDashboardPage() {
           });
       }
 
-      // Supplement/Fallback with names stored in access requests
       channelAccessRequests.forEach(req => {
           if (req.teacherId && req.teacherName) {
               const currentBest = bestNamesMap.get(req.teacherId);
@@ -122,16 +118,13 @@ export default function StudentDashboardPage() {
           }
       });
 
-      // 2. Identify relevant teachers for current context (Lab -> Dept -> Fallback)
       let relevantTeacherIds = new Set<string>();
 
-      // Lab-specific approved teachers
       const channelRequests = channelAccessRequests.filter(req => 
           req.status === 'approved' && req.channelId === selectedChannelId
       );
       channelRequests.forEach(req => relevantTeacherIds.add(req.teacherId));
 
-      // Fallback: Department-wide approved teachers
       if (relevantTeacherIds.size === 0 && selectedDepartmentId) {
           const deptRequests = channelAccessRequests.filter(req => 
               req.status === 'approved' && req.departmentId === selectedDepartmentId
@@ -139,22 +132,16 @@ export default function StudentDashboardPage() {
           deptRequests.forEach(req => relevantTeacherIds.add(req.teacherId));
       }
 
-      // Fallback: System-wide approved teachers
       if (relevantTeacherIds.size === 0) {
           const allApproved = channelAccessRequests.filter(req => req.status === 'approved');
           allApproved.forEach(req => relevantTeacherIds.add(req.teacherId));
       }
 
-      // 3. Construct final deduplicated list with priority display names and warnings
       return Array.from(relevantTeacherIds).map(id => {
           let name = bestNamesMap.get(id);
-
           if (!name || name === 'Unknown Teacher' || name === 'Teacher') {
-              console.warn(`Teacher profile mapping issue: No descriptive name found for UID ${id} in requests or users collection.`, { teacherId: id });
-              // Use special flag for UI as requested
               name = "Teacher Profile Missing";
           }
-
           return { id, name };
       });
   
@@ -289,22 +276,28 @@ export default function StudentDashboardPage() {
   }
 
   const handleConfirmRequest = async (teacherId: string, quantity: number) => {
-    if (!itemToRequest || !user?.displayName || !firestore || !user.uid) return;
+    if (!itemToRequest || !firestore || !user?.uid) return;
+    
+    const studentDisplayName = userProfile?.displayName || user.displayName || 'Student';
+
     try {
       await addDoc(collection(firestore, 'borrowing_transactions'), {
-        studentName: user.displayName,
+        studentName: studentDisplayName,
         itemName: itemToRequest.name,
+        inventoryItemId: itemToRequest.id,
         itemQuantity: quantity,
         date: new Date().toISOString(),
         status: 'Pending',
         teacherId: teacherId,
         borrowerUserId: user.uid,
       });
+      
       setIsApprovalDialogOpen(false);
       setItemToRequest(null);
       setItemInDetail(null);
-      toast({ title: "Approval Request Sent" });
+      toast({ title: "Approval Request Sent", description: `Request for ${itemToRequest.name} sent to teacher.` });
     } catch (error) {
+      console.error("Failed to create request:", error);
       toast({ variant: 'destructive', title: 'Failed to send request' });
     }
   }
