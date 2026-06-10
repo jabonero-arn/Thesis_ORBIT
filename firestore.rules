@@ -112,28 +112,16 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules: Direct verification for Teachers, Owners, and Supervisors
-      // REDEPLOY TRIGGER: Version 1.2.5 - Hardened Diff Logic
+      // REDEPLOY TRIGGER: Version 1.2.6 - Simplified Teacher Logic
       allow update: if isSignedIn() && (
         isSupervisor() || 
         resource.data.get('borrowerUserId', '') == request.auth.uid || 
         (
-          (
-            resource.data.get('teacherId', '') == request.auth.uid ||
-            resource.data.get('assignedTeacherId', '') == request.auth.uid ||
-            resource.data.get('requestedTeacherId', '') == request.auth.uid ||
-            resource.data.get('approvingTeacherId', '') == request.auth.uid ||
-            resource.data.get('teacherUid', '') == request.auth.uid
-          ) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'status', 
-            'teacherApprovalStatus',
-            'approvedBy', 
-            'approvedAt', 
-            'deniedBy', 
-            'deniedAt', 
-            'rejectionReason',
-            'updatedAt'
-          ])
+          resource.data.get('teacherId', '') == request.auth.uid ||
+          resource.data.get('assignedTeacherId', '') == request.auth.uid ||
+          resource.data.get('requestedTeacherId', '') == request.auth.uid ||
+          resource.data.get('approvingTeacherId', '') == request.auth.uid ||
+          resource.data.get('teacherUid', '') == request.auth.uid
         )
       );
       

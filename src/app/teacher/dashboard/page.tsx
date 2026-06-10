@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -201,7 +202,7 @@ export default function TeacherDashboardPage() {
     console.group(`Teacher Action: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
-    console.log('Authenticated User UID:', user. न्यूजीलैंड);
+    console.log('Authenticated User UID:', user.uid);
     console.log('Stored Record Data:', record);
     console.groupEnd();
 
