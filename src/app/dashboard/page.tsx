@@ -9,7 +9,7 @@ import {
     LayoutGrid, Inbox, PackageCheck, Hourglass, CalendarDays, 
     XCircle, History, Menu, Hash, Search, Filter, 
     CheckCircle, ChevronDown, ChevronRight, ChevronLeft, 
-    Loader2, Sparkles, Clock, AlertCircle, ShoppingCart
+    Loader2, Sparkles, Clock, AlertCircle, ShoppingCart, UserCheck
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import Image from "next/image"
@@ -72,9 +72,13 @@ export default function StudentDashboardPage() {
   }, [firestore, user]);
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<UserType>(userProfileRef);
 
-  const approvedDepartmentIds = React.useMemo(() => 
-    new Set(studentDepartmentAccessRequests.filter(req => req.studentId === user?.uid && req.status === 'approved').map(req => req.departmentId))
+  const approvedDepartmentRequests = React.useMemo(() => 
+    studentDepartmentAccessRequests.filter(req => req.studentId === user?.uid && req.status === 'approved')
   , [studentDepartmentAccessRequests, user]);
+
+  const approvedDepartmentIds = React.useMemo(() => 
+    new Set(approvedDepartmentRequests.map(req => req.departmentId))
+  , [approvedDepartmentRequests]);
 
   const studentDepartments = React.useMemo(() => 
       departments.filter(dept => approvedDepartmentIds.has(dept.id))
@@ -130,11 +134,6 @@ export default function StudentDashboardPage() {
               req.status === 'approved' && req.departmentId === selectedDepartmentId
           );
           deptRequests.forEach(req => relevantTeacherIds.add(req.teacherId));
-      }
-
-      if (relevantTeacherIds.size === 0) {
-          const allApproved = channelAccessRequests.filter(req => req.status === 'approved');
-          allApproved.forEach(req => relevantTeacherIds.add(req.teacherId));
       }
 
       return Array.from(relevantTeacherIds).map(id => {
@@ -252,9 +251,8 @@ export default function StudentDashboardPage() {
 
     const isAvailable = item.status === "Available" && item.quantity > 0;
     const isApprovedAndLocked = item.status === "Locked" && isApproved && item.quantity > 0;
-    const isBorrowableInconsistency = item.status === "Borrowed" && item.quantity > 0;
     
-    if (isAvailable || isBorrowableInconsistency) {
+    if (isAvailable) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }]);
         return;
     }
@@ -267,6 +265,16 @@ export default function StudentDashboardPage() {
     }
 
     if (item.status === "Locked" && !isApproved) {
+        // AUTOMATED ASSIGNED TEACHER LOOKUP
+        const assignedAccess = approvedDepartmentRequests.find(req => req.departmentId === item.departmentId);
+        
+        if (assignedAccess?.teacherId) {
+            // Automatically generate request directed to the student's assigned teacher only
+            handleConfirmRequest(assignedAccess.teacherId, 1, item);
+            return;
+        }
+
+        // Fallback to manual selection if no instructor is specifically assigned yet
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
         return;
@@ -275,16 +283,17 @@ export default function StudentDashboardPage() {
     toast({ variant: "destructive", title: "Item Unavailable", description: `"${item.name}" is currently ${item.status}.` });
   }
 
-  const handleConfirmRequest = async (teacherId: string, quantity: number) => {
-    if (!itemToRequest || !firestore || !user?.uid) return;
+  const handleConfirmRequest = async (teacherId: string, quantity: number, targetItem?: InventoryItem) => {
+    const item = targetItem || itemToRequest;
+    if (!item || !firestore || !user?.uid) return;
     
     const studentDisplayName = userProfile?.displayName || user.displayName || 'Student';
 
     try {
       await addDoc(collection(firestore, 'borrowing_transactions'), {
         studentName: studentDisplayName,
-        itemName: itemToRequest.name,
-        inventoryItemId: itemToRequest.id,
+        itemName: item.name,
+        inventoryItemId: item.id,
         itemQuantity: quantity,
         date: new Date().toISOString(),
         status: 'Pending',
@@ -295,7 +304,7 @@ export default function StudentDashboardPage() {
       setIsApprovalDialogOpen(false);
       setItemToRequest(null);
       setItemInDetail(null);
-      toast({ title: "Approval Request Sent", description: `Request for ${itemToRequest.name} sent to teacher.` });
+      toast({ title: "Approval Request Sent", description: `Request for ${item.name} sent to your instructor.` });
     } catch (error) {
       console.error("Failed to create request:", error);
       toast({ variant: 'destructive', title: 'Failed to send request' });
@@ -667,7 +676,7 @@ export default function StudentDashboardPage() {
             <CheckoutFlow key={selectedChannelId} items={selectedItems} onItemQuantityChange={handleItemQuantityChange} onClear={() => setSelectedItems([])} onSuccess={() => setSelectedItems([])} />
         )}
 
-        <RequestApprovalDialog item={itemToRequest} teachers={teachersForDialog} open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen} onConfirm={handleConfirmRequest} />
+        <RequestApprovalDialog item={itemToRequest} teachers={teachersForDialog} open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen} onConfirm={(teacherId, quantity) => handleConfirmRequest(teacherId, quantity)} />
         <StudentItemDetailsDialog item={itemInDetail} open={!!itemInDetail} onOpenChange={(open) => !open && setItemInDetail(null)} onBorrow={handleItemSelect} isSelected={selectedItems.some(ci => ci.item.id === itemInDetail?.id)} isPending={pendingRequestedItemNames.has(itemInDetail?.name || '')} isApproved={approvedForBorrowItemNames.has(itemInDetail?.name || '')} locationName={channels.find(c => c.id === itemInDetail?.channelId)?.name.replace('#', '') || 'General Storage'} />
         
         <Dialog open={itemsToReturn.length > 0} onOpenChange={(open) => !open && setItemsToReturn([])}>

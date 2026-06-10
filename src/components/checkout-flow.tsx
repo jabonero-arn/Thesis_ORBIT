@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -97,59 +98,61 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
     const approvalsToConsume: string[] = [];
 
-    // Pre-flight check to ensure enough approvals exist for all locked items
-    for (const { item, quantity: requestedQuantity } of cartItems) {
-      const masterItem = allItems.find(i => i.id === item.id);
-      if (masterItem?.status === 'Locked') {
-        const availableApprovals = borrowHistory.filter(h => 
-          h.borrowerUserId === user.uid &&
-          h.itemName === item.name &&
-          h.status === 'Approved' &&
-          !h.checkoutSessionId
-        );
-        
-        const totalApprovedQuantity = availableApprovals.reduce((sum, approval) => sum + (approval.itemQuantity || 0), 0);
-
-        if (totalApprovedQuantity < requestedQuantity) {
-           toast({
-            variant: "destructive",
-            title: "Approval Quantity Insufficient",
-            description: `You are requesting ${requestedQuantity} of "${item.name}", but only have approvals for ${totalApprovedQuantity}.`,
-          });
-          return; // Stop the whole process
-        }
-      }
-    }
-
-    // If all checks pass, gather the approval record IDs to be consumed.
-    for (const { item, quantity: requestedQuantity } of cartItems) {
-      const masterItem = allItems.find(i => i.id === item.id);
-      if (masterItem?.status === 'Locked') {
-        const availableApprovals = borrowHistory.filter(h => 
+    // Pre-flight check to ensure enough approvals exist for all locked items (Only for Students)
+    if (!isTeacherView) {
+        for (const { item, quantity: requestedQuantity } of cartItems) {
+        const masterItem = allItems.find(i => i.id === item.id);
+        if (masterItem?.status === 'Locked') {
+            const availableApprovals = borrowHistory.filter(h => 
             h.borrowerUserId === user.uid &&
             h.itemName === item.name &&
             h.status === 'Approved' &&
             !h.checkoutSessionId
-        ).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // FIFO
+            );
+            
+            const totalApprovedQuantity = availableApprovals.reduce((sum, approval) => sum + (approval.itemQuantity || 0), 0);
 
-        let quantityToSatisfy = requestedQuantity;
-        for (const approval of availableApprovals) {
-            if (quantityToSatisfy > 0) {
-                approvalsToConsume.push(approval.id);
-                quantityToSatisfy -= (approval.itemQuantity || 1);
-            } else {
-                break;
+            if (totalApprovedQuantity < requestedQuantity) {
+            toast({
+                variant: "destructive",
+                title: "Approval Quantity Insufficient",
+                description: `You are requesting ${requestedQuantity} of "${item.name}", but only have approvals for ${totalApprovedQuantity}.`,
+            });
+            return; 
             }
         }
-      }
+        }
+
+        // Gather the approval record IDs to be consumed.
+        for (const { item, quantity: requestedQuantity } of cartItems) {
+        const masterItem = allItems.find(i => i.id === item.id);
+        if (masterItem?.status === 'Locked') {
+            const availableApprovals = borrowHistory.filter(h => 
+                h.borrowerUserId === user.uid &&
+                h.itemName === item.name &&
+                h.status === 'Approved' &&
+                !h.checkoutSessionId
+            ).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()); 
+
+            let quantityToSatisfy = requestedQuantity;
+            for (const approval of availableApprovals) {
+                if (quantityToSatisfy > 0) {
+                    approvalsToConsume.push(approval.id);
+                    quantityToSatisfy -= (approval.itemQuantity || 1);
+                } else {
+                    break;
+                }
+            }
+        }
+        }
     }
 
     const sessionId = `checkout-${user.uid}-${Date.now()}`;
     setActiveCheckoutSessionId(sessionId);
     
     const checkoutPayload: any = {
-      t: 'c', // type: checkout
-      sid: sessionId, // checkout session ID
+      t: 'c', 
+      sid: sessionId,
       u: user.uid,
       i: cartItems.map(({ item, quantity }) => ({ id: item.id, q: quantity })),
       a: approvalsToConsume,
@@ -217,11 +220,10 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         const allItemsInDB = allItems.find(i => i.id === item.id)
         if (!allItemsInDB) continue;
 
-        // Correctly filter for reservations on the same day with overlapping times
         const overlappingReservations = borrowHistory.filter(h => 
             h.inventoryItemId === item.id &&
             h.status === 'Reserved' &&
-            reservationDate && isSameDay(new Date(h.date), reservationDate) && // Correct date comparison
+            reservationDate && isSameDay(new Date(h.date), reservationDate) && 
             h.startTime && h.endTime && startTime && endTime &&
             h.startTime < endTime && h.endTime > startTime
         );
@@ -257,7 +259,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
             inventoryItemId: item.id,
             itemQuantity: quantity,
             date: reservationDate.toISOString(),
-            status: 'Pending', 
+            status: isTeacherView ? 'Reserved' : 'Pending', 
             startTime: startTime,
             endTime: endTime,
             borrowerUserId: user.uid,
@@ -288,7 +290,12 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
 
         await batch.commit();
 
-        toast({ title: "Reservation Request Sent!", description: `Your request for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime} has been sent for staff approval.` })
+        toast({ 
+            title: isTeacherView ? "Reservation Confirmed!" : "Reservation Request Sent!", 
+            description: isTeacherView 
+                ? `Reserved ${cartItems.length} items for ${format(reservationDate, "PPP")}.`
+                : `Your request for ${format(reservationDate, "PPP")} from ${startTime} to ${endTime} has been sent for staff approval.` 
+        })
         onSuccess()
         setIsLoading(false)
 
@@ -298,7 +305,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
         toast({
             variant: "destructive",
             title: "Reservation Failed",
-            description: "Could not send reservation request. Please try again.",
+            description: "Could not complete the reservation process.",
         })
     }
   }
@@ -429,7 +436,7 @@ function CheckoutForm({ items: cartItems, onClear, onSuccess, onItemQuantityChan
                 {isLoading ? (
                     <Loader2 className="animate-spin" />
                 ) : isReserve ? (
-                    'Submit Reservation'
+                    isTeacherView ? 'Confirm Reservation' : 'Submit Reservation'
                 ) : (
                     'Generate QR Code'
                 )}
