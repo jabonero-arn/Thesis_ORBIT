@@ -200,6 +200,7 @@ export default function TeacherDashboardPage() {
     
     console.log('DEBUG: Attempting Request Update');
     console.log('DEBUG: Transaction ID:', id);
+    console.log('DEBUG: Full Record Data:', record);
     console.log('DEBUG: Transaction TeacherID in Doc:', record?.teacherId);
     console.log('DEBUG: Current Authenticated User UID:', user.uid);
     console.log('DEBUG: New Status Payload:', newStatus);
@@ -214,6 +215,8 @@ export default function TeacherDashboardPage() {
         updatedAt: now
       };
       
+      console.log('DEBUG: Final Payload sent to updateDoc:', updatePayload);
+
       updateDoc(docRef, updatePayload)
         .then(() => {
           console.log('DEBUG: Update SUCCESS at path:', docRef.path);

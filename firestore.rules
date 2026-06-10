@@ -22,7 +22,7 @@ service cloud.firestore {
       );
     }
 
-    // Robust Teacher check: Uses dedicated role collection
+    // robust Teacher check: Uses dedicated role collection
     function isTeacher() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
     }
@@ -113,7 +113,7 @@ service cloud.firestore {
       
       // Update rules: Direct verification for Teachers, Owners, and Supervisors
       // SECURITY FIX: Explicit check for assigned teacher UID
-      // Redeploy Trigger: Version 1.2.1 - Enhanced Teacher Audit Rules
+      // Redeploy Trigger: Version 1.2.2 - Robust Audit Validation
       allow update: if isSignedIn() && (
         isSupervisor() || 
         resource.data.get('borrowerUserId', '') == request.auth.uid || 
