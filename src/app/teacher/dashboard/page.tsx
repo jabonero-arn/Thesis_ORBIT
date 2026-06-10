@@ -209,12 +209,13 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // TRUE TRACE DIAGNOSTICS - REVISITED v1.2.8
-    console.group(`Teacher Action: ${newStatus}`);
+    // TRUE TRACE DIAGNOSTICS - VERSION 1.3.0
+    console.group(`Teacher Action v1.3.0: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
     console.log('Authenticated User UID:', user.uid);
-    console.log('Stored Record Data:', record);
+    console.log('Record Teacher ID:', record?.teacherId);
+    console.log('Full Record Data:', record);
     console.groupEnd();
 
     if (record) {
@@ -234,19 +235,19 @@ export default function TeacherDashboardPage() {
           updatePayload.deniedAt = now;
       }
       
-      console.log('Attempting update at:', docRef.path);
+      console.log('Attempting update with v1.3.0 rules at:', docRef.path);
       console.log('Update payload:', updatePayload);
 
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log('Update successful at path:', docRef.path);
+          console.log('v1.3.0 Update successful at path:', docRef.path);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`DEBUG: Permission Denied or Update Failed at: ${docRef.path}`);
+          console.error(`DEBUG: Permission Denied or Update Failed v1.3.0 at: ${docRef.path}`);
           console.error('DEBUG: Server Error Code:', serverError.code);
           console.error('DEBUG: Server Error Message:', serverError.message);
           
