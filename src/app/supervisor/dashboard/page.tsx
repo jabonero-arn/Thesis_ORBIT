@@ -696,7 +696,10 @@ export default function SupervisorDashboardPage() {
                 return (
                     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80 border-border/50">
-                            <CardHeader className="text-white">Laboratory Access Queue</CardTitle><CardDescription>Review and process pending student access permissions.</CardDescription></CardHeader>
+                            <CardHeader>
+                                <CardTitle className="text-white">Laboratory Access Queue</CardTitle>
+                                <CardDescription>Review and process pending student access permissions.</CardDescription>
+                            </CardHeader>
                             <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
                                     <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead> <TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
