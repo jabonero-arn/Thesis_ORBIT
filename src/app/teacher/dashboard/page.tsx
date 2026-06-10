@@ -209,12 +209,12 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // TRUE TRACE DIAGNOSTICS - VERSION 1.3.0
-    console.group(`Teacher Action v1.3.0: ${newStatus}`);
+    // TRUE TRACE DIAGNOSTICS - VERSION 1.3.2
+    console.group(`Teacher Action v1.3.2: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
     console.log('Authenticated User UID:', user.uid);
-    console.log('Record Teacher ID:', record?.teacherId);
+    console.log('Record Teacher ID:', record?.teacherId || (record as any).assignedTeacherId);
     console.log('Full Record Data:', record);
     console.groupEnd();
 
@@ -235,19 +235,18 @@ export default function TeacherDashboardPage() {
           updatePayload.deniedAt = now;
       }
       
-      console.log('Attempting update with v1.3.0 rules at:', docRef.path);
-      console.log('Update payload:', updatePayload);
+      console.log('Attempting update with v1.3.2 explicit rules at:', docRef.path);
 
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log('v1.3.0 Update successful at path:', docRef.path);
+          console.log('v1.3.2 Update successful at path:', docRef.path);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`DEBUG: Permission Denied or Update Failed v1.3.0 at: ${docRef.path}`);
+          console.error(`DEBUG: Permission Denied or Update Failed v1.3.2 at: ${docRef.path}`);
           console.error('DEBUG: Server Error Code:', serverError.code);
           console.error('DEBUG: Server Error Message:', serverError.message);
           
@@ -261,7 +260,7 @@ export default function TeacherDashboardPage() {
           toast({ 
             variant: "destructive", 
             title: "Update Failed", 
-            description: "Unable to update request. Please check teacher permissions." 
+            description: "Unable to update request. Please check teacher assignment records." 
           });
         });
     }

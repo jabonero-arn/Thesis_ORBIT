@@ -120,17 +120,15 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules: Direct verification for Teachers, Owners, and Supervisors
-      // REDEPLOY TRIGGER: Version 1.3.1 - Resilient Teacher Authorization
+      // REDEPLOY TRIGGER: Version 1.3.2 - Explicit Field Authorization
       allow update: if isSignedIn() && (
         isSupervisor() || 
         isStaff() ||
-        (request.auth.uid in [
-          resource.data.get('teacherId', ''),
-          resource.data.get('assignedTeacherId', ''),
-          resource.data.get('approvingTeacherId', ''),
-          resource.data.get('teacherUid', ''),
-          resource.data.get('borrowerUserId', '')
-        ])
+        request.auth.uid == resource.data.get('teacherId', '') ||
+        request.auth.uid == resource.data.get('assignedTeacherId', '') ||
+        request.auth.uid == resource.data.get('approvingTeacherId', '') ||
+        request.auth.uid == resource.data.get('teacherUid', '') ||
+        request.auth.uid == resource.data.get('borrowerUserId', '')
       );
       
       allow delete: if isSupervisor() 
