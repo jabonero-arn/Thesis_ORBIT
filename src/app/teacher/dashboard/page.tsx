@@ -154,7 +154,7 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v2.1.0
+  // Standardized Teacher Assignment Checker - v2.2.0
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -168,7 +168,7 @@ export default function TeacherDashboardPage() {
 
   const teacherIdForApproval = teacherData?.id;
   const pendingRequestsCount = borrowHistory.filter((r) => {
-    return r.status === 'Pending' && teacherIdForApproval && isAssignedToTeacher(r, teacherIdForApproval);
+    return (r.status === 'Pending' || r.status === 'pending') && teacherIdForApproval && isAssignedToTeacher(r, teacherIdForApproval);
   }).length;
 
   const personalActiveBorrows = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Active');
@@ -210,6 +210,10 @@ export default function TeacherDashboardPage() {
     return Array.from(categories).sort();
   }, [allItems]);
 
+  /**
+   * Finalized Approval Logic - v2.2.0 (Resilient & Unified)
+   * Handles the state transition for student borrowing requests.
+   */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
@@ -227,23 +231,23 @@ export default function TeacherDashboardPage() {
       const updatePayload: any = { 
         status: newStatus,
         updatedAt: now,
-        // Standardized Audit Metadata
+        // Standardized Audit Metadata for forensic integrity
         approvedBy: newStatus === 'Approved' ? user.uid : null,
         approvedAt: newStatus === 'Approved' ? now : null,
         deniedBy: newStatus === 'Denied' ? user.uid : null,
         deniedAt: newStatus === 'Denied' ? now : null,
       };
 
-      // v2.1.0 Non-blocking resilient update
+      // Non-blocking resilient update pattern as per Firebase Studio standards
       updateDoc(docRef, updatePayload)
         .then(() => {
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `The laboratory request has been processed successfully.` 
+            description: `The laboratory request for ${record.studentName} has been processed.` 
           });
         })
         .catch(async (serverError: any) => {
-          // Construct rich, contextual permission error
+          // Construct rich, contextual permission error for the developer overlay
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',

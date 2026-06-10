@@ -110,7 +110,12 @@
           "type": "string",
           "enum": ["Pending", "Resolved"],
           "description": "The resolution status of a damaged/lost item report."
-        }
+        },
+        "approvedBy": { "type": "string", "description": "UID of the teacher who approved the request." },
+        "approvedAt": { "type": "string", "format": "date-time" },
+        "deniedBy": { "type": "string", "description": "UID of the teacher who denied the request." },
+        "deniedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["studentName", "itemName", "date", "status", "borrowerUserId"]
     },

@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --------------------------------------------------------------------------------
-    // Helper Functions - v2.1.0 (Ultimate Resiliency & Efficiency)
+    // Helper Functions - v2.2.0 (Resilient & Optimized)
     // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
@@ -15,6 +15,7 @@ service cloud.firestore {
     }
     
     // Explicit Assignment Check - High Priority
+    // This function checks the document data directly for any field that links it to the current teacher.
     function isAssignedToTransaction(data) {
       let uid = request.auth.uid;
       return isSignedIn() && (
@@ -142,13 +143,15 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules - v2.1.0 (Refined)
+    // Borrowing Transaction Rules - v2.2.0 (Resilient Teacher Authorization)
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: Prioritize Assignment for speed and reliability
+      // Update rules: Prioritize Assignment for seamless teacher approvals.
+      // Teachers assigned to the transaction (regardless of document structure version) 
+      // are granted specific authority to process the request.
       allow update: if isSignedIn() && (
         isAssignedToTransaction(resource.data) ||
         isSupervisor() || 
