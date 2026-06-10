@@ -154,7 +154,18 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  const pendingRequestsCount = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherData?.id).length;
+  const teacherIdForApproval = teacherData?.id;
+  const pendingRequestsCount = borrowHistory.filter((r) => {
+    const raw = r as any;
+    return r.status === 'Pending' && (
+      r.teacherId === teacherIdForApproval || 
+      raw.assignedTeacherId === teacherIdForApproval ||
+      raw.requestedTeacherId === teacherIdForApproval ||
+      raw.approvingTeacherId === teacherIdForApproval ||
+      raw.teacherUid === teacherIdForApproval
+    );
+  }).length;
+
   const personalActiveBorrows = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Active');
 
   const filteredItems = React.useMemo(() => {
@@ -198,7 +209,7 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // TRUE TRACE DIAGNOSTICS
+    // TRUE TRACE DIAGNOSTICS - REVISITED v1.2.8
     console.group(`Teacher Action: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
@@ -223,7 +234,8 @@ export default function TeacherDashboardPage() {
           updatePayload.deniedAt = now;
       }
       
-      console.log('Attempting update with payload:', updatePayload);
+      console.log('Attempting update at:', docRef.path);
+      console.log('Update payload:', updatePayload);
 
       updateDoc(docRef, updatePayload)
         .then(() => {
