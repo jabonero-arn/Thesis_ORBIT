@@ -154,16 +154,21 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
+  // Standardized Teacher Assignment Checker - v1.4.0
+  const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
+    const raw = r as any;
+    return (
+        r.teacherId === tId || 
+        raw.assignedTeacherId === tId ||
+        raw.requestedTeacherId === tId ||
+        raw.approvingTeacherId === tId ||
+        raw.teacherUid === tId
+    );
+  }, []);
+
   const teacherIdForApproval = teacherData?.id;
   const pendingRequestsCount = borrowHistory.filter((r) => {
-    const raw = r as any;
-    return r.status === 'Pending' && (
-      r.teacherId === teacherIdForApproval || 
-      raw.assignedTeacherId === teacherIdForApproval ||
-      raw.requestedTeacherId === teacherIdForApproval ||
-      raw.approvingTeacherId === teacherIdForApproval ||
-      raw.teacherUid === teacherIdForApproval
-    );
+    return r.status === 'Pending' && teacherIdForApproval && isAssignedToTeacher(r, teacherIdForApproval);
   }).length;
 
   const personalActiveBorrows = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Active');
@@ -209,13 +214,13 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // TRUE TRACE DIAGNOSTICS - VERSION 1.3.2
-    console.group(`Teacher Action v1.3.2: ${newStatus}`);
+    // TRUE TRACE DIAGNOSTICS - VERSION 1.4.0
+    console.group(`Teacher Action v1.4.0: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
     console.log('Authenticated User UID:', user.uid);
-    console.log('Record Teacher ID:', record?.teacherId || (record as any).assignedTeacherId);
-    console.log('Full Record Data:', record);
+    console.log('Record Assigned Teacher:', record?.teacherId || (record as any).assignedTeacherId);
+    console.log('Record Data:', record);
     console.groupEnd();
 
     if (record) {
@@ -235,20 +240,16 @@ export default function TeacherDashboardPage() {
           updatePayload.deniedAt = now;
       }
       
-      console.log('Attempting update with v1.3.2 explicit rules at:', docRef.path);
-
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log('v1.3.2 Update successful at path:', docRef.path);
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
+            description: `Request from ${record.studentName} has been processed.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`DEBUG: Permission Denied or Update Failed v1.3.2 at: ${docRef.path}`);
-          console.error('DEBUG: Server Error Code:', serverError.code);
-          console.error('DEBUG: Server Error Message:', serverError.message);
+          console.error(`ERROR: v1.4.0 Authorization Failure at: ${docRef.path}`);
+          console.error('Reason:', serverError.message);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
@@ -259,8 +260,8 @@ export default function TeacherDashboardPage() {
 
           toast({ 
             variant: "destructive", 
-            title: "Update Failed", 
-            description: "Unable to update request. Please check teacher assignment records." 
+            title: "Permission Denied", 
+            description: "You are not authorized to approve this record." 
           });
         });
     }
@@ -329,7 +330,10 @@ export default function TeacherDashboardPage() {
   const renderOverview = () => {
     const currentlyBorrowedCount = personalActiveBorrows.length;
     const personalResCount = borrowHistory.filter(h => h.borrowerUserId === user?.uid && h.status === 'Reserved').length;
-    const recentEvents = borrowHistory.filter(h => h.teacherId === user?.uid || h.borrowerUserId === user?.uid).slice(0, 5);
+    const recentEvents = borrowHistory.filter(h => 
+        (teacherIdForApproval && isAssignedToTeacher(h, teacherIdForApproval)) || 
+        h.borrowerUserId === user?.uid
+    ).slice(0, 5);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -414,58 +418,57 @@ export default function TeacherDashboardPage() {
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
     
-    // BACKWARD COMPATIBILITY: Filter by multiple possible teacher UID field names
-    const isAssignedToMe = (r: BorrowHistory) => {
-        const raw = r as any;
-        return (
-            r.teacherId === teacherId || 
-            raw.assignedTeacherId === teacherId ||
-            raw.requestedTeacherId === teacherId ||
-            raw.approvingTeacherId === teacherId ||
-            raw.teacherUid === teacherId
-        );
-    };
-
+    // BACKWARD COMPATIBLE FILTERING - v1.4.0
     const pendingRequests = borrowHistory
-        .filter((r) => r.status === 'Pending' && isAssignedToMe(r))
+        .filter((r) => r.status === 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const processedRequests = borrowHistory
-        .filter((r) => r.status !== 'Pending' && isAssignedToMe(r))
+        .filter((r) => r.status !== 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (requestSubView === 'pending') {
       return (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold font-headline">Pending Approvals</h3>
+            <h3 className="text-lg font-semibold font-headline">Pending Student Requests</h3>
             <Badge variant="secondary" className="bg-primary/10 text-primary border-none">{pendingRequests.length} Waiting</Badge>
           </div>
-          <div className="border rounded-xl bg-card/40 border-border/50 overflow-hidden">
+          <div className="border rounded-xl bg-card/40 border-border/50 overflow-hidden shadow-xl">
             {pendingRequests.length > 0 ? (
               <Table>
-                <TableHeader className="bg-black/20">
-                  <TableRow>
-                    <TableHead>Student</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                <TableHeader className="bg-black/40">
+                  <TableRow className="hover:bg-transparent border-border/50">
+                    <TableHead className="text-xs font-bold uppercase tracking-widest">Student</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-widest">Item</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-widest">Qty</TableHead>
+                    <TableHead className="text-xs font-bold uppercase tracking-widest">Date</TableHead>
+                    <TableHead className="text-right text-xs font-bold uppercase tracking-widest">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pendingRequests.map((record) => (
-                    <TableRow key={record.id} className="border-border/40">
-                      <TableCell className="font-medium text-white">{record.studentName}</TableCell>
+                    <TableRow key={record.id} className="border-border/40 hover:bg-white/[0.02] transition-colors">
+                      <TableCell className="font-bold text-white py-4">{record.studentName}</TableCell>
                       <TableCell>{record.itemName}</TableCell>
-                      <TableCell>{record.itemQuantity || 1}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{format(new Date(record.date), 'MMM d, p')}</TableCell>
+                      <TableCell className="font-mono">{record.itemQuantity || 1}</TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground font-medium">{format(new Date(record.date), 'MMM d, p')}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="secondary" size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white border-none" onClick={() => handleRequest(record.id, 'Approved')}>
-                          <Check className="mr-2 h-4 w-4" /> Approve
+                        <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="h-8 bg-emerald-600 hover:bg-emerald-700 text-white font-bold uppercase text-[10px] tracking-widest border-none px-4" 
+                            onClick={() => handleRequest(record.id, 'Approved')}
+                        >
+                          Approve
                         </Button>
-                        <Button variant="destructive" size="sm" className="h-8" onClick={() => handleRequest(record.id, 'Denied')}>
-                          <X className="mr-2 h-4 w-4" /> Deny
+                        <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="h-8 font-bold uppercase text-[10px] tracking-widest px-4" 
+                            onClick={() => handleRequest(record.id, 'Denied')}
+                        >
+                          Deny
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -473,9 +476,10 @@ export default function TeacherDashboardPage() {
                 </TableBody>
               </Table>
             ) : (
-              <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-                <AlertCircle className="h-12 w-12 opacity-20 mb-4" />
-                <p>No pending approval requests.</p>
+              <div className="flex flex-col items-center justify-center p-20 text-center text-muted-foreground">
+                <PackageSearch className="h-16 w-16 opacity-10 mb-4" />
+                <p className="font-medium">No pending student requests.</p>
+                <p className="text-xs opacity-60">Approvals for your assigned students will appear here.</p>
               </div>
             )}
           </div>
@@ -486,27 +490,28 @@ export default function TeacherDashboardPage() {
     return (
       <div className="space-y-4">
         <h3 className="text-lg font-semibold font-headline">Approval History</h3>
-        <div className="border rounded-xl bg-card/40 border-border/50 overflow-hidden">
+        <div className="border rounded-xl bg-card/40 border-border/50 overflow-hidden shadow-lg">
           {processedRequests.length > 0 ? (
             <Table>
-              <TableHeader className="bg-black/20">
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Qty</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Status</TableHead>
+              <TableHeader className="bg-black/40">
+                <TableRow className="hover:bg-transparent border-border/50">
+                  <TableHead className="text-xs font-bold uppercase tracking-widest">Student</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-widest">Item</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-widest">Qty</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-widest">Date</TableHead>
+                  <TableHead className="text-right text-xs font-bold uppercase tracking-widest">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {processedRequests.map((record) => (
-                  <TableRow key={record.id} className="border-border/40">
+                  <TableRow key={record.id} className="border-border/40 hover:bg-white/[0.01]">
                     <TableCell className="font-medium text-white">{record.studentName}</TableCell>
                     <TableCell>{record.itemName}</TableCell>
-                    <TableCell>{record.itemQuantity || 1}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{format(new Date(record.date), 'MMM d, p')}</TableCell>
+                    <TableCell className="font-mono">{record.itemQuantity || 1}</TableCell>
+                    <TableCell className="text-[11px] text-muted-foreground">{format(new Date(record.date), 'MMM d, p')}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant={record.status === 'Approved' ? 'secondary' : 'destructive'} className={cn(
+                          "font-bold uppercase text-[9px] tracking-widest px-3",
                           record.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
                       )}>{record.status}</Badge>
                     </TableCell>
@@ -515,8 +520,8 @@ export default function TeacherDashboardPage() {
               </TableBody>
             </Table>
           ) : (
-            <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-              <History className="h-12 w-12 opacity-20 mb-4" />
+            <div className="flex flex-col items-center justify-center p-20 text-center text-muted-foreground">
+              <History className="h-16 w-16 opacity-10 mb-4" />
               <p>No approval history yet.</p>
             </div>
           )}
