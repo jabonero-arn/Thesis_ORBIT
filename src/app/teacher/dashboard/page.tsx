@@ -201,21 +201,27 @@ export default function TeacherDashboardPage() {
     console.log('DEBUG: Attempting Request Update');
     console.log('DEBUG: Transaction ID:', id);
     console.log('DEBUG: Full Record Data:', record);
-    console.log('DEBUG: Transaction TeacherID in Doc:', record?.teacherId);
-    console.log('DEBUG: Current Authenticated User UID:', user.uid);
-    console.log('DEBUG: New Status Payload:', newStatus);
+    console.log('DEBUG: Current User UID:', user.uid);
+    console.log('DEBUG: Target Status:', newStatus);
 
     if (record) {
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const now = new Date().toISOString();
+      
       const updatePayload: any = { 
         status: newStatus,
-        [newStatus === 'Approved' ? 'approvedBy' : 'deniedBy']: user.uid,
-        [newStatus === 'Approved' ? 'approvedAt' : 'deniedAt']: now,
         updatedAt: now
       };
+
+      if (newStatus === 'Approved') {
+          updatePayload.approvedBy = user.uid;
+          updatePayload.approvedAt = now;
+      } else {
+          updatePayload.deniedBy = user.uid;
+          updatePayload.deniedAt = now;
+      }
       
-      console.log('DEBUG: Final Payload sent to updateDoc:', updatePayload);
+      console.log('DEBUG: Payload sent to updateDoc:', updatePayload);
 
       updateDoc(docRef, updatePayload)
         .then(() => {
@@ -393,8 +399,26 @@ export default function TeacherDashboardPage() {
 
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
-    const pendingRequests = borrowHistory.filter((r) => r.status === 'Pending' && r.teacherId === teacherId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const processedRequests = borrowHistory.filter((r) => r.status !== 'Pending' && r.teacherId === teacherId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // BACKWARD COMPATIBILITY: Filter by multiple possible teacher UID field names
+    const isAssignedToMe = (r: BorrowHistory) => {
+        const raw = r as any;
+        return (
+            r.teacherId === teacherId || 
+            raw.assignedTeacherId === teacherId ||
+            raw.requestedTeacherId === teacherId ||
+            raw.approvingTeacherId === teacherId ||
+            raw.teacherUid === teacherId
+        );
+    };
+
+    const pendingRequests = borrowHistory
+        .filter((r) => r.status === 'Pending' && isAssignedToMe(r))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+    const processedRequests = borrowHistory
+        .filter((r) => r.status !== 'Pending' && isAssignedToMe(r))
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (requestSubView === 'pending') {
       return (
