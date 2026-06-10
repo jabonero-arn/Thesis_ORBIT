@@ -197,6 +197,13 @@ export default function TeacherDashboardPage() {
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
+    
+    console.log('DEBUG: Attempting Request Update');
+    console.log('DEBUG: Transaction ID:', id);
+    console.log('DEBUG: Transaction TeacherID in Doc:', record?.teacherId);
+    console.log('DEBUG: Current Authenticated User UID:', user.uid);
+    console.log('DEBUG: New Status Payload:', newStatus);
+
     if (record) {
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const now = new Date().toISOString();
@@ -209,12 +216,17 @@ export default function TeacherDashboardPage() {
       
       updateDoc(docRef, updatePayload)
         .then(() => {
+          console.log('DEBUG: Update SUCCESS at path:', docRef.path);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
           });
         })
         .catch(async (serverError: any) => {
+          console.error(`DEBUG: Permission Denied or Update Failed at: ${docRef.path}`);
+          console.error('DEBUG: Server Error Code:', serverError.code);
+          console.error('DEBUG: Server Error Message:', serverError.message);
+          
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',
@@ -341,7 +353,7 @@ export default function TeacherDashboardPage() {
                         {recentEvents.length > 0 ? (
                             <div className="space-y-4">
                                 {recentEvents.map(event => (
-                                    <div className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
+                                    <div key={event.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{event.status}</p>
