@@ -122,21 +122,23 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: RESILIENT TEACHER AUTHORIZATION - v1.4.0
-      // Allows the assigned teacher OR supervisor/staff OR borrower to update
+      // Update rules: RESILIENT TEACHER AUTHORIZATION - v1.5.0
+      // Allows the assigned teacher OR supervisor/staff OR borrower to update.
+      // We use safe field extraction to handle documents with varying schemas.
       allow update: if isSignedIn() && (
         isSupervisor() || 
         isStaff() ||
-        request.auth.uid == resource.data.get('teacherId', '') ||
-        request.auth.uid == resource.data.get('assignedTeacherId', '') ||
-        request.auth.uid == resource.data.get('approvingTeacherId', '') ||
-        request.auth.uid == resource.data.get('teacherUid', '') ||
-        request.auth.uid == resource.data.get('borrowerUserId', '')
+        request.auth.uid == resource.data.get('teacherId', 'N/A') ||
+        request.auth.uid == resource.data.get('assignedTeacherId', 'N/A') ||
+        request.auth.uid == resource.data.get('requestedTeacherId', 'N/A') ||
+        request.auth.uid == resource.data.get('approvingTeacherId', 'N/A') ||
+        request.auth.uid == resource.data.get('teacherUid', 'N/A') ||
+        request.auth.uid == resource.data.get('borrowerUserId', 'N/A')
       );
       
       allow delete: if isSupervisor() 
-        || resource.data.get('borrowerUserId', '') == request.auth.uid
-        || resource.data.get('teacherId', '') == request.auth.uid;
+        || resource.data.get('borrowerUserId', 'N/A') == request.auth.uid
+        || resource.data.get('teacherId', 'N/A') == request.auth.uid;
     }
   }
 }
