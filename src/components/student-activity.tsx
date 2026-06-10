@@ -9,6 +9,17 @@ import { PackageCheck, CornerDownLeft, Hourglass, History, CalendarDays, XCircle
 import * as React from "react"
 import { format, isToday } from "date-fns"
 import { ReturnConditionBadge } from "./return-condition-badge"
+import { 
+    AlertDialog, 
+    AlertDialogAction, 
+    AlertDialogCancel, 
+    AlertDialogContent, 
+    AlertDialogDescription, 
+    AlertDialogFooter, 
+    AlertDialogHeader, 
+    AlertDialogTitle, 
+    AlertDialogTrigger 
+} from "@/components/ui/alert-dialog"
 
 
 type StudentActivityProps = {
@@ -293,9 +304,30 @@ export function StudentActivity({ borrowHistory, onReturn, view, onCancelReserva
                             )}
                             <div className="flex justify-end gap-2 mt-2">
                                 {canCancel && (
-                                    <Button size="sm" variant="destructive" onClick={() => onCancelReservation(reservationId)}>
-                                        <XCircle className="mr-2 h-4 w-4"/> Cancel
-                                    </Button>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button size="sm" variant="destructive">
+                                                <XCircle className="mr-2 h-4 w-4"/> Cancel
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Cancel Reservation?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Are you sure you want to cancel this reservation? This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Keep Reservation</AlertDialogCancel>
+                                                <AlertDialogAction 
+                                                    onClick={() => onCancelReservation(reservationId)} 
+                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                >
+                                                    Yes, Cancel Request
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
                                 )}
                                 {group.status === 'Reserved' && (
                                      <Button size="sm" onClick={() => onClaimReservation(reservationId)} disabled={!canClaim}>

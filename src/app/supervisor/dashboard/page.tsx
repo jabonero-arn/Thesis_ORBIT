@@ -296,6 +296,37 @@ export default function SupervisorDashboardPage() {
         }
     }
 
+    const handleReservationApproval = async (reservationId: string, newStatus: 'Reserved' | 'Denied') => {
+        if (!firestore) return;
+        const recordsToUpdate = borrowHistory.filter(h => h.reservationId === reservationId && h.status === 'Pending');
+        if (recordsToUpdate.length === 0) {
+            toast({ variant: 'destructive', title: 'Action Failed', description: 'This reservation is no longer pending.' });
+            return;
+        }
+
+        try {
+            const batch = writeBatch(firestore);
+            recordsToUpdate.forEach(record => {
+                batch.update(doc(firestore, 'borrowing_transactions', record.id), { status: newStatus });
+            });
+            await batch.commit();
+
+            createActivityLog(
+                firestore,
+                user?.uid || 'sys',
+                userProfile?.displayName || 'Supervisor',
+                newStatus === 'Reserved' ? 'Approved Reservation' : 'Rejected Reservation',
+                `${newStatus === 'Reserved' ? 'Approved' : 'Rejected'} reservation ${reservationId} for ${recordsToUpdate[0].studentName}`,
+                'Transaction'
+            );
+
+            toast({ title: `Reservation ${newStatus === 'Reserved' ? 'Approved' : 'Rejected'}` });
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error' });
+        }
+    };
+
     const navItems = [
         { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid />, description: 'Overview of laboratory performance and status.' },
         { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode />, description: 'Process checkouts and returns instantly.' },
@@ -536,11 +567,64 @@ export default function SupervisorDashboardPage() {
                     </div>
                 );
             case 'transactions':
+                const pendingReservations = departmentHistory.filter(h => h.status === 'Pending' && h.reservationId);
+                const groupedPending: { [id: string]: { studentName: string, items: string[], date: string, startTime?: string, endTime?: string } } = {};
+                pendingReservations.forEach(r => {
+                    if (!r.reservationId) return;
+                    if (!groupedPending[r.reservationId]) {
+                        groupedPending[r.reservationId] = {
+                            studentName: r.studentName,
+                            items: [],
+                            date: r.date,
+                            startTime: r.startTime,
+                            endTime: r.endTime
+                        };
+                    }
+                    groupedPending[r.reservationId].items.push(`${r.itemName}${r.itemQuantity ? ` (x${r.itemQuantity})` : ''}`);
+                });
+
                 return (
                      <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80 border-border/50">
+                            <CardHeader>
+                                <CardTitle className="text-white">Reservation Requests</CardTitle>
+                                <CardDescription>Pending requests that require supervisor approval.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="p-0 max-h-[40vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10">
+                                        <TableRow>
+                                            <TableHead>Borrower</TableHead>
+                                            <TableHead>Requested Items</TableHead>
+                                            <TableHead>Schedule</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {Object.entries(groupedPending).map(([resId, data]) => (
+                                            <TableRow key={resId} className="border-border/40">
+                                                <TableCell className="text-white font-medium">{data.studentName}</TableCell>
+                                                <TableCell className="max-w-[300px] truncate">{data.items.join(', ')}</TableCell>
+                                                <TableCell className="text-muted-foreground font-mono">
+                                                    {format(new Date(data.date), 'MMM d')} | {data.startTime}-{data.endTime}
+                                                </TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button size="sm" onClick={() => handleReservationApproval(resId, 'Reserved')} className="bg-emerald-600 hover:bg-emerald-700">Approve</Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleReservationApproval(resId, 'Denied')}>Reject</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {Object.keys(groupedPending).length === 0 && (
+                                            <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic">No pending reservation requests.</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="bg-card/80 border-border/50">
                             <CardHeader><CardTitle className="text-white">Active Borrowing Sessions</CardTitle></CardHeader>
-                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                            <CardContent className="p-0 max-h-[40vh] overflow-auto">
                                 <Table>
                                     <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead className="whitespace-nowrap">Student Representative</TableHead><TableHead className="whitespace-nowrap">Item Description</TableHead><TableHead className="whitespace-nowrap">Session Start</TableHead></TableRow></TableHeader>
                                     <TableBody>{departmentHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id} className="border-border/40"><TableCell className="whitespace-nowrap text-white font-medium">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap text-muted-foreground font-mono">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
@@ -612,7 +696,7 @@ export default function SupervisorDashboardPage() {
                 return (
                     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                         <Card className="bg-card/80 border-border/50">
-                            <CardHeader><CardTitle className="text-white">Laboratory Access Queue</CardTitle><CardDescription>Review and process pending student access permissions.</CardDescription></CardHeader>
+                            <CardHeader className="text-white">Laboratory Access Queue</CardTitle><CardDescription>Review and process pending student access permissions.</CardDescription></CardHeader>
                             <CardContent className="p-0 max-h-[70vh] overflow-auto">
                                 <Table>
                                     <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead> <TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
