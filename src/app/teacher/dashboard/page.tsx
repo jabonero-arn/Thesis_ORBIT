@@ -154,7 +154,7 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v1.9.0 (Ultimate Resiliency)
+  // Standardized Teacher Assignment Checker - v2.0.0 (Ultimate Resiliency)
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -214,17 +214,17 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // ULTIMATE DIAGNOSTICS - VERSION 1.9.0
-    console.group(`Teacher Action v1.9.0: ${newStatus}`);
-    console.log('Record Document ID:', id);
-    console.log('Authenticated UID:', user.uid);
-    console.log('Record Status State:', record?.status);
-    console.log('Assignment Parity:', record ? isAssignedToTeacher(record, user.uid) : 'Record Not Found');
+    // ULTIMATE OBJECT TRACE - v2.0.0
+    console.group(`Teacher Action v2.0.0: ${newStatus}`);
+    console.log('Record ID:', id);
+    console.log('Teacher UID:', user.uid);
+    console.log('Full Record Data:', record);
+    console.log('Assignment Check:', record ? isAssignedToTeacher(record, user.uid) : 'NOT FOUND');
     console.groupEnd();
 
     if (record) {
       if (record.status !== 'Pending') {
-          toast({ title: "Action Forbidden", description: "This request has already been processed or is no longer pending." });
+          toast({ title: "Update Rejected", description: "Request is no longer pending." });
           return;
       }
 
@@ -242,11 +242,11 @@ export default function TeacherDashboardPage() {
         .then(() => {
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `Submission from ${record.studentName} updated to ${newStatus}.` 
+            description: `Update successful.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v1.9.0 Permission Denied at: ${docRef.path}`);
+          console.error(`ERROR: v2.0.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
@@ -257,8 +257,8 @@ export default function TeacherDashboardPage() {
 
           toast({ 
             variant: "destructive", 
-            title: "Authorization Failure", 
-            description: "Server rejected the update. Please contact System Oversight." 
+            title: "Authorization Failed", 
+            description: "Backend rules rejected this update. See Console." 
           });
         });
     }
@@ -415,7 +415,7 @@ export default function TeacherDashboardPage() {
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
     
-    // BACKWARD COMPATIBLE FILTERING - v1.9.0
+    // BACKWARD COMPATIBLE FILTERING - v2.0.0
     const pendingRequests = borrowHistory
         .filter((r) => r.status === 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --------------------------------------------------------------------------------
-    // Helper Functions
+    // Helper Functions - v2.0.0 (Ultimate Resiliency)
     // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
@@ -14,36 +14,43 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Robust Supervisor check: Uses flag collections and profile role fallback
+    // Defensive Supervisor check
     function isSupervisor() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
         exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Supervisor' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Head Supervisor'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['Supervisor', 'Head Supervisor'])
       );
     }
 
-    // Robust Teacher check: Uses flag collection and profile role fallback
+    // Defensive Teacher check
     function isTeacher() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Teacher'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Teacher')
       );
     }
 
-    function isPropertyCustodian() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Property Custodian'
-      );
-    }
-
+    // Defensive Staff check
     function isStaff() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid)) ||
         exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Staff'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Staff')
+      );
+    }
+
+    // Explicit Assignment Check
+    function isAssignedToTransaction(data) {
+      return isSignedIn() && (
+        data.get('teacherId', '') == request.auth.uid ||
+        data.get('assignedTeacherId', '') == request.auth.uid ||
+        data.get('requestedTeacherId', '') == request.auth.uid ||
+        data.get('approvingTeacherId', '') == request.auth.uid ||
+        data.get('teacherUid', '') == request.auth.uid
       );
     }
 
@@ -125,39 +132,28 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules
+    // Borrowing Transaction Rules - v2.0.0
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: ULTIMATE RESILIENT AUTHORIZATION - v1.9.0
-      // Allows update if:
-      // 1. User is a Supervisor or Staff (Full Authority)
-      // 2. User matches any assigned teacher IDs in the document (Direct Authority)
-      // 3. User is a verified Teacher and record is Pending (Role-based Fallback)
-      // 4. User is the borrower (Only if record is currently Pending)
+      // Update rules: v2.0.0
+      // 1. Full Authority for Supervisors/Staff
+      // 2. Direct Authority for Assigned Teachers (Regardless of role flag sync)
+      // 3. Role-based fallback for verified Teachers on any Pending record
+      // 4. Restricted update for borrowers on Pending records
       allow update: if isSignedIn() && (
         isSupervisor() || 
         isStaff() ||
-        resource.data.get('teacherId', '') == request.auth.uid ||
-        resource.data.get('assignedTeacherId', '') == request.auth.uid ||
-        resource.data.get('requestedTeacherId', '') == request.auth.uid ||
-        resource.data.get('approvingTeacherId', '') == request.auth.uid ||
-        resource.data.get('teacherUid', '') == request.auth.uid ||
-        (isTeacher() && (
-            resource.data.get('status', 'N/A') == 'Pending' ||
-            resource.data.get('status', 'N/A') == 'pending'
-        )) ||
-        (resource.data.get('borrowerUserId', 'N/A') == request.auth.uid && (
-            resource.data.get('status', 'N/A') == 'Pending' ||
-            resource.data.get('status', 'N/A') == 'pending'
-        ))
+        isAssignedToTransaction(resource.data) ||
+        (isTeacher() && resource.data.get('status', 'N/A') in ['Pending', 'pending']) ||
+        (isOwner(resource.data.get('borrowerUserId', '')) && resource.data.get('status', 'N/A') in ['Pending', 'pending'])
       );
       
       allow delete: if isSupervisor() 
         || resource.data.get('borrowerUserId', 'N/A') == request.auth.uid
-        || resource.data.get('teacherId', 'N/A') == request.auth.uid;
+        || isAssignedToTransaction(resource.data);
     }
   }
 }
