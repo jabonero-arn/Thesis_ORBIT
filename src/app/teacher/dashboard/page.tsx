@@ -154,7 +154,7 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v1.5.0
+  // Standardized Teacher Assignment Checker - v1.6.0 (Resilient)
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -214,13 +214,15 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // TRUE TRACE DIAGNOSTICS - VERSION 1.5.0
-    console.group(`Teacher Action v1.5.0: ${newStatus}`);
+    // RESILIENT DIAGNOSTICS - VERSION 1.6.0
+    console.group(`Teacher Action v1.6.0: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
     console.log('Authenticated User UID:', user.uid);
-    console.log('Record Assigned Teacher:', record?.teacherId || (record as any).assignedTeacherId);
-    console.log('Record Data:', record);
+    console.log('Doc field [teacherId]:', record?.teacherId);
+    console.log('Doc field [assignedTeacherId]:', (record as any).assignedTeacherId);
+    console.log('Doc field [requestedTeacherId]:', (record as any).requestedTeacherId);
+    console.log('Doc field [teacherUid]:', (record as any).teacherUid);
     console.groupEnd();
 
     if (record) {
@@ -248,7 +250,7 @@ export default function TeacherDashboardPage() {
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v1.5.0 Authorization Failure at: ${docRef.path}`);
+          console.error(`ERROR: v1.6.0 Authorization Failure at: ${docRef.path}`);
           console.error('Reason:', serverError.message);
           
           const permissionError = new FirestorePermissionError({
@@ -260,8 +262,8 @@ export default function TeacherDashboardPage() {
 
           toast({ 
             variant: "destructive", 
-            title: "Permission Denied", 
-            description: "You are not authorized to approve this record. Please contact your system administrator if this persists." 
+            title: "Authorization Failed", 
+            description: "You do not have permission to modify this record. Please contact the system administrator." 
           });
         });
     }
@@ -379,8 +381,8 @@ export default function TeacherDashboardPage() {
                     <CardContent>
                         {recentEvents.length > 0 ? (
                             <div className="space-y-4">
-                                {recentEvents.map((event, idx) => (
-                                    <div key={event.id || idx} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
+                                {recentEvents.map((event) => (
+                                    <div key={event.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
                                         <div className="flex-1">
                                             <div className="flex items-center justify-between">
                                                 <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{event.status}</p>
@@ -418,7 +420,7 @@ export default function TeacherDashboardPage() {
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
     
-    // BACKWARD COMPATIBLE FILTERING - v1.5.0
+    // BACKWARD COMPATIBLE FILTERING - v1.6.0
     const pendingRequests = borrowHistory
         .filter((r) => r.status === 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -122,18 +122,20 @@ service cloud.firestore {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: RESILIENT TEACHER AUTHORIZATION - v1.5.0
-      // Allows the assigned teacher OR supervisor/staff OR borrower to update.
-      // We use safe field extraction to handle documents with varying schemas.
+      // Update rules: RESILIENT TEACHER AUTHORIZATION - v1.6.0
+      // Allows update if User is Staff/Supervisor OR if UID matches any Teacher field or Borrower field.
+      // We use 'in' on a list of potential fields for maximum resilience against varying schemas.
       allow update: if isSignedIn() && (
         isSupervisor() || 
         isStaff() ||
-        request.auth.uid == resource.data.get('teacherId', 'N/A') ||
-        request.auth.uid == resource.data.get('assignedTeacherId', 'N/A') ||
-        request.auth.uid == resource.data.get('requestedTeacherId', 'N/A') ||
-        request.auth.uid == resource.data.get('approvingTeacherId', 'N/A') ||
-        request.auth.uid == resource.data.get('teacherUid', 'N/A') ||
-        request.auth.uid == resource.data.get('borrowerUserId', 'N/A')
+        request.auth.uid in [
+          resource.data.get('teacherId', 'N/A'),
+          resource.data.get('assignedTeacherId', 'N/A'),
+          resource.data.get('requestedTeacherId', 'N/A'),
+          resource.data.get('approvingTeacherId', 'N/A'),
+          resource.data.get('teacherUid', 'N/A'),
+          resource.data.get('borrowerUserId', 'N/A')
+        ]
       );
       
       allow delete: if isSupervisor() 
