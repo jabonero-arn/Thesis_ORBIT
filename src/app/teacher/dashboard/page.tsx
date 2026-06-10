@@ -15,7 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { format, isToday } from "date-fns"
 import Image from "next/image"
 
-import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User } from "@/lib/types"
+import type { InventoryItem, BorrowHistory, BorrowHistoryStatus, CartItem, User, SecurityRuleContext } from "@/lib/types"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
@@ -154,7 +154,7 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v2.0.0 (Ultimate Resiliency)
+  // Standardized Teacher Assignment Checker - v2.1.0
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -214,17 +214,10 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    // ULTIMATE OBJECT TRACE - v2.0.0
-    console.group(`Teacher Action v2.0.0: ${newStatus}`);
-    console.log('Record ID:', id);
-    console.log('Teacher UID:', user.uid);
-    console.log('Full Record Data:', record);
-    console.log('Assignment Check:', record ? isAssignedToTeacher(record, user.uid) : 'NOT FOUND');
-    console.groupEnd();
-
     if (record) {
-      if (record.status !== 'Pending') {
-          toast({ title: "Update Rejected", description: "Request is no longer pending." });
+      // Pre-flight check: ensure it's actually still pending
+      if (record.status !== 'Pending' && record.status !== 'pending') {
+          toast({ title: "Action Cancelled", description: "This request has already been processed." });
           return;
       }
 
@@ -234,32 +227,31 @@ export default function TeacherDashboardPage() {
       const updatePayload: any = { 
         status: newStatus,
         updatedAt: now,
+        // Standardized Audit Metadata
         approvedBy: newStatus === 'Approved' ? user.uid : null,
         approvedAt: newStatus === 'Approved' ? now : null,
+        deniedBy: newStatus === 'Denied' ? user.uid : null,
+        deniedAt: newStatus === 'Denied' ? now : null,
       };
 
+      // v2.1.0 Non-blocking resilient update
       updateDoc(docRef, updatePayload)
         .then(() => {
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `Update successful.` 
+            description: `The laboratory request has been processed successfully.` 
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v2.0.0 Permission Denied at: ${docRef.path}`);
-          
+          // Construct rich, contextual permission error
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',
             requestResourceData: updatePayload,
-          });
-          errorEmitter.emit('permission-error', permissionError);
+          } satisfies SecurityRuleContext);
 
-          toast({ 
-            variant: "destructive", 
-            title: "Authorization Failed", 
-            description: "Backend rules rejected this update. See Console." 
-          });
+          // Emit to global error listener
+          errorEmitter.emit('permission-error', permissionError);
         });
     }
   }
@@ -415,13 +407,12 @@ export default function TeacherDashboardPage() {
   const ApprovalRequests = () => {
     const teacherId = teacherData?.id;
     
-    // BACKWARD COMPATIBLE FILTERING - v2.0.0
     const pendingRequests = borrowHistory
-        .filter((r) => r.status === 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
+        .filter((r) => (r.status === 'Pending' || r.status === 'pending') && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const processedRequests = borrowHistory
-        .filter((r) => r.status !== 'Pending' && teacherId && isAssignedToTeacher(r, teacherId))
+        .filter((r) => r.status !== 'Pending' && r.status !== 'pending' && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (requestSubView === 'pending') {
