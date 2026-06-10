@@ -198,11 +198,13 @@ export default function TeacherDashboardPage() {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
-    console.log('DEBUG: Attempting Request Update');
-    console.log('DEBUG: Transaction ID:', id);
-    console.log('DEBUG: Full Record Data:', record);
-    console.log('DEBUG: Current User UID:', user.uid);
-    console.log('DEBUG: Target Status:', newStatus);
+    // TRUE TRACE DIAGNOSTICS
+    console.group(`Teacher Action: ${newStatus}`);
+    console.log('Document ID:', id);
+    console.log('Target Status:', newStatus);
+    console.log('Authenticated User UID:', user.uid);
+    console.log('Stored Record Data:', record);
+    console.groupEnd();
 
     if (record) {
       const docRef = doc(firestore, 'borrowing_transactions', id);
@@ -221,11 +223,11 @@ export default function TeacherDashboardPage() {
           updatePayload.deniedAt = now;
       }
       
-      console.log('DEBUG: Payload sent to updateDoc:', updatePayload);
+      console.log('Attempting update with payload:', updatePayload);
 
       updateDoc(docRef, updatePayload)
         .then(() => {
-          console.log('DEBUG: Update SUCCESS at path:', docRef.path);
+          console.log('Update successful at path:', docRef.path);
           toast({ 
             title: `Request ${newStatus}`, 
             description: `Request for "${record.itemName}" from ${record.studentName} has been ${newStatus.toLowerCase()}.` 
@@ -621,7 +623,7 @@ export default function TeacherDashboardPage() {
                       <div className="flex-1 overflow-y-auto p-2 space-y-1">
                           <Button variant={activeView === 'overview' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('overview'); setIsMobileMenuOpen(false); }}><Logo className="h-4 w-4"/> Command Hub</Button>
                           {teacherDepartments.map(dept => (
-                              <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{getDeptIcon(dept.prefix)} {dept.name}</Button>
+                              <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{getDeptIcon(prefix)} {dept.name}</Button>
                           ))}
                           <Separator className="my-2" />
                           <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setIsMobileMenuOpen(false); }}><ClipboardCheck className="h-4 w-4"/> Approvals</Button>

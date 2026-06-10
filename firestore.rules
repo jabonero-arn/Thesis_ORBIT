@@ -112,7 +112,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Update rules: Direct verification for Teachers, Owners, and Supervisors
-      // REDEPLOY TRIGGER: Version 1.2.4 - Strict Field Mapping Fix
+      // REDEPLOY TRIGGER: Version 1.2.5 - Hardened Diff Logic
       allow update: if isSignedIn() && (
         isSupervisor() || 
         resource.data.get('borrowerUserId', '') == request.auth.uid || 
