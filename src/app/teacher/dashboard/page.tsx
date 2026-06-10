@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -202,7 +201,7 @@ export default function TeacherDashboardPage() {
     console.group(`Teacher Action: ${newStatus}`);
     console.log('Document ID:', id);
     console.log('Target Status:', newStatus);
-    console.log('Authenticated User UID:', user.uid);
+    console.log('Authenticated User UID:', user. न्यूजीलैंड);
     console.log('Stored Record Data:', record);
     console.groupEnd();
 
@@ -623,7 +622,7 @@ export default function TeacherDashboardPage() {
                       <div className="flex-1 overflow-y-auto p-2 space-y-1">
                           <Button variant={activeView === 'overview' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('overview'); setIsMobileMenuOpen(false); }}><Logo className="h-4 w-4"/> Command Hub</Button>
                           {teacherDepartments.map(dept => (
-                              <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{getDeptIcon(prefix)} {dept.name}</Button>
+                              <Button key={dept.id} variant={activeView === 'borrow' && selectedDepartmentId === dept.id ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => handleDepartmentSelect(dept.id)}>{getDeptIcon(dept.prefix)} {dept.name}</Button>
                           ))}
                           <Separator className="my-2" />
                           <Button variant={activeView === 'requests' ? 'secondary' : 'ghost'} className="w-full justify-start gap-2" onClick={() => { setActiveView('requests'); setIsMobileMenuOpen(false); }}><ClipboardCheck className="h-4 w-4"/> Approvals</Button>
