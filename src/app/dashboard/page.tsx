@@ -265,16 +265,6 @@ export default function StudentDashboardPage() {
     }
 
     if (item.status === "Locked" && !isApproved) {
-        // AUTOMATED ASSIGNED TEACHER LOOKUP
-        const assignedAccess = approvedDepartmentRequests.find(req => req.departmentId === item.departmentId);
-        
-        if (assignedAccess?.teacherId) {
-            // Automatically generate request directed to the student's assigned teacher only
-            handleConfirmRequest(assignedAccess.teacherId, 1, item);
-            return;
-        }
-
-        // Fallback to manual selection if no instructor is specifically assigned yet
         setItemToRequest(item);
         setIsApprovalDialogOpen(true);
         return;
@@ -283,17 +273,16 @@ export default function StudentDashboardPage() {
     toast({ variant: "destructive", title: "Item Unavailable", description: `"${item.name}" is currently ${item.status}.` });
   }
 
-  const handleConfirmRequest = async (teacherId: string, quantity: number, targetItem?: InventoryItem) => {
-    const item = targetItem || itemToRequest;
-    if (!item || !firestore || !user?.uid) return;
+  const handleConfirmRequest = async (teacherId: string, quantity: number) => {
+    if (!itemToRequest || !firestore || !user?.uid) return;
     
     const studentDisplayName = userProfile?.displayName || user.displayName || 'Student';
 
     try {
       await addDoc(collection(firestore, 'borrowing_transactions'), {
         studentName: studentDisplayName,
-        itemName: item.name,
-        inventoryItemId: item.id,
+        itemName: itemToRequest.name,
+        inventoryItemId: itemToRequest.id,
         itemQuantity: quantity,
         date: new Date().toISOString(),
         status: 'Pending',
@@ -304,7 +293,7 @@ export default function StudentDashboardPage() {
       setIsApprovalDialogOpen(false);
       setItemToRequest(null);
       setItemInDetail(null);
-      toast({ title: "Approval Request Sent", description: `Request for ${item.name} sent to your instructor.` });
+      toast({ title: "Approval Request Sent", description: `Request for ${itemToRequest.name} sent to your instructor.` });
     } catch (error) {
       console.error("Failed to create request:", error);
       toast({ variant: 'destructive', title: 'Failed to send request' });

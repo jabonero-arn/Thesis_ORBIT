@@ -154,7 +154,6 @@ export default function TeacherDashboardPage() {
   const [selectedItems, setSelectedItems] = React.useState<CartItem[]>([])
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
 
-  // Standardized Teacher Assignment Checker - v2.2.0
   const isAssignedToTeacher = React.useCallback((r: BorrowHistory, tId: string) => {
     const raw = r as any;
     return (
@@ -211,19 +210,24 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   /**
-   * Finalized Approval Logic - v2.2.0 (Resilient & Unified)
-   * Handles the state transition for student borrowing requests.
+   * Finalized Resilient Authorization Flow - v2.3.0
+   * Handles teacher approvals with high-fidelity diagnostics.
    */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
     if (record) {
-      // Pre-flight check: ensure it's actually still pending
       if (record.status !== 'Pending' && record.status !== 'pending') {
           toast({ title: "Action Cancelled", description: "This request has already been processed." });
           return;
       }
+
+      console.group(`Resilient Authorization v2.3.0: Processing ${id}`);
+      console.log('Record ID:', id);
+      console.log('Authenticated User UID:', user.uid);
+      console.log('Record Teacher ID:', record.teacherId || (record as any).assignedTeacherId || (record as any).requestedTeacherId || 'MISSING');
+      console.groupEnd();
 
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const now = new Date().toISOString();
@@ -231,30 +235,28 @@ export default function TeacherDashboardPage() {
       const updatePayload: any = { 
         status: newStatus,
         updatedAt: now,
-        // Standardized Audit Metadata for forensic integrity
         approvedBy: newStatus === 'Approved' ? user.uid : null,
         approvedAt: newStatus === 'Approved' ? now : null,
         deniedBy: newStatus === 'Denied' ? user.uid : null,
         deniedAt: newStatus === 'Denied' ? now : null,
       };
 
-      // Non-blocking resilient update pattern as per Firebase Studio standards
       updateDoc(docRef, updatePayload)
         .then(() => {
           toast({ 
             title: `Request ${newStatus}`, 
-            description: `The laboratory request for ${record.studentName} has been processed.` 
+            description: `Laboratory request for ${record.studentName} updated successfully.` 
           });
         })
         .catch(async (serverError: any) => {
-          // Construct rich, contextual permission error for the developer overlay
+          console.error(`ERROR: v2.3.0 Permission Denied at: ${docRef.path}`);
+          console.log('Authenticated User:', user.uid);
+          
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
             operation: 'update',
             requestResourceData: updatePayload,
-          } satisfies SecurityRuleContext);
-
-          // Emit to global error listener
+          });
           errorEmitter.emit('permission-error', permissionError);
         });
     }

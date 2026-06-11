@@ -71,25 +71,25 @@ export function RequestApprovalDialog({ item, teachers, open, onOpenChange, onCo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="bg-[#141821] border-border/50">
         <DialogHeader>
-          <DialogTitle>Request Approval for "{item.name}"</DialogTitle>
-          <DialogDescription>
-            This item requires approval. Please select a teacher and quantity to send your borrow request.
+          <DialogTitle className="text-white font-headline text-2xl uppercase tracking-tighter">Request Access: {item.name}</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            This material is restricted. Please select your supervising teacher and the quantity required to submit an approval request.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-             <div className="grid gap-2">
-                <Label htmlFor="teacher-select">Select Teacher</Label>
+        <div className="py-6 space-y-6">
+             <div className="grid gap-3">
+                <Label htmlFor="teacher-select" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Instructor</Label>
                 <Select 
                     value={selectedTeacher} 
                     onValueChange={setSelectedTeacher} 
                     disabled={teachers.length === 0}
                 >
-                    <SelectTrigger id="teacher-select">
-                        <SelectValue placeholder={teachers.length > 0 ? "Choose a teacher..." : "No teachers available"} />
+                    <SelectTrigger id="teacher-select" className="bg-black/20 border-border/40 focus:ring-primary/50">
+                        <SelectValue placeholder={teachers.length > 0 ? "Choose your teacher..." : "No teachers available"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#141821] border-border/50">
                         {teachers.map(teacher => (
                             <SelectItem key={teacher.id} value={teacher.id}>
                                 {teacher.name}
@@ -99,31 +99,37 @@ export function RequestApprovalDialog({ item, teachers, open, onOpenChange, onCo
                 </Select>
                 
                 {teachers.length === 0 && (
-                    <div className="flex items-start gap-2 p-3 text-xs bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-500 mt-1">
-                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                        <span>No assigned teachers found for this lab. Please contact a supervisor to ensure teachers are assigned to this room.</span>
+                    <div className="flex items-start gap-2 p-3 text-[11px] bg-amber-500/10 border border-amber-500/20 rounded-md text-amber-500 mt-1">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>No assigned teachers found for this laboratory. Access permissions must be set by a Supervisor first.</span>
                     </div>
                 )}
              </div>
-             <div className="grid gap-2">
-                <Label htmlFor="quantity-select">Quantity (Max: {item.quantity})</Label>
-                <Input
-                    id="quantity-select"
-                    type="number"
-                    value={quantity}
-                    onChange={(e) => handleQuantityChange(e.target.value)}
-                    min={1}
-                    max={item.quantity}
-                />
+
+             <div className="grid gap-3">
+                <Label htmlFor="quantity-select" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quantity Requested (Max: {item.quantity})</Label>
+                <div className="flex items-center gap-3">
+                    <Input
+                        id="quantity-select"
+                        type="number"
+                        value={quantity}
+                        onChange={(e) => handleQuantityChange(e.target.value)}
+                        min={1}
+                        max={item.quantity}
+                        className="bg-black/20 border-border/40 focus:ring-primary/50 font-mono text-lg"
+                    />
+                    <div className="text-xs text-muted-foreground italic shrink-0">Available: {item.quantity}</div>
+                </div>
              </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        <DialogFooter className="bg-black/20 p-4 -mx-6 -mb-6 mt-2 border-t border-border/20 rounded-b-lg">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-white">Cancel</Button>
           <Button 
             onClick={handleConfirm} 
             disabled={!selectedTeacher || quantity < 1 || quantity > item.quantity || teachers.length === 0}
+            className="bg-primary hover:bg-primary/90 text-white px-8 font-bold uppercase tracking-widest text-[10px]"
           >
-            Send Request
+            Submit Request
           </Button>
         </DialogFooter>
       </DialogContent>
