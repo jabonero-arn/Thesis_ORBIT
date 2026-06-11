@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --------------------------------------------------------------------------------
-    // Helper Functions - v2.2.0 (Resilient & Optimized)
+    // Helper Functions - v2.4.0 (Assignment Prioritized & Optimized)
     // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
@@ -15,16 +15,17 @@ service cloud.firestore {
     }
     
     // Explicit Assignment Check - High Priority
-    // This function checks the document data directly for any field that links it to the current teacher.
+    // Checks if the current user's UID is present in any teacher-linked field.
     function isAssignedToTransaction(data) {
       let uid = request.auth.uid;
-      return isSignedIn() && (
-        data.get('teacherId', '') == uid ||
-        data.get('assignedTeacherId', '') == uid ||
-        data.get('requestedTeacherId', '') == uid ||
-        data.get('approvingTeacherId', '') == uid ||
-        data.get('teacherUid', '') == uid
-      );
+      let assignedUids = [
+        data.get('teacherId', 'N/A'),
+        data.get('assignedTeacherId', 'N/A'),
+        data.get('requestedTeacherId', 'N/A'),
+        data.get('approvingTeacherId', 'N/A'),
+        data.get('teacherUid', 'N/A')
+      ];
+      return isSignedIn() && (uid in assignedUids);
     }
 
     // Defensive Supervisor check
@@ -143,21 +144,19 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules - v2.2.0 (Resilient Teacher Authorization)
+    // Borrowing Transaction Rules - v2.4.0 (Resilient Authorization Chain)
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: Prioritize Assignment for seamless teacher approvals.
-      // Teachers assigned to the transaction (regardless of document structure version) 
-      // are granted specific authority to process the request.
+      // Update rules: Prioritize explicit assignment for maximum performance and stability.
       allow update: if isSignedIn() && (
         isAssignedToTransaction(resource.data) ||
         isSupervisor() || 
         isStaff() ||
-        (isTeacher() && resource.data.get('status', 'N/A') in ['Pending', 'pending']) ||
-        (isOwner(resource.data.get('borrowerUserId', '')) && resource.data.get('status', 'N/A') in ['Pending', 'pending'])
+        (isTeacher() && resource.data.get('status', 'N/A').lower() == 'pending') ||
+        (isOwner(resource.data.get('borrowerUserId', '')) && resource.data.get('status', 'N/A').lower() == 'pending')
       );
       
       allow delete: if isSupervisor() 

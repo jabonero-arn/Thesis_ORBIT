@@ -210,8 +210,8 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   /**
-   * Finalized Resilient Authorization Flow - v2.3.0
-   * Handles teacher approvals with high-fidelity diagnostics.
+   * Finalized Resilient Authorization Flow - v2.4.0
+   * Handles teacher approvals with high-fidelity Parity Trace diagnostics.
    */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
@@ -223,10 +223,14 @@ export default function TeacherDashboardPage() {
           return;
       }
 
-      console.group(`Resilient Authorization v2.3.0: Processing ${id}`);
-      console.log('Record ID:', id);
+      console.group(`Resilient Parity Trace v2.4.0: ${id}`);
+      console.log('--- Teacher Context ---');
       console.log('Authenticated User UID:', user.uid);
-      console.log('Record Teacher ID:', record.teacherId || (record as any).assignedTeacherId || (record as any).requestedTeacherId || 'MISSING');
+      console.log('--- Document Field Trace ---');
+      console.log('teacherId:', record.teacherId || 'NULL');
+      console.log('assignedTeacherId:', (record as any).assignedTeacherId || 'NULL');
+      console.log('requestedTeacherId:', (record as any).requestedTeacherId || 'NULL');
+      console.log('teacherUid:', (record as any).teacherUid || 'NULL');
       console.groupEnd();
 
       const docRef = doc(firestore, 'borrowing_transactions', id);
@@ -249,8 +253,7 @@ export default function TeacherDashboardPage() {
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v2.3.0 Permission Denied at: ${docRef.path}`);
-          console.log('Authenticated User:', user.uid);
+          console.error(`ERROR: v2.4.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
