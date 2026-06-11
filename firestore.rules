@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --------------------------------------------------------------------------------
-    // Helper Functions - v2.5.0 (Ultimate Resiliency & Explicit Trace)
+    // Helper Functions - v2.6.0 (Ultimate Resiliency & Priority Authorization)
     // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
@@ -14,8 +14,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
     
-    // Explicit Assignment Check - High Priority
-    // Prioritizes direct UID matching to bypass role-lookup bottlenecks.
+    // Explicit Assignment Check - HIGHEST PRIORITY
+    // This allows assigned teachers to update their specific transactions immediately.
     function isAssignedToTransaction(data) {
       let uid = request.auth.uid;
       return isSignedIn() && (
@@ -147,7 +147,7 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules - v2.5.0 (Assignment List Prioritized)
+    // Borrowing Transaction Rules - v2.6.0 (Priority Authorization Chain)
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();

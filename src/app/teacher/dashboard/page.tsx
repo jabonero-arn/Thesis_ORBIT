@@ -210,29 +210,31 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   /**
-   * High-Fidelity Teacher Approval Logic - v2.5.0
-   * Performs full object trace for parity debugging.
+   * Ultimate Resilient Approval Logic - v2.6.0
+   * Performs high-fidelity UID parity trace and uses explicit field update.
    */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
     if (record) {
-      // Pre-flight check: record must be pending
-      if (record.status !== 'Pending' && record.status !== 'pending') {
+      // 1. Pre-flight check: record must be currently pending
+      if (record.status.toLowerCase() !== 'pending') {
           toast({ title: "Action Cancelled", description: "This request has already been processed." });
           return;
       }
 
-      console.group(`Resilient Parity Trace v2.5.0: ${id}`);
-      console.log('--- Teacher Dashboard ---');
-      console.log('Authenticated User UID:', user.uid);
-      console.log('Authenticated User Role:', userProfile?.role);
-      console.log('--- Full Record Data ---');
-      console.log(JSON.stringify(record, null, 2));
-      console.log('--- Assignment Checks ---');
-      console.log('teacherId:', record.teacherId, 'Match:', record.teacherId === user.uid);
-      console.log('teacherUid:', (record as any).teacherUid, 'Match:', (record as any).teacherUid === user.uid);
+      console.group(`v2.6.0 Diagnostic Trace: ${id}`);
+      console.log('--- Authenticated Context ---');
+      console.log('User UID:', user.uid);
+      console.log('User Role:', userProfile?.role);
+      console.log('--- Record Assignment Metadata ---');
+      console.log('Record teacherId:', record.teacherId);
+      console.log('Record teacherUid:', (record as any).teacherUid);
+      console.log('Record assignedTeacherId:', (record as any).assignedTeacherId);
+      console.log('UID Match Result:', isAssignedToTeacher(record, user.uid));
+      console.log('--- Full Record Object ---');
+      console.log(record);
       console.groupEnd();
 
       const docRef = doc(firestore, 'borrowing_transactions', id);
@@ -263,7 +265,7 @@ export default function TeacherDashboardPage() {
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v2.5.0 Permission Denied at: ${docRef.path}`);
+          console.error(`ERROR: v2.6.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
@@ -427,11 +429,11 @@ export default function TeacherDashboardPage() {
     const teacherId = teacherData?.id;
     
     const pendingRequests = borrowHistory
-        .filter((r) => (r.status === 'Pending' || r.status === 'pending') && teacherId && isAssignedToTeacher(r, teacherId))
+        .filter((r) => (r.status.toLowerCase() === 'pending') && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
     const processedRequests = borrowHistory
-        .filter((r) => r.status !== 'Pending' && r.status !== 'pending' && teacherId && isAssignedToTeacher(r, teacherId))
+        .filter((r) => (r.status.toLowerCase() !== 'pending') && teacherId && isAssignedToTeacher(r, teacherId))
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     if (requestSubView === 'pending') {
