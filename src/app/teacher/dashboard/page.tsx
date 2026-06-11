@@ -210,27 +210,29 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   /**
-   * Finalized Resilient Authorization Flow - v2.4.0
-   * Handles teacher approvals with high-fidelity Parity Trace diagnostics.
+   * High-Fidelity Teacher Approval Logic - v2.5.0
+   * Performs full object trace for parity debugging.
    */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
     if (record) {
+      // Pre-flight check: record must be pending
       if (record.status !== 'Pending' && record.status !== 'pending') {
           toast({ title: "Action Cancelled", description: "This request has already been processed." });
           return;
       }
 
-      console.group(`Resilient Parity Trace v2.4.0: ${id}`);
-      console.log('--- Teacher Context ---');
+      console.group(`Resilient Parity Trace v2.5.0: ${id}`);
+      console.log('--- Teacher Dashboard ---');
       console.log('Authenticated User UID:', user.uid);
-      console.log('--- Document Field Trace ---');
-      console.log('teacherId:', record.teacherId || 'NULL');
-      console.log('assignedTeacherId:', (record as any).assignedTeacherId || 'NULL');
-      console.log('requestedTeacherId:', (record as any).requestedTeacherId || 'NULL');
-      console.log('teacherUid:', (record as any).teacherUid || 'NULL');
+      console.log('Authenticated User Role:', userProfile?.role);
+      console.log('--- Full Record Data ---');
+      console.log(JSON.stringify(record, null, 2));
+      console.log('--- Assignment Checks ---');
+      console.log('teacherId:', record.teacherId, 'Match:', record.teacherId === user.uid);
+      console.log('teacherUid:', (record as any).teacherUid, 'Match:', (record as any).teacherUid === user.uid);
       console.groupEnd();
 
       const docRef = doc(firestore, 'borrowing_transactions', id);
@@ -239,11 +241,19 @@ export default function TeacherDashboardPage() {
       const updatePayload: any = { 
         status: newStatus,
         updatedAt: now,
-        approvedBy: newStatus === 'Approved' ? user.uid : null,
-        approvedAt: newStatus === 'Approved' ? now : null,
-        deniedBy: newStatus === 'Denied' ? user.uid : null,
-        deniedAt: newStatus === 'Denied' ? now : null,
       };
+
+      if (newStatus === 'Approved') {
+        updatePayload.approvedBy = user.uid;
+        updatePayload.approvedAt = now;
+        updatePayload.deniedBy = null;
+        updatePayload.deniedAt = null;
+      } else {
+        updatePayload.deniedBy = user.uid;
+        updatePayload.deniedAt = now;
+        updatePayload.approvedBy = null;
+        updatePayload.approvedAt = null;
+      }
 
       updateDoc(docRef, updatePayload)
         .then(() => {
@@ -253,7 +263,7 @@ export default function TeacherDashboardPage() {
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v2.4.0 Permission Denied at: ${docRef.path}`);
+          console.error(`ERROR: v2.5.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,

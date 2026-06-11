@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --------------------------------------------------------------------------------
-    // Helper Functions - v2.4.0 (Assignment Prioritized & Optimized)
+    // Helper Functions - v2.5.0 (Ultimate Resiliency & Explicit Trace)
     // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
@@ -15,54 +15,57 @@ service cloud.firestore {
     }
     
     // Explicit Assignment Check - High Priority
-    // Checks if the current user's UID is present in any teacher-linked field.
+    // Prioritizes direct UID matching to bypass role-lookup bottlenecks.
     function isAssignedToTransaction(data) {
       let uid = request.auth.uid;
-      let assignedUids = [
-        data.get('teacherId', 'N/A'),
-        data.get('assignedTeacherId', 'N/A'),
-        data.get('requestedTeacherId', 'N/A'),
-        data.get('approvingTeacherId', 'N/A'),
-        data.get('teacherUid', 'N/A')
-      ];
-      return isSignedIn() && (uid in assignedUids);
+      return isSignedIn() && (
+        data.get('teacherId', 'N/A') == uid ||
+        data.get('assignedTeacherId', 'N/A') == uid ||
+        data.get('requestedTeacherId', 'N/A') == uid ||
+        data.get('approvingTeacherId', 'N/A') == uid ||
+        data.get('teacherUid', 'N/A') == uid
+      );
     }
 
     // Defensive Supervisor check
     function isSupervisor() {
+      let uid = request.auth.uid;
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid)) ||
-        exists(/databases/$(database)/documents/roles_head_supervisor/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') in ['Supervisor', 'Head Supervisor'])
+        exists(/databases/$(database)/documents/roles_supervisor/$(uid)) ||
+        exists(/databases/$(database)/documents/roles_head_supervisor/$(uid)) ||
+        (exists(/databases/$(database)/documents/users/$(uid)) && 
+         get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'N/A').lower() in ['supervisor', 'head supervisor'])
       );
     }
 
     // Defensive Teacher check
     function isTeacher() {
+      let uid = request.auth.uid;
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Teacher')
+        exists(/databases/$(database)/documents/roles_teachers/$(uid)) ||
+        (exists(/databases/$(database)/documents/users/$(uid)) && 
+         get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'N/A').lower() == 'teacher')
       );
     }
 
     // Defensive Property Custodian check
     function isPropertyCustodian() {
+      let uid = request.auth.uid;
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid)) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Property Custodian')
+        exists(/databases/$(database)/documents/roles_property_custodian/$(uid)) ||
+        (exists(/databases/$(database)/documents/users/$(uid)) && 
+         get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'N/A').lower() == 'property custodian')
       );
     }
 
     // Defensive Staff check
     function isStaff() {
+      let uid = request.auth.uid;
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid)) ||
+        exists(/databases/$(database)/documents/roles_staff/$(uid)) ||
         isPropertyCustodian() ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', '') == 'Staff')
+        (exists(/databases/$(database)/documents/users/$(uid)) && 
+         get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'N/A').lower() == 'staff')
       );
     }
 
@@ -144,13 +147,13 @@ service cloud.firestore {
     }
 
     // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules - v2.4.0 (Resilient Authorization Chain)
+    // Borrowing Transaction Rules - v2.5.0 (Assignment List Prioritized)
     // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
       
-      // Update rules: Prioritize explicit assignment for maximum performance and stability.
+      // Update rules: Prioritize explicit assignment for instant authorization.
       allow update: if isSignedIn() && (
         isAssignedToTransaction(resource.data) ||
         isSupervisor() || 
