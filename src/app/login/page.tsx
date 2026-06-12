@@ -161,8 +161,17 @@ export default function LoginPage() {
               />
             </div>
             <div className="grid gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+              />
+              <div className="flex justify-end">
                 <Button
                     type="button"
                     variant="link"
@@ -173,15 +182,6 @@ export default function LoginPage() {
                     Forgot password?
                 </Button>
               </div>
-              <Input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
             </div>
             
             <Button type="submit" className="w-full mt-2" disabled={isLoading}>

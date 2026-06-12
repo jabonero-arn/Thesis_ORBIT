@@ -137,9 +137,30 @@ export function UserProfileModal({ children, role: displayRole }: { children: Re
               <Button onClick={handleEditClick} variant="secondary" className="w-full mt-4 bg-zinc-800 hover:bg-zinc-700 text-white">
                   <Edit className="mr-2 h-4 w-4" /> Edit Profile
               </Button>
-              <Button onClick={handleLogout} className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white">
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button className="w-full mt-2 bg-red-600 hover:bg-red-700 text-white">
+                      <LogOut className="mr-2 h-4 w-4" /> Logout
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to log out?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={handleLogout} 
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Logout
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
           </div>
         </DialogContent>
       </Dialog>
