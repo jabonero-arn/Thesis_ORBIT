@@ -81,25 +81,33 @@ export default function TeacherDashboardPage() {
   const { data: userProfile, isLoading: isProfileLoading } = useDoc<User>(userProfileRef);
 
   React.useEffect(() => {
-    if (isUserLoading) return;
+    if (isUserLoading || isProfileLoading) return;
     if (!user) {
       router.push("/login?role=teacher");
-    } else if (!user.emailVerified) {
-      router.push("/verify-email");
-    }
-  }, [user, isUserLoading, router]);
-
-  React.useEffect(() => {
-    if (isUserLoading || isProfileLoading || !user || !userProfile) {
       return;
     }
+    
+    // Authorization Check: Redirect if not a teacher
+    if (userProfile && userProfile.role !== 'Teacher') {
+        toast({ variant: 'destructive', title: 'Access Denied', description: 'This dashboard is reserved for teachers only.' });
+        const redirectMap: Record<string, string> = {
+            'Student': '/dashboard',
+            'Supervisor': '/supervisor/dashboard',
+            'Property Custodian': '/materials-dashboard'
+        };
+        router.push(redirectMap[userProfile.role] || '/');
+    }
 
-    if (userProfile.passwordChangeRequired) {
+    if (!user.emailVerified) {
+      router.push("/verify-email");
+    }
+
+    if (userProfile?.passwordChangeRequired) {
       setShowPasswordChangeDialog(true);
-    } else if (userProfile.hasCompletedLabSetup === false) {
+    } else if (userProfile?.hasCompletedLabSetup === false) {
       setShowLabSelectionDialog(true);
     }
-  }, [user, userProfile, isUserLoading, isProfileLoading]);
+  }, [user, userProfile, isUserLoading, isProfileLoading, router, toast]);
 
   const teacherData = React.useMemo(() => {
       if (!user) return null;
@@ -210,32 +218,22 @@ export default function TeacherDashboardPage() {
   }, [allItems]);
 
   /**
-   * Ultimate Resilient Approval Logic - v2.6.0
-   * Performs high-fidelity UID parity trace and uses explicit field update.
+   * Resilient Approval Logic - v2.7.0
    */
   const handleRequest = (id: string, newStatus: 'Approved' | 'Denied') => {
     if (!firestore || !user) return;
     const record = borrowHistory.find(r => r.id === id);
     
     if (record) {
-      // 1. Pre-flight check: record must be currently pending
       if (record.status.toLowerCase() !== 'pending') {
           toast({ title: "Action Cancelled", description: "This request has already been processed." });
           return;
       }
 
-      console.group(`v2.6.0 Diagnostic Trace: ${id}`);
-      console.log('--- Authenticated Context ---');
-      console.log('User UID:', user.uid);
-      console.log('User Role:', userProfile?.role);
-      console.log('--- Record Assignment Metadata ---');
-      console.log('Record teacherId:', record.teacherId);
-      console.log('Record teacherUid:', (record as any).teacherUid);
-      console.log('Record assignedTeacherId:', (record as any).assignedTeacherId);
-      console.log('UID Match Result:', isAssignedToTeacher(record, user.uid));
-      console.log('--- Full Record Object ---');
-      console.log(record);
-      console.groupEnd();
+      console.log('--- Authorization Context (v2.7.0) ---');
+      console.log('Teacher UID:', user.uid);
+      console.log('Record Assigned UID:', record.teacherId);
+      console.log('Parity Result:', record.teacherId === user.uid);
 
       const docRef = doc(firestore, 'borrowing_transactions', id);
       const now = new Date().toISOString();
@@ -243,19 +241,11 @@ export default function TeacherDashboardPage() {
       const updatePayload: any = { 
         status: newStatus,
         updatedAt: now,
+        approvedBy: newStatus === 'Approved' ? user.uid : null,
+        approvedAt: newStatus === 'Approved' ? now : null,
+        deniedBy: newStatus === 'Denied' ? user.uid : null,
+        deniedAt: newStatus === 'Denied' ? now : null,
       };
-
-      if (newStatus === 'Approved') {
-        updatePayload.approvedBy = user.uid;
-        updatePayload.approvedAt = now;
-        updatePayload.deniedBy = null;
-        updatePayload.deniedAt = null;
-      } else {
-        updatePayload.deniedBy = user.uid;
-        updatePayload.deniedAt = now;
-        updatePayload.approvedBy = null;
-        updatePayload.approvedAt = null;
-      }
 
       updateDoc(docRef, updatePayload)
         .then(() => {
@@ -265,7 +255,7 @@ export default function TeacherDashboardPage() {
           });
         })
         .catch(async (serverError: any) => {
-          console.error(`ERROR: v2.6.0 Permission Denied at: ${docRef.path}`);
+          console.error(`ERROR: v2.7.0 Permission Denied at: ${docRef.path}`);
           
           const permissionError = new FirestorePermissionError({
             path: docRef.path,
