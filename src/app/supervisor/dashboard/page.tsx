@@ -609,7 +609,7 @@ export default function SupervisorDashboardPage() {
                                                     </AlertDialog>
                                                 </TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">No assets found matching the criteria.</TableCell></TableRow>}
+                                        )) : <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">No assets found matching the criteria.</SelectItem></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -690,7 +690,7 @@ export default function SupervisorDashboardPage() {
             }
             case 'accessRequests':
                 return (
-                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <div><h2 className="text-2xl font-bold font-headline text-white">Laboratory Access Queue</h2><p className="text-muted-foreground">Manage user permissions for departmental resources.</p></div>
                             <Tabs value={accessRequestStatus} onValueChange={setAccessRequestStatus} className="w-auto">
@@ -699,7 +699,7 @@ export default function SupervisorDashboardPage() {
                         </div>
 
                         <Card className="bg-card/80 border-border/50">
-                            <CardHeader className="p-4 bg-white/[0.01] border-b border-border/40">
+                            <CardHeader className="p-6 bg-white/[0.01] border-b border-border/40">
                                 <div className="relative max-w-md">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input placeholder="Search student or department..." value={accessSearch} onChange={e=>setAccessSearch(e.target.value)} className="pl-10 bg-black/20" />
@@ -724,7 +724,13 @@ export default function SupervisorDashboardPage() {
                                                     )}
                                                 </TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No student access requests match the criteria.</TableCell></TableRow>}
+                                        )) : <TableRow><TableCell colSpan={5} className="h-64 text-center text-muted-foreground italic flex flex-col items-center justify-center gap-2">
+                                            <KeyRound className="h-8 w-8 opacity-20" />
+                                            <div>
+                                                <p className="font-semibold">No access requests match the selected criteria.</p>
+                                                <p className="text-xs">New student access requests will appear here once submitted.</p>
+                                            </div>
+                                        </TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -785,7 +791,7 @@ export default function SupervisorDashboardPage() {
                  const lostCount = issues.filter(i=>i.returnCondition==='Lost').length;
 
                  return (
-                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
                         <div className="flex flex-col gap-1"><h2 className="text-2xl font-bold font-headline text-white">Damage & Maintenance Reports</h2><p className="text-muted-foreground">Manage hardware integrity and resolution flows.</p></div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -796,7 +802,7 @@ export default function SupervisorDashboardPage() {
                         </div>
 
                         <Card className="bg-card/80 border-border/50">
-                            <CardContent className="p-0 overflow-auto">
+                            <CardContent className="p-6 overflow-auto">
                                 <Table>
                                     <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Item Name</TableHead><TableHead>Reported By</TableHead><TableHead>Issue Type</TableHead><TableHead>Date Reported</TableHead><TableHead>Current Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                                     <TableBody>
@@ -817,7 +823,13 @@ export default function SupervisorDashboardPage() {
                                                     )}
                                                 </TableCell>
                                             </TableRow>
-                                        )) : <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No damage or maintenance reports on record.</TableCell></TableRow>}
+                                        )) : <TableRow><TableCell colSpan={6} className="h-64 text-center text-muted-foreground italic flex flex-col items-center justify-center gap-2">
+                                            <AlertTriangle className="h-8 w-8 opacity-20" />
+                                            <div>
+                                                <p className="font-semibold">No maintenance reports found.</p>
+                                                <p className="text-xs">Damage, lost item, and repair reports will appear here for supervisor review.</p>
+                                            </div>
+                                        </TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
@@ -964,22 +976,27 @@ export default function SupervisorDashboardPage() {
                         </div>
 
                         <div className="p-3 border-t border-border/50 bg-[#0e1015]">
-                             <UserProfileModal role="Supervisor">
-                                <div className={cn(
-                                    "flex items-center gap-3 cursor-pointer p-2 hover:bg-accent rounded-lg transition-colors",
-                                    isSidebarCollapsed ? "justify-center" : "justify-start"
-                                )}>
-                                    <Avatar className="h-8 w-8 shrink-0">
-                                        <AvatarFallback className="bg-primary/20 text-primary text-xs">S</AvatarFallback>
-                                    </Avatar>
-                                    {!isSidebarCollapsed && (
-                                        <div className="overflow-hidden animate-in fade-in duration-500">
-                                            <p className="text-sm font-semibold truncate text-white">{userProfile?.displayName}</p>
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Supervisor</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </UserProfileModal>
+                            <div className={cn("flex items-center justify-between gap-2", isSidebarCollapsed && "flex-col")}>
+                                <UserProfileModal role="Supervisor">
+                                    <div className={cn(
+                                        "flex items-center gap-3 cursor-pointer p-2 hover:bg-accent rounded-lg transition-colors flex-1 min-w-0",
+                                        isSidebarCollapsed ? "justify-center" : "justify-start"
+                                    )}>
+                                        <Avatar className="h-8 w-8 shrink-0">
+                                            <AvatarFallback className="bg-primary/20 text-primary text-xs">S</AvatarFallback>
+                                        </Avatar>
+                                        {!isSidebarCollapsed && (
+                                            <div className="overflow-hidden animate-in fade-in duration-500">
+                                                <p className="text-sm font-semibold truncate text-white">{userProfile?.displayName}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Supervisor</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </UserProfileModal>
+                                {!isSidebarCollapsed && (
+                                    <UserNav role="Supervisor" />
+                                )}
+                            </div>
                         </div>
                     </div>
 
