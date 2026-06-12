@@ -37,7 +37,12 @@ export function StudentItemCard({
 
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (item.quantity > 0 && !isPending) {
+    if (item.quantity > 0) {
+        // Selection/Deselection is allowed if:
+        // - Already selected (for removal/cancel)
+        // - approved by teacher
+        // - not restricted and not pending
+        // - restricted but not pending (this triggers the request modal in parent)
         onSelect();
     }
   };
@@ -56,7 +61,7 @@ export function StudentItemCard({
       className={cn(
         "flex flex-col overflow-hidden transition-all duration-300 bg-card/40 backdrop-blur-sm group border-border/50 hover:border-primary/50 relative cursor-pointer",
         isSelected && "ring-2 ring-primary border-primary",
-        (item.quantity === 0 || isPending) && "opacity-80"
+        (item.quantity === 0 || (isPending && !isApproved && !isSelected)) && "opacity-80"
       )}
     >
       <div className="relative aspect-video overflow-hidden bg-black/20">
@@ -138,14 +143,21 @@ export function StudentItemCard({
             <Button 
                 size="sm" 
                 variant={isSelected ? "secondary" : "default"}
-                disabled={item.quantity === 0 || isPending}
+                disabled={item.quantity === 0 || (isPending && !isApproved && !isSelected)}
                 onClick={handleActionClick}
                 className={cn(
-                    "h-8 px-4 font-bold uppercase text-[10px] tracking-widest",
-                    isSelected ? "bg-primary/20 text-primary border-primary/20" : ""
+                    "h-8 px-4 font-bold uppercase text-[10px] tracking-widest transition-all group/cartbtn shrink-0",
+                    isSelected && "bg-primary/20 text-primary border-primary/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                 )}
             >
-                {isSelected ? "In Cart" : item.status === 'Locked' ? "Request" : "Select"}
+                {isSelected ? (
+                    <>
+                        <span className="group-hover/cartbtn:hidden">In Cart</span>
+                        <span className="hidden group-hover/cartbtn:inline">Cancel</span>
+                    </>
+                ) : (
+                    item.quantity === 0 ? "Unavailable" : (isApproved || item.status !== 'Locked' ? "Select" : "Request")
+                )}
             </Button>
         </div>
       </div>

@@ -47,7 +47,7 @@ export function StudentItemDetailsDialog({
     return [];
   }, [item]);
 
-  const canAction = item.quantity > 0 && !isPending;
+  const canAction = item.quantity > 0 && (!isPending || isApproved || isSelected);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,7 +144,11 @@ export function StudentItemDetailsDialog({
                         <div className="space-y-2">
                             <LabelText className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Current Status</LabelText>
                             <div className="flex items-center gap-2">
-                                {isPending ? (
+                                {isSelected ? (
+                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-primary/10 border-primary/30 text-primary">
+                                        <CheckCircle className="h-3 w-3 mr-2" /> Selected in Cart
+                                    </Badge>
+                                ) : isPending && !isApproved ? (
                                     <Badge variant="outline" className="w-full justify-center py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-500">
                                         <Hourglass className="h-3 w-3 mr-2 animate-spin" /> Pending Approval
                                     </Badge>
@@ -158,7 +162,7 @@ export function StudentItemDetailsDialog({
                                     </Badge>
                                 ) : (
                                     <Badge variant="outline" className="w-full justify-center py-1.5 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
-                                        Ready for Request
+                                        Ready for Selection
                                     </Badge>
                                 )}
                             </div>
@@ -173,18 +177,19 @@ export function StudentItemDetailsDialog({
                     disabled={!canAction}
                     onClick={() => { onBorrow(item); if(!isSelected && canAction) onOpenChange(false); }}
                     className={cn(
-                        "font-bold uppercase tracking-widest px-8",
-                        isSelected ? "bg-emerald-600 hover:bg-emerald-700" : ""
+                        "font-bold uppercase tracking-widest px-8 transition-all group/detailbtn",
+                        isSelected ? "bg-primary/20 text-primary border-primary/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive" : ""
                     )}
                 >
                     {isSelected ? (
-                        <><ShoppingCart className="h-4 w-4 mr-2" /> In Cart</>
-                    ) : isPending ? (
-                        "Request Pending"
-                    ) : item.status === 'Locked' ? (
-                        "Request Approval"
-                    ) : (
+                        <>
+                            <span className="group-hover/detailbtn:hidden flex items-center"><ShoppingCart className="h-4 w-4 mr-2" /> In Cart</span>
+                            <span className="hidden group-hover/detailbtn:inline">Cancel Selection</span>
+                        </>
+                    ) : isApproved || item.status !== 'Locked' ? (
                         "Select for Borrowing"
+                    ) : (
+                        "Request Approval"
                     )}
                 </Button>
             </DialogFooter>

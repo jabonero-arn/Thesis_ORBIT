@@ -212,14 +212,14 @@ export default function StudentDashboardPage() {
 
   const pendingRequestedItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
-      .filter(h => h.status === 'Pending')
+      .filter(h => h.status.toLowerCase() === 'pending')
       .map(h => h.itemName)),
     [studentBorrowHistory]
   );
   
   const approvedForBorrowItemNames = React.useMemo(() =>
     new Set(studentBorrowHistory
-        .filter(h => h.status === 'Approved' && !h.checkoutSessionId)
+        .filter(h => h.status.toLowerCase() === 'approved' && !h.checkoutSessionId)
         .map(h => h.itemName)),
     [studentBorrowHistory]
   );
@@ -241,12 +241,11 @@ export default function StudentDashboardPage() {
         return;
     }
 
-    if (pendingRequestedItemNames.has(item.name)) {
-        toast({ title: "Request Already Pending", description: `You already have a pending request for "${item.name}".` });
-        return;
-    }
-
-    const studentApprovedRecords = studentBorrowHistory.filter(h => h.status === 'Approved' && !h.checkoutSessionId && h.itemName === item.name);
+    const studentApprovedRecords = studentBorrowHistory.filter(h => 
+        h.status.toLowerCase() === 'approved' && 
+        !h.checkoutSessionId && 
+        (h.inventoryItemId === item.id || h.itemName === item.name)
+    );
     const isApproved = studentApprovedRecords.length > 0;
 
     const isAvailable = item.status === "Available" && item.quantity > 0;
@@ -261,6 +260,11 @@ export default function StudentDashboardPage() {
         const totalApprovedQuantity = studentApprovedRecords.reduce((sum, record) => sum + (record.itemQuantity || 0), 0);
         setSelectedItems((prev) => [...prev, { item, quantity: totalApprovedQuantity }])
         toast({ title: "Approved Item Added", description: `"${item.name}" (x${totalApprovedQuantity}) added to cart.` });
+        return;
+    }
+
+    if (pendingRequestedItemNames.has(item.name)) {
+        toast({ title: "Request Already Pending", description: `You already have a pending request for "${item.name}".` });
         return;
     }
 
