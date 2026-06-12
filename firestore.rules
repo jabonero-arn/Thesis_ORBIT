@@ -1,52 +1,36 @@
-
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --------------------------------------------------------------------------------
-    // Helper Functions - v2.7.0 (Simplified Resiliency)
-    // --------------------------------------------------------------------------------
     function isSignedIn() {
       return request.auth != null;
     }
-    
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+
+    function isSupervisor() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/roles_supervisor/$(request.auth.uid));
     }
 
-    function hasRole(roleName) {
-      let uid = request.auth.uid;
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/roles_$(roleName)/$(uid)) ||
-        (exists(/databases/$(database)/documents/users/$(uid)) && 
-         get(/databases/$(database)/documents/users/$(uid)).data.get('role', 'N/A').lower() == roleName.lower())
-      );
+    function isTeacher() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/roles_teachers/$(request.auth.uid));
     }
 
-    function isSupervisor() { return hasRole('supervisor') || hasRole('head_supervisor'); }
-    function isTeacher() { return hasRole('teachers'); }
-    function isPropertyCustodian() { return hasRole('property_custodian'); }
-    function isStaff() { return hasRole('staff') || isPropertyCustodian(); }
-
-    // Explicit Assignment Check
-    function isAssignedToTransaction(data) {
-      let uid = request.auth.uid;
-      return isSignedIn() && (
-        data.get('teacherId', 'N/A') == uid ||
-        data.get('assignedTeacherId', 'N/A') == uid ||
-        data.get('requestedTeacherId', 'N/A') == uid ||
-        data.get('approvingTeacherId', 'N/A') == uid ||
-        data.get('teacherUid', 'N/A') == uid
-      );
+    function isPropertyCustodian() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/roles_property_custodian/$(request.auth.uid));
     }
 
-    // --------------------------------------------------------------------------------
-    // User Profile Rules
-    // --------------------------------------------------------------------------------
+    function isStaff() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
+    }
+
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSupervisor());
       allow list: if isSupervisor();
@@ -55,92 +39,83 @@ service cloud.firestore {
       allow delete: if isSupervisor();
     }
 
-    // --------------------------------------------------------------------------------
-    // Facility & Inventory Rules
-    // --------------------------------------------------------------------------------
     match /departments/{departmentId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSupervisor();
     }
+
     match /channels/{channelId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if isSupervisor();
     }
+
     match /inventory_items/{itemId} {
       allow get, list: if isSignedIn();
       allow create: if isPropertyCustodian() || isSupervisor();
       allow update, delete: if isSupervisor() || isPropertyCustodian() || isStaff();
     }
 
-    // --------------------------------------------------------------------------------
-    // Activity Log Rules
-    // --------------------------------------------------------------------------------
     match /activity_logs/{logId} {
-        allow get, list: if isSupervisor();
-        allow create: if isSignedIn();
+      allow get, list: if isSupervisor();
+      allow create: if isSignedIn();
     }
 
-    // --------------------------------------------------------------------------------
-    // Role-Based Access Control (RBAC) Rules
-    // --------------------------------------------------------------------------------
     match /roles_teachers/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow create, delete: if isSupervisor();
     }
+
     match /roles_supervisor/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow create, delete: if isSupervisor();
     }
-    match /roles_head_supervisor/{userId} {
+
+    match /roles_property_custodian/{userId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
       allow create, delete: if isSupervisor();
     }
-    match /roles_property_custodian/{userId} {
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create, delete: if isSupervisor();
-    }
+
     match /roles_staff/{userId} {
-        allow read: if isSignedIn() && request.auth.uid == userId;
-        allow create, delete: if isSupervisor();
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, delete: if isSupervisor();
     }
-    
-     // --------------------------------------------------------------------------------
-    // Access Requests Rules
-    // --------------------------------------------------------------------------------
+
     match /channel_access_requests/{requestId} {
-        allow create: if isTeacher();
-        allow get, list: if isSignedIn();
-        allow update: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
-        allow delete: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow create: if isTeacher();
+      allow get, list: if isSignedIn();
+      allow update: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
+      allow delete: if isSupervisor() || (isTeacher() && resource.data.teacherId == request.auth.uid);
     }
 
     match /student_department_access_requests/{requestId} {
-        allow create: if isSignedIn();
-        allow get, list: if isSignedIn();
-        allow update: if isSupervisor() || isStaff();
-        allow delete: if isSupervisor() || (resource.data.studentId == request.auth.uid);
+      allow create: if isSignedIn();
+      allow get, list: if isSignedIn();
+      allow update: if isSupervisor() || isStaff();
+      allow delete: if isSupervisor() || resource.data.studentId == request.auth.uid;
     }
 
-    // --------------------------------------------------------------------------------
-    // Borrowing Transaction Rules - v2.7.0 (Ultimate Priority Authorization)
-    // --------------------------------------------------------------------------------
     match /borrowing_transactions/{transactionId} {
       allow get, list: if isSignedIn();
       allow create: if isSignedIn();
-      
-      // Update rules: Direct assignment match is highest priority.
-      // We also allow Teachers to process any PENDING request to avoid assignment bottlenecks.
-      allow update: if isSignedIn() && (
-        isAssignedToTransaction(resource.data) ||
-        isSupervisor() || 
-        isStaff() ||
-        (isTeacher() && resource.data.get('status', 'N/A').lower() == 'pending') ||
-        (isOwner(resource.data.get('borrowerUserId', '')) && resource.data.get('status', 'N/A').lower() == 'pending')
-      );
-      
-      allow delete: if isSupervisor() 
-        || resource.data.get('borrowerUserId', 'N/A') == request.auth.uid
-        || isAssignedToTransaction(resource.data);
+
+      allow update: if isSupervisor()
+        || resource.data.borrowerUserId == request.auth.uid
+        || (
+          isTeacher()
+          && resource.data.teacherId == request.auth.uid
+          && resource.data.status == "Pending"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status",
+            "updatedAt",
+            "approvedBy",
+            "approvedAt",
+            "deniedBy",
+            "deniedAt"
+          ])
+        );
+
+      allow delete: if isSupervisor()
+        || resource.data.borrowerUserId == request.auth.uid;
     }
   }
 }
