@@ -8,9 +8,9 @@ import { doc, updateDoc, deleteDoc, writeBatch } from "firebase/firestore"
 import { 
     Package, Users, Hourglass, LayoutGrid, PackageOpen, History as HistoryIcon, PlusCircle,
     Edit, Trash, PackageCheck, Cpu, FlaskConical, Cog, Menu,
-    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock, Filter, Tags, Plus
+    Shield, Activity, Loader2, Building, ClipboardCheck, Check, X, List, AlertTriangle, CheckCircle, KeyRound, QrCode, FileText, UserPlus, RotateCcw, ChevronDown, ChevronRight, ChevronLeft, ArrowRight, UserCircle, Clock, Filter, Tags, Plus, Search, Image as ImageIcon, ExternalLink, Calendar
 } from "lucide-react"
-import { format } from "date-fns"
+import { format, isToday, isPast, parseISO } from "date-fns"
 import {
   Card,
   CardContent,
@@ -55,6 +55,8 @@ import { createActivityLog } from "@/lib/logging"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import Image from "next/image"
 
 type SupervisorView = 'dashboard' | 'scanner' | 'inventory' | 'transactions' | 'history' | 'damaged' | 'accessRequests' | 'users' | 'platformLogs';
 
@@ -69,7 +71,6 @@ const PREDEFINED_CATEGORIES = [
 
 const LOW_STOCK_THRESHOLD = 5;
 
-// Helper to safely get categories from an item
 const getItemCategories = (item: InventoryItem): string[] => {
     if (Array.isArray(item.categories)) return item.categories;
     if (item.category) return [item.category];
@@ -80,7 +81,7 @@ export default function SupervisorDashboardPage() {
     const router = useRouter()
     const { user, isUserLoading } = useUser()
     const { toast } = useToast()
-    const { items, borrowHistory, channels, departments, channelAccessRequests, allUsers, studentDepartmentAccessRequests, activityLogs } = useAppContext();
+    const { items, borrowHistory, channels, departments, allUsers, studentDepartmentAccessRequests, activityLogs } = useAppContext();
     const firestore = useFirestore();
 
     const [showPasswordChangeDialog, setShowPasswordChangeDialog] = React.useState(false);
@@ -113,13 +114,33 @@ export default function SupervisorDashboardPage() {
 
     const [activeView, setActiveView] = React.useState<SupervisorView>('dashboard');
     const [usersSubView, setUsersSubView] = React.useState<'all' | Role>('all');
-    const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     
+    // Inventory Filters
+    const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
+    const [statusFilter, setStatusFilter] = React.useState<string>('all');
+    const [roomFilter, setRoomFilter] = React.useState<string>('all');
+    const [inventorySearch, setInventorySearch] = React.useState('');
+
+    // Access Request Filter
+    const [accessRequestStatus, setAccessRequestStatus] = React.useState<string>('pending');
+    const [accessSearch, setAccessSearch] = React.useState('');
+
+    // History Filters
+    const [historyStatusFilter, setHistoryStatusFilter] = React.useState<string>('all');
+    const [historySearch, setHistorySearch] = React.useState('');
+
+    // Audit Log Filters
+    const [auditActorFilter, setAuditActorFilter] = React.useState<string>('all');
+    const [auditActionFilter, setAuditActionFilter] = React.useState<string>('all');
+    const [auditSearch, setAuditSearch] = React.useState('');
+    const [selectedLog, setSelectedLog] = React.useState<ActivityLog | null>(null);
+
     const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
     const [isFormOpen, setIsFormOpen] = React.useState(false);
     const [editingItem, setEditingItem] = React.useState<InventoryItem | null>(null);
     const [selectedCategories, setSelectedCategories] = React.useState<string[]>([]);
     const [customCategoryInput, setCustomCategoryInput] = React.useState('');
+    const [formImageUrl, setFormImageUrl] = React.useState('');
 
     const [isAddChannelOpen, setIsAddChannelOpen] = React.useState(false);
     const [isAddDeptOpen, setIsAddDeptOpen] = React.useState(false);
@@ -143,10 +164,36 @@ export default function SupervisorDashboardPage() {
     }, [items]);
 
     const filteredInventoryItems = React.useMemo(() => {
-        if (categoryFilter === 'all') return departmentItems;
-        if (categoryFilter === 'uncategorized') return departmentItems.filter(i => getItemCategories(i).length === 0);
-        return departmentItems.filter(i => getItemCategories(i).includes(categoryFilter));
-    }, [departmentItems, categoryFilter]);
+        let result = [...departmentItems];
+
+        if (inventorySearch.trim()) {
+            const q = inventorySearch.toLowerCase();
+            result = result.filter(i => 
+                i.name.toLowerCase().includes(q) || 
+                i.description?.toLowerCase().includes(q) ||
+                getItemCategories(i).some(cat => cat.toLowerCase().includes(q)) ||
+                channels.find(c => c.id === i.channelId)?.name.toLowerCase().includes(q)
+            );
+        }
+
+        if (categoryFilter !== 'all') {
+            if (categoryFilter === 'uncategorized') {
+                result = result.filter(i => getItemCategories(i).length === 0);
+            } else {
+                result = result.filter(i => getItemCategories(i).includes(categoryFilter));
+            }
+        }
+
+        if (statusFilter !== 'all') {
+            result = result.filter(i => i.status === statusFilter);
+        }
+
+        if (roomFilter !== 'all') {
+            result = result.filter(i => i.channelId === roomFilter);
+        }
+
+        return result;
+    }, [departmentItems, inventorySearch, categoryFilter, statusFilter, roomFilter, channels]);
 
     const departmentHistory = React.useMemo(() => {
         if (!assignedDepartmentId) return borrowHistory;
@@ -154,14 +201,63 @@ export default function SupervisorDashboardPage() {
         return borrowHistory.filter(h => itemNamesInDept.has(h.itemName));
     }, [borrowHistory, departmentItems, assignedDepartmentId]);
 
+    const filteredHistory = React.useMemo(() => {
+        let result = [...departmentHistory];
+        if (historyStatusFilter !== 'all') {
+            result = result.filter(h => h.status === historyStatusFilter);
+        }
+        if (historySearch.trim()) {
+            const q = historySearch.toLowerCase();
+            result = result.filter(h => 
+                h.studentName.toLowerCase().includes(q) || 
+                h.itemName.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [departmentHistory, historyStatusFilter, historySearch]);
+
     const pendingStudentRequests = React.useMemo(() => {
-        return studentDepartmentAccessRequests.filter(req => (!assignedDepartmentId || req.departmentId === assignedDepartmentId) && req.status === 'pending');
+        return studentDepartmentAccessRequests.filter(req => (!assignedDepartmentId || req.departmentId === assignedDepartmentId));
     }, [studentDepartmentAccessRequests, assignedDepartmentId]);
+
+    const filteredAccessRequests = React.useMemo(() => {
+        let result = pendingStudentRequests;
+        if (accessRequestStatus !== 'all') {
+            result = result.filter(req => req.status === accessRequestStatus);
+        }
+        if (accessSearch.trim()) {
+            const q = accessSearch.toLowerCase();
+            result = result.filter(req => 
+                req.studentName.toLowerCase().includes(q) || 
+                req.departmentName.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [pendingStudentRequests, accessRequestStatus, accessSearch]);
 
     const usersToDisplay = React.useMemo(() => {
         if (usersSubView === 'all') return allUsers;
         return allUsers.filter(u => u.role === usersSubView);
     }, [usersSubView, allUsers]);
+
+    const filteredAuditLogs = React.useMemo(() => {
+        let result = [...activityLogs];
+        if (auditActorFilter !== 'all') {
+            result = result.filter(log => log.userId === auditActorFilter);
+        }
+        if (auditActionFilter !== 'all') {
+            result = result.filter(log => log.action === auditActionFilter);
+        }
+        if (auditSearch.trim()) {
+            const q = auditSearch.toLowerCase();
+            result = result.filter(log => 
+                log.userName.toLowerCase().includes(q) || 
+                log.details.toLowerCase().includes(q) ||
+                log.action.toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [activityLogs, auditActorFilter, auditActionFilter, auditSearch]);
 
     const handleViewChange = (view: SupervisorView) => {
         setActiveView(view);
@@ -206,6 +302,7 @@ export default function SupervisorDashboardPage() {
             channelId: finalChannelId,
             status: formData.get("status") as ItemStatus,
             categories: selectedCategories,
+            imageUrl: formImageUrl,
         };
 
         try {
@@ -242,6 +339,7 @@ export default function SupervisorDashboardPage() {
         setIsFormOpen(false);
         setSelectedCategories([]);
         setCustomCategoryInput('');
+        setFormImageUrl('');
     }
 
     const handleDeleteItem = async (itemId: string) => {
@@ -330,17 +428,28 @@ export default function SupervisorDashboardPage() {
     const navItems = [
         { id: 'dashboard' as SupervisorView, label: 'Dashboard', icon: <LayoutGrid />, description: 'Overview of laboratory performance and status.' },
         { id: 'scanner' as SupervisorView, label: 'QR Scanner', icon: <QrCode />, description: 'Process checkouts and returns instantly.' },
-        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package />, description: 'Manage and categorize laboratory equipment.' },
+        { id: 'inventory' as SupervisorView, label: 'Inventory', icon: <Package />, description: 'Manage and classify laboratory assets.' },
         { id: 'transactions' as SupervisorView, label: 'Active Transactions', icon: <PackageOpen />, description: 'Monitor items currently in use.' },
         { id: 'accessRequests' as SupervisorView, label: 'Access Requests', icon: <KeyRound />, description: 'Manage teacher and student access permissions.' },
         { id: 'history' as SupervisorView, label: 'History', icon: <HistoryIcon />, description: 'Review past borrowing activities.' },
-        { id: 'damaged' as SupervisorView, label: 'Damaged Items', icon: <AlertTriangle />, description: 'Track malfunctioning or broken materials.' },
+        { id: 'damaged' as SupervisorView, label: 'Maintenance Reports', icon: <AlertTriangle />, description: 'Track malfunctioning or broken materials.' },
         { id: 'users' as SupervisorView, label: 'User Directory', icon: <Users />, description: 'Manage laboratory staff and teachers.' },
         { id: 'platformLogs' as SupervisorView, label: 'Audit Logs', icon: <FileText />, description: 'System-wide activity logs for security.' },
     ];
 
-    const getStatusBadge = (status: ItemStatus) => {
-        const variants = { "Available": "secondary", "Borrowed": "destructive", "Locked": "outline", "Pending Receipt": "outline", "Inaccurate": "destructive", "Returning": "outline" } as const;
+    const getStatusBadge = (status: string) => {
+        const variants: Record<string, "secondary" | "destructive" | "outline" | "default"> = { 
+            "Available": "secondary", 
+            "Borrowed": "destructive", 
+            "Locked": "outline", 
+            "Pending Receipt": "outline", 
+            "Inaccurate": "destructive", 
+            "Returning": "outline",
+            "Approved": "default",
+            "Returned": "secondary",
+            "Denied": "destructive",
+            "Cancelled": "outline"
+        };
         return <Badge variant={variants[status] || "default"}>{status}</Badge>;
     }
 
@@ -349,25 +458,21 @@ export default function SupervisorDashboardPage() {
             case 'scanner': return <div className="animate-in fade-in duration-500"><QrScannerView /></div>;
             case 'dashboard': {
                  const totalItems = departmentItems.length;
-                 const uncategorizedItems = departmentItems.filter(i => getItemCategories(i).length === 0);
                  const totalStock = departmentItems.reduce((sum, item) => sum + item.quantity, 0);
-                 const activeHistory = departmentHistory.filter(h => h.status === 'Active');
-                 const borrowedCount = activeHistory.length;
+                 const activeBorrows = departmentHistory.filter(h => h.status === 'Active');
+                 const borrowedCount = activeBorrows.length;
                  
                  const categoryCounts = departmentItems.reduce((acc, item) => {
                     const cats = getItemCategories(item);
-                    if (cats.length === 0) {
-                        acc['Uncategorized'] = (acc['Uncategorized'] || 0) + 1;
-                    } else {
-                        cats.forEach(cat => {
-                            acc[cat] = (acc[cat] || 0) + 1;
-                        });
-                    }
+                    if (cats.length === 0) acc['Uncategorized'] = (acc['Uncategorized'] || 0) + 1;
+                    else cats.forEach(cat => acc[cat] = (acc[cat] || 0) + 1);
                     return acc;
                  }, {} as Record<string, number>);
 
                  const lowStockItems = departmentItems.filter(i => i.quantity > 0 && i.quantity < LOW_STOCK_THRESHOLD);
-                 const recentActivity = activityLogs.slice(0, 5);
+                 const pendingReservations = departmentHistory.filter(h => h.status === 'Pending' && h.reservationId);
+                 const pendingAccess = studentDepartmentAccessRequests.filter(req => req.status === 'pending');
+                 const maintenanceCount = departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').length;
 
                 return (
                      <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
@@ -380,49 +485,44 @@ export default function SupervisorDashboardPage() {
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Items</CardTitle><Package className="h-4 w-4 text-primary" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalItems}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Categories</CardTitle><Tags className="h-4 w-4 text-emerald-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{Object.keys(categoryCounts).length}</div></CardContent></Card>
                             <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available Stock</CardTitle><PackageOpen className="h-4 w-4 text-blue-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{totalStock}</div></CardContent></Card>
-                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 backdrop-blur-md border-border/50"><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Currently Borrowed</CardTitle><Activity className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-white">{borrowedCount}</div></CardContent></Card>
                         </div>
 
-                        <div className="grid gap-6 md:grid-cols-2">
-                            <div className="space-y-6">
+                        <div className="grid gap-6 md:grid-cols-3">
+                            <div className="md:col-span-2 space-y-6">
+                                <Card className="bg-card/40 border-border/50">
+                                    <CardHeader><CardTitle className="text-lg font-headline">Pending Actions</CardTitle><CardDescription>System tasks requiring attention.</CardDescription></CardHeader>
+                                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div onClick={() => setActiveView('accessRequests')} className="p-4 rounded-xl bg-black/20 border border-border/50 cursor-pointer hover:bg-black/40 transition-colors flex items-center justify-between">
+                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500"><KeyRound className="h-5 w-5"/></div><div><p className="text-sm font-bold">Access Requests</p><p className="text-xs text-muted-foreground">{pendingAccess.length} Pending</p></div></div><ChevronRight className="h-4 w-4 opacity-30"/>
+                                        </div>
+                                        <div onClick={() => setActiveView('transactions')} className="p-4 rounded-xl bg-black/20 border border-border/50 cursor-pointer hover:bg-black/40 transition-colors flex items-center justify-between">
+                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500"><Calendar className="h-5 w-5"/></div><div><p className="text-sm font-bold">Reservations</p><p className="text-xs text-muted-foreground">{Array.from(new Set(pendingReservations.map(r=>r.reservationId))).length} Queue</p></div></div><ChevronRight className="h-4 w-4 opacity-30"/>
+                                        </div>
+                                        <div onClick={() => setActiveView('transactions')} className="p-4 rounded-xl bg-black/20 border border-border/50 cursor-pointer hover:bg-black/40 transition-colors flex items-center justify-between">
+                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500"><PackageCheck className="h-5 w-5"/></div><div><p className="text-sm font-bold">Active Borrows</p><p className="text-xs text-muted-foreground">{borrowedCount} In Session</p></div></div><ChevronRight className="h-4 w-4 opacity-30"/>
+                                        </div>
+                                        <div onClick={() => setActiveView('damaged')} className="p-4 rounded-xl bg-black/20 border border-border/50 cursor-pointer hover:bg-black/40 transition-colors flex items-center justify-between">
+                                            <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center text-destructive"><AlertTriangle className="h-5 w-5"/></div><div><p className="text-sm font-bold">Maintenance</p><p className="text-xs text-muted-foreground">{maintenanceCount} Issues</p></div></div><ChevronRight className="h-4 w-4 opacity-30"/>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
                                 <Card className="bg-card/40 border-border/50">
                                     <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><Tags className="h-5 w-5 text-primary" /> Category Breakdown</CardTitle></CardHeader>
                                     <CardContent className="space-y-3">
                                         {Object.entries(categoryCounts).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
                                             <div key={cat} className="flex items-center justify-between p-2 rounded bg-black/20">
-                                                <span className={cn("text-sm", cat === 'Uncategorized' ? "text-amber-500 font-bold" : "text-white")}>
-                                                    {cat === 'Uncategorized' && "⚠ "}{cat}
-                                                </span>
+                                                <span className={cn("text-sm", cat === 'Uncategorized' ? "text-amber-500 font-bold" : "text-white")}>{cat === 'Uncategorized' && "⚠ "}{cat}</span>
                                                 <Badge variant="secondary">{count} items</Badge>
                                             </div>
                                         ))}
                                     </CardContent>
                                 </Card>
-
-                                {uncategorizedItems.length > 0 && (
-                                    <Card className="bg-card/40 border-amber-500/20 bg-amber-500/5">
-                                        <CardHeader>
-                                            <div className="flex items-center gap-2">
-                                                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                                                <CardTitle className="text-lg font-headline">Pending Categorization</CardTitle>
-                                            </div>
-                                            <CardDescription>These items require classification for better tracking.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-2">
-                                            {uncategorizedItems.slice(0, 5).map(item => (
-                                                <div key={item.id} className="flex items-center justify-between p-2 rounded bg-black/20 border border-amber-500/10">
-                                                    <span className="text-sm">{item.name}</span>
-                                                    <Button size="sm" variant="ghost" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}>Classify</Button>
-                                                </div>
-                                            ))}
-                                            <Button variant="link" className="w-full text-xs text-amber-500 h-auto p-0 pt-2" onClick={() => { setCategoryFilter('uncategorized'); setActiveView('inventory'); }}>View all uncategorized items</Button>
-                                        </CardContent>
-                                    </Card>
-                                )}
                             </div>
 
                             <div className="space-y-6">
-                                <Card className="bg-card/40 border-destructive/20">
+                                <Card className="bg-card/40 border-destructive/20 h-full">
                                     <CardHeader>
                                         <div className="flex items-center gap-2">
                                             <AlertTriangle className="h-5 w-5 text-destructive" />
@@ -430,35 +530,21 @@ export default function SupervisorDashboardPage() {
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-3">
-                                        {lowStockItems.length > 0 ? lowStockItems.slice(0, 5).map(item => (
-                                            <div key={item.id} className="flex items-center justify-between p-2 rounded bg-destructive/5 border border-destructive/10">
-                                                <span className="text-sm text-foreground">{item.name}</span>
+                                        {lowStockItems.length > 0 ? lowStockItems.slice(0, 10).map(item => (
+                                            <div key={item.id} onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setFormImageUrl(item.imageUrl || ''); setIsFormOpen(true); }} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/10 hover:bg-destructive/10 cursor-pointer transition-colors group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-8 w-8 rounded bg-black/40 overflow-hidden relative flex-shrink-0">
+                                                        {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" /> : <Package className="h-4 w-4 absolute inset-0 m-auto text-muted-foreground/30" />}
+                                                    </div>
+                                                    <span className="text-sm text-foreground group-hover:text-white transition-colors truncate max-w-[120px]">{item.name}</span>
+                                                </div>
                                                 <Badge variant="destructive" className="font-mono">{item.quantity} left</Badge>
                                             </div>
                                         )) : (
-                                            <div className="text-center py-4 text-emerald-500 text-sm flex items-center justify-center gap-2">
-                                                <CheckCircle className="h-4 w-4" /> All stock levels healthy.
+                                            <div className="text-center py-20 text-emerald-500 text-sm flex flex-col items-center gap-3 opacity-40">
+                                                <CheckCircle className="h-12 w-12" /> All stock levels healthy.
                                             </div>
                                         )}
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="bg-card/40 border-border/50">
-                                    <CardHeader><CardTitle className="text-lg font-headline flex items-center gap-2"><HistoryIcon className="h-5 w-5 text-amber-500" /> Recent Activity</CardTitle></CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-4">
-                                            {recentActivity.length > 0 ? recentActivity.map(log => (
-                                                <div key={log.id} className="flex items-start gap-3 border-l-2 border-primary/20 pl-3">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{log.action}</p>
-                                                            <span className="text-[10px] text-muted-foreground">{format(new Date(log.timestamp), 'MMM d, p')}</span>
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{log.details}</p>
-                                                    </div>
-                                                </div>
-                                            )) : <p className="text-center text-sm text-muted-foreground italic">No recent system events.</p>}
-                                        </div>
                                     </CardContent>
                                 </Card>
                             </div>
@@ -469,179 +555,318 @@ export default function SupervisorDashboardPage() {
              case 'inventory':
                 return (
                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in fade-in duration-500">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h2 className="text-2xl font-bold font-headline text-white">Inventory Management</h2>
-                                <p className="text-muted-foreground">Manage and classify your laboratory assets.</p>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2 bg-card/40 border border-border/50 px-3 py-1.5 rounded-md">
-                                    <Filter className="h-4 w-4 text-muted-foreground" />
-                                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                        <SelectTrigger className="w-[180px] h-8 border-none bg-transparent focus:ring-0">
-                                            <SelectValue placeholder="Filter by Category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">All Categories</SelectItem>
-                                            <SelectItem value="uncategorized" className="text-amber-500 font-medium">⚠ Uncategorized</SelectItem>
-                                            <Separator className="my-1" />
-                                            {availableCategories.map(cat => (
-                                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div><h2 className="text-2xl font-bold font-headline text-white">Inventory Management</h2><p className="text-muted-foreground">Manage and classify your laboratory assets.</p></div>
+                                <div className="flex items-center gap-3">
+                                    <Button onClick={() => setIsAddChannelOpen(true)} size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
                                 </div>
-                                <Button onClick={() => setIsAddChannelOpen(true)} size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Room</Button>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-card/40 border border-border/50 rounded-xl">
+                                <div className="md:col-span-2 relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Search name, room, description..." value={inventorySearch} onChange={e=>setInventorySearch(e.target.value)} className="pl-10 bg-black/20" />
+                                </div>
+                                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                    <SelectTrigger className="bg-black/20"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                                    <SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Available">Available</SelectItem><SelectItem value="Locked">Locked</SelectItem><SelectItem value="Borrowed">Borrowed</SelectItem></SelectContent>
+                                </Select>
+                                <Select value={roomFilter} onValueChange={setRoomFilter}>
+                                    <SelectTrigger className="bg-black/20"><SelectValue placeholder="All Rooms" /></SelectTrigger>
+                                    <SelectContent><SelectItem value="all">All Rooms</SelectItem>{channels.filter(c=>!assignedDepartmentId || c.departmentId===assignedDepartmentId).map(c=>(<SelectItem key={c.id} value={c.id}>{c.name.replace('#','')}</SelectItem>))}</SelectContent>
+                                </Select>
                             </div>
                         </div>
 
                         <Card className="bg-card/80 border-border/50">
-                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                            <CardContent className="p-0 overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10">
-                                        <TableRow>
-                                            <TableHead className="whitespace-nowrap">Name</TableHead>
-                                            <TableHead className="whitespace-nowrap">Categories</TableHead>
-                                            <TableHead className="whitespace-nowrap">Lab / Room</TableHead>
-                                            <TableHead className="whitespace-nowrap">Qty</TableHead>
-                                            <TableHead className="whitespace-nowrap">Status</TableHead>
-                                            <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
+                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow>
+                                        <TableHead className="w-16">Preview</TableHead>
+                                        <TableHead>Name</TableHead><TableHead>Categories</TableHead><TableHead>Room</TableHead><TableHead>Qty</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                                    </TableRow></TableHeader>
                                     <TableBody>
                                         {filteredInventoryItems.length > 0 ? filteredInventoryItems.map(item => (
                                             <TableRow key={item.id} className="hover:bg-white/[0.02] transition-colors border-border/40">
-                                                <TableCell className="font-medium whitespace-nowrap text-white">{item.name}</TableCell>
-                                                <TableCell className="whitespace-nowrap">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {getItemCategories(item).length > 0 ? getItemCategories(item).map(cat => (
-                                                            <Badge key={cat} variant="outline" className="font-normal border-primary/20 bg-primary/5 text-primary-foreground/90 py-0 h-5">
-                                                                {cat}
-                                                            </Badge>
-                                                        )) : (
-                                                            <span className="text-xs text-amber-500 font-bold flex items-center gap-1">
-                                                                <AlertTriangle className="h-3 w-3" /> Uncategorized
-                                                            </span>
-                                                        )}
+                                                <TableCell>
+                                                    <div className="h-10 w-10 rounded-md bg-black/40 border border-border/50 overflow-hidden relative">
+                                                        {item.imageUrl ? <Image src={item.imageUrl} alt={item.name} fill className="object-cover" /> : <ImageIcon className="h-4 w-4 absolute inset-0 m-auto text-muted-foreground/30" />}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="whitespace-nowrap text-muted-foreground">
-                                                    {channels.find(c=>c.id===item.channelId)?.name.replace('#','') || <span className="italic opacity-50">Unassigned</span>}
-                                                </TableCell>
-                                                <TableCell className="whitespace-nowrap font-mono font-bold">{item.quantity}</TableCell>
-                                                <TableCell className="whitespace-nowrap">{getStatusBadge(item.status)}</TableCell>
-                                                <TableCell className="text-right space-x-2 whitespace-nowrap">
-                                                    {item.status === 'Inaccurate' && (
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}>
-                                                                        <RotateCcw className="h-4 w-4"/>
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>Return to Custodian</p></TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    )}
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                                    <AlertDialog>
-                                                        <AlertDialogTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button>
-                                                        </AlertDialogTrigger>
-                                                        <AlertDialogContent>
-                                                            <AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. Permanent removal of {item.name}.</AlertDialogDescription></AlertDialogHeader>
-                                                            <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter>
-                                                        </AlertDialogContent>
+                                                <TableCell className="font-medium text-white max-w-[200px] truncate" title={item.name}>{item.name}</TableCell>
+                                                <TableCell><div className="flex flex-wrap gap-1">
+                                                    {getItemCategories(item).length > 0 ? getItemCategories(item).map(cat => (<Badge key={cat} variant="outline" className="text-[9px] py-0">{cat}</Badge>)) : <span className="text-[10px] text-amber-500 font-bold">⚠ Uncategorized</span>}
+                                                </div></TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{channels.find(c=>c.id===item.channelId)?.name.replace('#','') || <span className="italic opacity-30">Unassigned</span>}</TableCell>
+                                                <TableCell className="font-mono font-bold">{item.quantity}</TableCell>
+                                                <TableCell>{getStatusBadge(item.status)}</TableCell>
+                                                <TableCell className="text-right space-x-2">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setFormImageUrl(item.imageUrl || ''); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
+                                                    <AlertDialog><AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive"><Trash className="h-4 w-4"/></Button></AlertDialogTrigger>
+                                                        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete Item?</AlertDialogTitle><AlertDialogDescription>Permanent removal of {item.name}.</AlertDialogDescription></AlertDialogHeader>
+                                                        <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteItem(item.id)}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                                                     </AlertDialog>
                                                 </TableCell>
                                             </TableRow>
-                                        )) : (
-                                            <TableRow>
-                                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No items found matching the selected filter.</TableCell>
-                                            </TableRow>
-                                        )}
+                                        )) : <TableRow><TableCell colSpan={7} className="h-32 text-center text-muted-foreground italic">No assets found matching the criteria.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
                     </div>
                 );
-            case 'transactions':
+            case 'transactions': {
                 const pendingReservations = departmentHistory.filter(h => h.status === 'Pending' && h.reservationId);
-                const groupedPending: { [id: string]: { studentName: string, items: string[], date: string, startTime?: string, endTime?: string } } = {};
+                const groupedPending: { [id: string]: { studentName: string, items: string[], totalQty: number, date: string, startTime?: string, endTime?: string, type?: string } } = {};
                 pendingReservations.forEach(r => {
                     if (!r.reservationId) return;
                     if (!groupedPending[r.reservationId]) {
-                        groupedPending[r.reservationId] = {
-                            studentName: r.studentName,
-                            items: [],
-                            date: r.date,
-                            startTime: r.startTime,
-                            endTime: r.endTime
-                        };
+                        groupedPending[r.reservationId] = { studentName: r.studentName, items: [], totalQty: 0, date: r.date, startTime: r.startTime, endTime: r.endTime, type: r.borrowingType };
                     }
-                    groupedPending[r.reservationId].items.push(`${r.itemName}${r.itemQuantity ? ` (x${r.itemQuantity})` : ''}`);
+                    groupedPending[r.reservationId].items.push(r.itemName);
+                    groupedPending[r.reservationId].totalQty += (r.itemQuantity || 1);
                 });
 
+                const activeBorrows = departmentHistory.filter(h => h.status === 'Active');
+                const dueToday = activeBorrows.filter(h => h.endTime && isToday(parseISO(h.date))); // Rough check
+                const overdue = activeBorrows.filter(h => h.date && isPast(parseISO(h.date)) && !isToday(parseISO(h.date)));
+
                 return (
-                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 border-border/50">
-                            <CardHeader>
-                                <CardTitle className="text-white">Reservation Requests</CardTitle>
-                                <CardDescription>Pending requests that require supervisor approval.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0 max-h-[40vh] overflow-auto">
+                     <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Pending Reservations</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold">{Object.keys(groupedPending).length}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Borrows</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold">{activeBorrows.length}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Due Today</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-blue-500">{dueToday.length}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Overdue</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-destructive">{overdue.length}</div></CardContent></Card>
+                        </div>
+
+                        <Card className="bg-card/80 border-border/50 overflow-hidden">
+                            <CardHeader className="border-b border-border/40 bg-white/[0.02]"><CardTitle>Reservation Requests</CardTitle><CardDescription>Queued scheduling requests requiring approval.</CardDescription></CardHeader>
+                            <CardContent className="p-0 overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10">
-                                        <TableRow>
-                                            <TableHead>Borrower</TableHead>
-                                            <TableHead>Requested Items</TableHead>
-                                            <TableHead>Schedule</TableHead>
-                                            <TableHead className="text-right">Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
+                                    <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Borrower</TableHead><TableHead>Requested Items</TableHead><TableHead>Qty</TableHead><TableHead>Schedule</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                                     <TableBody>
                                         {Object.entries(groupedPending).map(([resId, data]) => (
                                             <TableRow key={resId} className="border-border/40">
                                                 <TableCell className="text-white font-medium">{data.studentName}</TableCell>
-                                                <TableCell className="max-w-[300px] truncate">{data.items.join(', ')}</TableCell>
-                                                <TableCell className="text-muted-foreground font-mono">
-                                                    {format(new Date(data.date), 'MMM d')} | {data.startTime}-{data.endTime}
-                                                </TableCell>
+                                                <TableCell className="max-w-[250px] truncate text-xs">{data.items.join(', ')}</TableCell>
+                                                <TableCell className="font-mono text-xs">{data.totalQty}</TableCell>
+                                                <TableCell className="text-xs font-mono">{format(new Date(data.date), 'MMM d')} | {data.startTime}-{data.endTime}</TableCell>
+                                                <TableCell><Badge variant="outline" className="text-[10px]">{data.type || 'Individual'}</Badge></TableCell>
                                                 <TableCell className="text-right space-x-2">
-                                                    <Button size="sm" onClick={() => handleReservationApproval(resId, 'Reserved')} className="bg-emerald-600 hover:bg-emerald-700">Approve</Button>
-                                                    <Button size="sm" variant="destructive" onClick={() => handleReservationApproval(resId, 'Denied')}>Reject</Button>
+                                                    <Button size="sm" variant="secondary" onClick={() => handleReservationApproval(resId, 'Reserved')} className="h-8">Approve</Button>
+                                                    <Button size="sm" variant="destructive" onClick={() => handleReservationApproval(resId, 'Denied')} className="h-8">Reject</Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
-                                        {Object.keys(groupedPending).length === 0 && (
-                                            <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground italic">No pending reservation requests.</TableCell></TableRow>
-                                        )}
+                                        {Object.keys(groupedPending).length === 0 && <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No pending reservation requests found.</TableCell></TableRow>}
                                     </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
 
-                        <Card className="bg-card/80 border-border/50">
-                            <CardHeader><CardTitle className="text-white">Active Borrowing Sessions</CardTitle></CardHeader>
-                            <CardContent className="p-0 max-h-[40vh] overflow-auto">
+                        <Card className="bg-card/80 border-border/50 overflow-hidden">
+                            <CardHeader className="border-b border-border/40 bg-white/[0.02]"><CardTitle>Active Borrowing Sessions</CardTitle><CardDescription>Current material sessions in rotation.</CardDescription></CardHeader>
+                            <CardContent className="p-0 overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead className="whitespace-nowrap">Student Representative</TableHead><TableHead className="whitespace-nowrap">Item Description</TableHead><TableHead className="whitespace-nowrap">Session Start</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentHistory.filter(h => h.status === 'Active').map(r => (<TableRow key={r.id} className="border-border/40"><TableCell className="whitespace-nowrap text-white font-medium">{r.studentName}</TableCell><TableCell className="whitespace-nowrap">{r.itemName}</TableCell><TableCell className="whitespace-nowrap text-muted-foreground font-mono">{format(new Date(r.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                    <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Borrower</TableHead><TableHead>Items</TableHead><TableHead>Checkout Time</TableHead><TableHead>Schedule</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {activeBorrows.length > 0 ? activeBorrows.map(r => (
+                                            <TableRow key={r.id} className="border-border/40">
+                                                <TableCell className="text-white font-medium">{r.studentName}</TableCell>
+                                                <TableCell className="text-xs">{r.itemName}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground font-mono">{format(new Date(r.date), 'MMM d, p')}</TableCell>
+                                                <TableCell className="text-xs font-mono">{r.startTime && r.endTime ? `${r.startTime}-${r.endTime}` : 'No fixed end'}</TableCell>
+                                                <TableCell>{getStatusBadge('Active')}</TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No active sessions found.</TableCell></TableRow>}
+                                    </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
                     </div>
                 );
-            case 'history':
+            }
+            case 'accessRequests':
                 return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div><h2 className="text-2xl font-bold font-headline text-white">Laboratory Access Queue</h2><p className="text-muted-foreground">Manage user permissions for departmental resources.</p></div>
+                            <Tabs value={accessRequestStatus} onValueChange={setAccessRequestStatus} className="w-auto">
+                                <TabsList className="bg-black/20"><TabsTrigger value="pending">Pending</TabsTrigger><TabsTrigger value="approved">Approved</TabsTrigger><TabsTrigger value="denied">Rejected</TabsTrigger><TabsTrigger value="all">All</TabsTrigger></TabsList>
+                            </Tabs>
+                        </div>
+
                         <Card className="bg-card/80 border-border/50">
-                            <CardHeader><CardTitle className="text-white">Complete Transaction History</CardTitle></CardHeader>
-                            <CardContent className="p-0 max-h-[75vh] overflow-auto">
+                            <CardHeader className="p-4 bg-white/[0.01] border-b border-border/40">
+                                <div className="relative max-w-md">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Search student or department..." value={accessSearch} onChange={e=>setAccessSearch(e.target.value)} className="pl-10 bg-black/20" />
+                                </div>
+                            </CardHeader>
+                            <CardContent className="p-0 overflow-auto">
                                 <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student</TableHead> <TableHead>Item</TableHead><TableHead>Final Status</TableHead><TableHead className="text-right">Transaction Date</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentHistory.map(h => (<TableRow key={h.id} className="border-border/40 hover:bg-white/[0.01]"><TableCell className="text-white font-medium">{h.studentName}</TableCell><TableCell>{h.itemName}</TableCell><TableCell><Badge variant="outline" className="border-primary/20 text-primary-foreground/70">{h.status}</Badge></TableCell><TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(h.date), 'MMM d, p')}</TableCell></TableRow>))}</TableBody>
+                                    <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Student Name</TableHead><TableHead>Requested Facility</TableHead><TableHead>Request Date</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {filteredAccessRequests.length > 0 ? filteredAccessRequests.map(req => (
+                                            <TableRow key={req.id} className="border-border/40">
+                                                <TableCell className="text-white font-medium">{req.studentName}</TableCell>
+                                                <TableCell className="text-muted-foreground text-xs">{req.departmentName}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground font-mono">{format(new Date(req.requestedAt), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell>{getStatusBadge(req.status)}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {req.status === 'pending' && (
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')} className="h-8 bg-emerald-600 hover:bg-emerald-700">Approve</Button>
+                                                            <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')} className="h-8">Deny</Button>
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No student access requests match the criteria.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            case 'history': {
+                const returnedCount = departmentHistory.filter(h=>h.status==='Returned').length;
+                const cancelledCount = departmentHistory.filter(h=>h.status==='Cancelled').length;
+                const approvedCount = departmentHistory.filter(h=>h.status==='Approved').length;
+
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Total Transactions</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold">{departmentHistory.length}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Returned</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-emerald-500">{returnedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Cancelled</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-muted-foreground">{cancelledCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Approved</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-blue-500">{approvedCount}</div></CardContent></Card>
+                        </div>
+
+                        <div className="flex flex-col gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-card/40 border border-border/50 rounded-xl">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input placeholder="Search student or item..." value={historySearch} onChange={e=>setHistorySearch(e.target.value)} className="pl-10 bg-black/20" />
+                                </div>
+                                <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
+                                    <SelectTrigger className="bg-black/20"><SelectValue placeholder="All History" /></SelectTrigger>
+                                    <SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Approved">Approved</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem><SelectItem value="Returned">Returned</SelectItem><SelectItem value="Denied">Denied</SelectItem></SelectContent>
+                                </Select>
+                            </div>
+
+                            <Card className="bg-card/80 border-border/50 overflow-hidden">
+                                <CardContent className="p-0 max-h-[60vh] overflow-auto">
+                                    <Table>
+                                        <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Student</TableHead><TableHead>Item</TableHead><TableHead>Final Status</TableHead><TableHead className="text-right">Execution Date</TableHead></TableRow></TableHeader>
+                                        <TableBody>
+                                            {filteredHistory.length > 0 ? filteredHistory.map(h => (
+                                                <TableRow key={h.id} className="border-border/40 hover:bg-white/[0.01]">
+                                                    <TableCell className="text-white font-medium">{h.studentName}</TableCell>
+                                                    <TableCell className="text-xs">{h.itemName}</TableCell>
+                                                    <TableCell>{getStatusBadge(h.status)}</TableCell>
+                                                    <TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(h.date), 'MMM d, p')}</TableCell>
+                                                </TableRow>
+                                            )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">No historical records found matching the filter.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                );
+            }
+            case 'damaged': {
+                 const issues = departmentHistory.filter(h => h.returnCondition && h.returnCondition !== 'Good');
+                 const reportedCount = issues.filter(i=>!i.resolutionStatus || i.resolutionStatus==='Pending').length;
+                 const resolvedCount = issues.filter(i=>i.resolutionStatus==='Resolved').length;
+                 const lostCount = issues.filter(i=>i.returnCondition==='Lost').length;
+
+                 return (
+                    <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex flex-col gap-1"><h2 className="text-2xl font-bold font-headline text-white">Damage & Maintenance Reports</h2><p className="text-muted-foreground">Manage hardware integrity and resolution flows.</p></div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reported Issues</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-amber-500">{reportedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Resolved</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-emerald-500">{resolvedCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Lost Items</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-destructive">{lostCount}</div></CardContent></Card>
+                            <Card className="bg-card/40 border-border/50"><CardHeader className="p-4 pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Active Sessions</CardTitle></CardHeader><CardContent className="p-4 pt-0"><div className="text-2xl font-bold text-white">{departmentHistory.filter(h=>h.status==='Active').length}</div></CardContent></Card>
+                        </div>
+
+                        <Card className="bg-card/80 border-border/50">
+                            <CardContent className="p-0 overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Item Name</TableHead><TableHead>Reported By</TableHead><TableHead>Issue Type</TableHead><TableHead>Date Reported</TableHead><TableHead>Current Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {issues.length > 0 ? issues.map(h => (
+                                            <TableRow key={h.id} className="border-border/40">
+                                                <TableCell className="text-white font-medium">{h.itemName}</TableCell>
+                                                <TableCell className="text-xs text-muted-foreground">{h.studentName}</TableCell>
+                                                <TableCell><Badge variant="outline" className={cn("text-[10px]", h.returnCondition==='Lost' ? "text-destructive border-destructive/30" : "text-amber-500 border-amber-500/30")}>{h.returnCondition}</Badge></TableCell>
+                                                <TableCell className="text-xs text-muted-foreground font-mono">{format(new Date(h.date), 'MMM d, yyyy')}</TableCell>
+                                                <TableCell>{h.resolutionStatus === 'Resolved' ? <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Resolved</Badge> : <Badge variant="outline" className="text-amber-500 border-amber-500/20">Reported</Badge>}</TableCell>
+                                                <TableCell className="text-right">
+                                                    {(!h.resolutionStatus || h.resolutionStatus === 'Pending') && (
+                                                        <Button size="sm" variant="ghost" onClick={async () => {
+                                                            if (!firestore) return;
+                                                            await updateDoc(doc(firestore, 'borrowing_transactions', h.id), { resolutionStatus: 'Resolved' });
+                                                            toast({ title: "Issue Marked as Resolved" });
+                                                        }} className="text-emerald-500 hover:text-emerald-400">Resolve</Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        )) : <TableRow><TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No damage or maintenance reports on record.</TableCell></TableRow>}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </div>
+                );
+            }
+            case 'platformLogs':
+                const actors = Array.from(new Set(activityLogs.map(l=>l.userId))).map(uid => ({ id: uid, name: activityLogs.find(l=>l.userId===uid)?.userName || 'Unknown' }));
+                const actionTypes = Array.from(new Set(activityLogs.map(l=>l.action)));
+
+                return (
+                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500 space-y-6">
+                        <div className="flex flex-col gap-1"><h2 className="text-2xl font-bold font-headline text-white">Platform Audit Logs</h2><p className="text-muted-foreground">Forensic trail of system activities and administrative changes.</p></div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-card/40 border border-border/50 rounded-xl">
+                            <div className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search user, action, details..." value={auditSearch} onChange={e=>setAuditSearch(e.target.value)} className="pl-10 bg-black/20" /></div>
+                            <Select value={auditActorFilter} onValueChange={setAuditActorFilter}><SelectTrigger className="bg-black/20"><SelectValue placeholder="All Actors" /></SelectTrigger><SelectContent><SelectItem value="all">All Actors</SelectItem>{actors.map(a=>(<SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>))}</SelectContent></Select>
+                            <Select value={auditActionFilter} onValueChange={setAuditActionFilter}><SelectTrigger className="bg-black/20"><SelectValue placeholder="All Actions" /></SelectTrigger><SelectContent><SelectItem value="all">All Actions</SelectItem>{actionTypes.map(at=>(<SelectItem key={at} value={at}>{at}</SelectItem>))}</SelectContent></Select>
+                        </div>
+
+                        <Card className="bg-card/80 border-border/50 overflow-hidden">
+                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
+                                <Table>
+                                    <TableHeader className="bg-black/20 sticky top-0"><TableRow><TableHead>Actor</TableHead><TableHead>Action</TableHead><TableHead>Operational Details</TableHead><TableHead className="text-right">Execution Time</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {filteredAuditLogs.map(log => {
+                                            const getActionColor = (action: string) => {
+                                                if (action.includes('Updated')) return "text-blue-400 border-blue-500/30 bg-blue-500/5";
+                                                if (action.includes('Approved')) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/5";
+                                                if (action.includes('Deleted')) return "text-destructive border-destructive/30 bg-destructive/5";
+                                                if (action.includes('Created')) return "text-purple-400 border-purple-500/30 bg-purple-500/5";
+                                                if (action.includes('Denied')) return "text-destructive border-destructive/30 bg-destructive/5";
+                                                if (action.includes('Returned')) return "text-emerald-400 border-emerald-500/30 bg-emerald-500/5";
+                                                return "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5";
+                                            };
+                                            return (
+                                                <TableRow key={log.id} className="border-border/40">
+                                                    <TableCell className="text-white font-medium">{log.userName}</TableCell>
+                                                    <TableCell><Badge variant="outline" className={cn("text-[10px] font-bold", getActionColor(log.action))}>{log.action}</Badge></TableCell>
+                                                    <TableCell className="max-w-md truncate text-muted-foreground text-xs">{log.details}</TableCell>
+                                                    <TableCell className="text-right flex items-center justify-end gap-3 h-full">
+                                                        <span className="text-[10px] text-muted-foreground font-mono">{format(new Date(log.timestamp), 'MMM d, p')}</span>
+                                                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={()=>setSelectedLog(log)}><ExternalLink className="h-3 w-3"/></Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
                                 </Table>
                             </CardContent>
                         </Card>
@@ -673,82 +898,7 @@ export default function SupervisorDashboardPage() {
                         </Card>
                     </div>
                 );
-            case 'platformLogs':
-                return (
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 border-border/50">
-                            <CardHeader><CardTitle className="text-white">System Audit Logs</CardTitle><CardDescription>Forensic trail of all significant platform activities.</CardDescription></CardHeader>
-                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
-                                <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Actor</TableHead><TableHead>Action Taken</TableHead><TableHead>Operational Details</TableHead><TableHead className="text-right">Execution Time</TableHead></TableRow></TableHeader>
-                                    <TableBody>{activityLogs.map(log => (<TableRow key={log.id} className="border-border/40">
-                                        <TableCell className="text-white font-medium">{log.userName}</TableCell>
-                                        <TableCell><Badge variant="outline" className="border-primary/30 text-primary">{log.action}</Badge></TableCell>
-                                        <TableCell className="max-w-md truncate text-muted-foreground">{log.details}</TableCell>
-                                        <TableCell className="text-right text-xs text-muted-foreground font-mono">{format(new Date(log.timestamp), 'MMM d, p')}</TableCell>
-                                    </TableRow>))}</TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'accessRequests':
-                return (
-                    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 border-border/50">
-                            <CardHeader>
-                                <CardTitle className="text-white">Laboratory Access Queue</CardTitle>
-                                <CardDescription>Review and process pending student access permissions.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
-                                <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Student Name</TableHead> <TableHead>Department</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {pendingStudentRequests.length > 0 ? pendingStudentRequests.map(req => (
-                                            <TableRow key={req.id} className="border-border/40">
-                                                <TableCell className="text-white font-medium">{req.studentName}</TableCell>
-                                                <TableCell className="text-muted-foreground">{req.departmentName}</TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Button size="sm" onClick={()=>handleStudentAccessRequest(req.id, 'approved')} className="h-8 bg-emerald-600 hover:bg-emerald-700">Approve</Button>
-                                                    <Button size="sm" variant="destructive" onClick={()=>handleStudentAccessRequest(req.id, 'denied')} className="h-8">Deny</Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        )) : <TableRow><TableCell colSpan={3} className="h-32 text-center text-muted-foreground italic">No pending access requests.</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            case 'damaged':
-                 return (
-                    <div className="animate-in slide-in-from-bottom-4 duration-500">
-                        <Card className="bg-card/80 border-border/50">
-                            <CardHeader>
-                                <CardTitle className="text-white">Equipment Maintenance Registry</CardTitle>
-                                <CardDescription>Tracking hardware reported as inaccurate, damaged, or pending return to central storage.</CardDescription>
-                            </CardHeader>
-                            <CardContent className="p-0 max-h-[70vh] overflow-auto">
-                                <Table>
-                                    <TableHeader className="bg-black/20 sticky top-0 z-10"><TableRow><TableHead>Equipment Name</TableHead><TableHead>Operational Status</TableHead><TableHead>Last Inspection</TableHead><TableHead className="text-right">Registry Actions</TableHead></TableRow></TableHeader>
-                                    <TableBody>{departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').length > 0 ? departmentItems.filter(i => i.status === 'Inaccurate' || i.status === 'Returning').map(item => (
-                                        <TableRow key={item.id} className="border-border/40">
-                                            <TableCell className="text-white font-medium">{item.name}</TableCell>
-                                            <TableCell>{getStatusBadge(item.status)}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground font-mono">{item.verifiedAt ? format(new Date(item.verifiedAt), 'MMM d, yyyy') : 'Pending Initial Verification'}</TableCell>
-                                            <TableCell className="text-right whitespace-nowrap">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-500" onClick={() => handleReturnToCustodian(item)} disabled={item.status === 'Returning'}><RotateCcw className="h-4 w-4"/></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingItem(item); setSelectedCategories(getItemCategories(item)); setIsFormOpen(true); }}><Edit className="h-4 w-4"/></Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : <TableRow><TableCell colSpan={4} className="h-32 text-center text-muted-foreground italic">All department equipment is currently verified and functioning.</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </CardContent>
-                        </Card>
-                    </div>
-                );
-            default: return <div className="text-center py-20 text-muted-foreground">Select an operational module from the sidebar.</div>;
+            default: return null;
         }
     };
 
@@ -881,7 +1031,7 @@ export default function SupervisorDashboardPage() {
                             <UserNav role="Supervisor" />
                         </div>
                     </header>
-                    <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+                    <div className="flex-1 overflow-y-auto">
                         {renderContent()}
                     </div>
                 </main>
@@ -923,6 +1073,16 @@ export default function SupervisorDashboardPage() {
                         <form onSubmit={handleFormSubmit} className="grid gap-4 py-4">
                             <div className="grid gap-2"><Label className="text-muted-foreground">Item Name</Label><Input name="name" defaultValue={editingItem?.name} required className="bg-black/20 border-border text-white" /></div>
                             
+                            <div className="grid gap-2">
+                                <Label className="text-muted-foreground">Image URL</Label>
+                                <Input value={formImageUrl} onChange={e=>setFormImageUrl(e.target.value)} placeholder="https://..." className="bg-black/20 border-border text-white" />
+                                {formImageUrl && (
+                                    <div className="mt-2 h-32 w-full rounded-md border border-border/50 overflow-hidden relative bg-black/40">
+                                        <Image src={formImageUrl} alt="Preview" fill className="object-contain" />
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid gap-3">
                                 <Label className="text-muted-foreground">Inventory Classifications (Categories)</Label>
                                 <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-black/20 border border-border/50">
@@ -987,6 +1147,23 @@ export default function SupervisorDashboardPage() {
                                 <Button type="submit" className="bg-primary hover:bg-primary/90 text-white px-8">Save Record</Button>
                             </DialogFooter>
                         </form>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={!!selectedLog} onOpenChange={open=>!open && setSelectedLog(null)}>
+                    <DialogContent className="max-w-2xl bg-card border-border">
+                        <DialogHeader><DialogTitle className="text-white">Log Details</DialogTitle></DialogHeader>
+                        <div className="grid gap-6 py-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><Label className="text-xs text-muted-foreground">Execution Time</Label><p className="text-sm">{selectedLog?.timestamp && format(new Date(selectedLog.timestamp), 'PPP p')}</p></div>
+                                <div><Label className="text-xs text-muted-foreground">Actor</Label><p className="text-sm">{selectedLog?.userName}</p></div>
+                                <div><Label className="text-xs text-muted-foreground">Action Type</Label><p className="text-sm font-bold">{selectedLog?.action}</p></div>
+                                <div><Label className="text-xs text-muted-foreground">Category</Label><Badge variant="secondary">{selectedLog?.category}</Badge></div>
+                            </div>
+                            <Separator className="bg-border/30" />
+                            <div><Label className="text-xs text-muted-foreground">Operational Payload / Details</Label><div className="mt-2 p-4 rounded-lg bg-black/40 border border-border/50 text-sm font-mono leading-relaxed whitespace-pre-wrap">{selectedLog?.details}</div></div>
+                        </div>
+                        <DialogFooter><Button onClick={()=>setSelectedLog(null)}>Close Trace</Button></DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
