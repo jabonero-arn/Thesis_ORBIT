@@ -202,7 +202,8 @@ export default function TeacherDashboardPage() {
     }
 
     if (showAvailableOnly) {
-        list = list.filter(item => item.quantity > 0 && item.status === 'Available');
+        // For teachers, 'Locked' (student restriction) items are still available.
+        list = list.filter(item => item.quantity > 0 && (item.status === 'Available' || item.status === 'Locked'));
     }
 
     return list;
@@ -281,8 +282,10 @@ export default function TeacherDashboardPage() {
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
         setSelectedItems(prev => prev.filter(ci => ci.item.id !== item.id));
+        toast({ title: "Item Removed", description: `"${item.name}" removed from selection.` });
     } else {
-        setSelectedItems((prev) => [...prev, {item, quantity: 1}])
+        setSelectedItems((prev) => [...prev, {item, quantity: 1}]);
+        toast({ title: "Item Added", description: `"${item.name}" (x1) added to cart.` });
     }
   }
 

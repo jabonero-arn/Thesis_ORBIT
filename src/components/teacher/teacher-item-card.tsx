@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -77,13 +78,13 @@ export function TeacherItemCard({
         {/* Floating Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             {item.quantity === 0 ? (
-                <Badge variant="destructive" className="font-bold text-[10px] uppercase tracking-wider">Out of Stock</Badge>
-            ) : item.status === 'Locked' ? (
-                <Badge variant="secondary" className="flex items-center text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-500 border-amber-500/20">
-                    <Lock className="mr-1 h-3 w-3"/>Restricted
+                <Badge variant="outline" className="bg-red-950/80 text-red-400 border-red-500/50 font-bold text-[10px] uppercase tracking-wider backdrop-blur-sm">
+                  Out of Stock
                 </Badge>
             ) : (
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">Available</Badge>
+                <Badge variant="outline" className="bg-emerald-950/80 border-emerald-500/50 text-emerald-400 flex items-center text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+                    Available
+                </Badge>
             )}
         </div>
 
@@ -120,11 +121,18 @@ export function TeacherItemCard({
                 disabled={item.quantity === 0}
                 onClick={handleActionClick}
                 className={cn(
-                    "h-8 px-4 font-bold uppercase text-[10px] tracking-widest",
-                    isSelected ? "bg-primary/20 text-primary border-primary/20" : ""
+                    "h-8 px-4 font-bold uppercase text-[10px] tracking-widest transition-all group/cartbtn shrink-0",
+                    isSelected && "bg-primary/20 text-primary border-primary/20 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
                 )}
             >
-                {isSelected ? "In Cart" : "Select"}
+                {isSelected ? (
+                    <>
+                        <span className="group-hover/cartbtn:hidden">In Cart</span>
+                        <span className="hidden group-hover/cartbtn:inline">Cancel</span>
+                    </>
+                ) : (
+                    item.quantity === 0 ? "Unavailable" : "Select"
+                )}
             </Button>
         </div>
       </div>
