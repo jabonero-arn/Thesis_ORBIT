@@ -38,11 +38,6 @@ export function StudentItemCard({
   const handleActionClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (item.quantity > 0) {
-        // Selection/Deselection is allowed if:
-        // - Already selected (for removal/cancel)
-        // - approved by teacher
-        // - not restricted and not pending
-        // - restricted but not pending (this triggers the request modal in parent)
         onSelect();
     }
   };
@@ -95,21 +90,25 @@ export function StudentItemCard({
         {/* Floating Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             {item.quantity === 0 ? (
-                <Badge variant="destructive" className="font-bold text-[10px] uppercase tracking-wider">Out of Stock</Badge>
+                <Badge variant="outline" className="bg-red-950/80 text-red-400 border-red-500/50 font-bold text-[10px] uppercase tracking-wider backdrop-blur-sm">
+                  Out of Stock
+                </Badge>
             ) : showPending ? (
-                <Badge variant="outline" className="bg-amber-500/20 border-amber-500/50 text-amber-300 flex items-center text-[10px] font-bold uppercase tracking-wider">
-                    <Hourglass className="mr-1 h-3 w-3"/>Pending
+                <Badge variant="outline" className="bg-amber-950/80 border-amber-500/50 text-amber-400 flex items-center text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+                    <Hourglass className="mr-1 h-3 w-3 animate-spin"/>Pending
                 </Badge>
             ) : isApproved ? (
-                <Badge variant="outline" className="bg-emerald-500/20 border-emerald-500/50 text-emerald-300 flex items-center text-[10px] font-bold uppercase tracking-wider">
+                <Badge variant="outline" className="bg-blue-950/80 border-blue-500/50 text-blue-400 flex items-center text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
                     <CheckCircle className="mr-1 h-3 w-3"/>Approved
                 </Badge>
             ) : item.status === 'Locked' ? (
-                <Badge variant="secondary" className="flex items-center text-[10px] font-bold uppercase tracking-wider">
+                <Badge variant="outline" className="bg-amber-950/80 border-amber-500/50 text-amber-400 flex items-center text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
                     <Lock className="mr-1 h-3 w-3"/>Restricted
                 </Badge>
             ) : (
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">Available</Badge>
+                <Badge variant="outline" className="bg-emerald-950/80 border-emerald-500/50 text-emerald-400 flex items-center text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm">
+                    Available
+                </Badge>
             )}
         </div>
 

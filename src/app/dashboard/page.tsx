@@ -181,6 +181,20 @@ export default function StudentDashboardPage() {
     return borrowHistory.filter(h => h.borrowerUserId === user.uid);
   }, [borrowHistory, user]);
 
+  const pendingRequestedItemNames = React.useMemo(() =>
+    new Set(studentBorrowHistory
+      .filter(h => h.status.toLowerCase() === 'pending')
+      .map(h => h.itemName)),
+    [studentBorrowHistory]
+  );
+  
+  const approvedForBorrowItemNames = React.useMemo(() =>
+    new Set(studentBorrowHistory
+        .filter(h => h.status.toLowerCase() === 'approved' && !h.checkoutSessionId)
+        .map(h => h.itemName)),
+    [studentBorrowHistory]
+  );
+
   const filteredItems = React.useMemo(() => {
     let list = allItems.filter(item => 
         (activeView === 'borrow' ? item.channelId === selectedChannelId : true) &&
@@ -204,25 +218,15 @@ export default function StudentDashboardPage() {
     }
 
     if (showAvailableOnly) {
-        list = list.filter(item => item.quantity > 0 && item.status === 'Available');
+        list = list.filter(item => {
+            const isActuallyAvailable = item.quantity > 0 && item.status === 'Available';
+            const isSpecificallyApproved = item.quantity > 0 && approvedForBorrowItemNames.has(item.name);
+            return isActuallyAvailable || isSpecificallyApproved;
+        });
     }
 
     return list;
-  }, [allItems, searchQuery, categoryFilter, showAvailableOnly, selectedChannelId, activeView, channels]);
-
-  const pendingRequestedItemNames = React.useMemo(() =>
-    new Set(studentBorrowHistory
-      .filter(h => h.status.toLowerCase() === 'pending')
-      .map(h => h.itemName)),
-    [studentBorrowHistory]
-  );
-  
-  const approvedForBorrowItemNames = React.useMemo(() =>
-    new Set(studentBorrowHistory
-        .filter(h => h.status.toLowerCase() === 'approved' && !h.checkoutSessionId)
-        .map(h => h.itemName)),
-    [studentBorrowHistory]
-  );
+  }, [allItems, searchQuery, categoryFilter, showAvailableOnly, selectedChannelId, activeView, channels, approvedForBorrowItemNames]);
   
   const handleDepartmentSelect = (deptId: string) => {
     setActiveView('borrow');
@@ -238,6 +242,7 @@ export default function StudentDashboardPage() {
     const isSelected = selectedItems.some((cartItem) => cartItem.item.id === item.id)
     if (isSelected) {
         setSelectedItems(prev => prev.filter(ci => ci.item.id !== item.id));
+        toast({ title: "Item Removed", description: `"${item.name}" removed from cart.` });
         return;
     }
 
@@ -253,6 +258,7 @@ export default function StudentDashboardPage() {
     
     if (isAvailable) {
         setSelectedItems((prev) => [...prev, { item, quantity: 1 }]);
+        toast({ title: "Item Added", description: `"${item.name}" (x1) added to cart.` });
         return;
     }
 

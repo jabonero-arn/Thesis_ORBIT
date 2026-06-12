@@ -81,7 +81,7 @@ export function StudentItemDetailsDialog({
                         </Badge>
                     )}
                     {item.status === 'Locked' && (
-                         <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-500 uppercase tracking-widest text-[10px] font-bold">
+                         <Badge variant="outline" className="bg-amber-950/30 border-amber-500/50 text-amber-400 uppercase tracking-widest text-[10px] font-bold backdrop-blur-sm">
                             <Lock className="h-3 w-3 mr-1" /> restricted
                         </Badge>
                     )}
@@ -149,19 +149,19 @@ export function StudentItemDetailsDialog({
                                         <CheckCircle className="h-3 w-3 mr-2" /> Selected in Cart
                                     </Badge>
                                 ) : isPending && !isApproved ? (
-                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-amber-500/10 border-amber-500/30 text-amber-500">
+                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-amber-950/80 border-amber-500/50 text-amber-400">
                                         <Hourglass className="h-3 w-3 mr-2 animate-spin" /> Pending Approval
                                     </Badge>
                                 ) : isApproved ? (
-                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
+                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-blue-950/80 border-blue-500/50 text-blue-400">
                                         <CheckCircle className="h-3 w-3 mr-2" /> Approved for Checkout
                                     </Badge>
                                 ) : item.quantity === 0 ? (
-                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-destructive/10 border-destructive/30 text-destructive">
+                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-red-950/80 border-red-500/50 text-red-400">
                                         Currently Out of Stock
                                     </Badge>
                                 ) : (
-                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-emerald-500/10 border-emerald-500/30 text-emerald-500">
+                                    <Badge variant="outline" className="w-full justify-center py-1.5 bg-emerald-950/80 border-emerald-500/50 text-emerald-400">
                                         Ready for Selection
                                     </Badge>
                                 )}
